@@ -460,6 +460,9 @@ ssh ubuntu@<IP> 'cd ~/maramodi/repo && ./deploy/deploy.sh'
   무효화돼 ARM 4코어에서 빌드가 몇 분씩 길어진다.
 - `.git` 도 함께 보낸다(checkout 이 shallow 라 작다). `deploy.sh` 가 배포 대상 커밋을 찍는 데
   쓰고, 서버에서 `git log`·`git status` 가 된다.
+- 🔴 **`rsync` 가 서버에도 깔려 있어야 한다.** 오라클 Ubuntu 최소 이미지에는 **없다** — 없으면
+  `rsync error: remote command not found (code 127)` 로 배포가 죽는다(2026-08-13 실측).
+  서버에서 1회: `sudo apt-get install -y rsync`. 워크플로가 배포 전에 이걸 확인해 준다.
 
 🔴 **대가: 서버에서 `git pull` 로 최신 코드를 받을 수 없다.** 사람이 최신 코드로 배포하려면
 **Actions → CI → Run workflow**(`workflow_dispatch`)를 쓴다. 서버에 이미 있는 코드로 다시

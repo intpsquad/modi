@@ -223,6 +223,17 @@ jobs:
           # 중간자에게 배포 명령과 서버 접근을 그대로 넘겨주는 셈이 된다.
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+      # 🔴 rsync 는 **양쪽에** 있어야 한다. 서버에 없으면
+      #   bash: line 1: rsync: command not found
+      #   rsync error: remote command not found (code 127)
+      # 로 죽는데, 어느 쪽이 없는 건지 메시지만 보고는 헷갈린다(2026-08-13 실제로 그랬다 —
+      # 오라클 Ubuntu 최소 이미지에 rsync 가 안 깔려 있다).
+      - name: 서버에 rsync 가 있는지 확인
+        run: |
+          if ! ssh -o StrictHostKeyChecking=yes                  "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" 'command -v rsync' >/dev/null; then
+            echo "::error::서버에 rsync 가 없다. 서버에서 1회: sudo apt-get install -y rsync"
+            exit 1
+          fi
       # `--delete` 로 저장소에서 지워진 파일이 서버에 남지 않게 한다. 운영 `.env` 와
       # `active-upstream.conf` 는 **저장소 밖**(`~/maramodi/`)에 있어 이 동기화가 건드리지 않는다.
       #
