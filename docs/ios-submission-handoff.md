@@ -5,6 +5,54 @@
 > 절차 자체는 [`docs/ios-release.md`](./ios-release.md) 가 단일 진실이고, 이 문서는 **지금 어디까지
 > 됐고 무엇이 남았는지**만 적는다. 제출이 끝나면 이 파일은 지워도 된다.
 
+---
+
+## 📌 2026-08-14 Mac 작업 결과 — 여기부터 읽는다
+
+**IPA 가 실제로 나왔다.** 아래 2·3·4절(Swift 테스트 · 서명 · IPA 빌드)은 **끝났다.**
+
+| 항목 | 결과 |
+|---|---|
+| Swift 테스트 | ✅ **13건 전부 통과 — 최초 실행.** 실패가 아니라 **컴파일이 안 되고 있었다**(`RunnerTests` 배포 타깃 13.0 vs `Runner` 17.6). 세 설정에 17.6 을 박아 고쳤다 |
+| Flutter 테스트 | ✅ 639건 통과 · `flutter analyze` 0건 · `dart format` 0건 |
+| 서명 | ✅ Xcode 자동 서명. 키체인의 `Apple Distribution: … (89BSUAHRK7)` 사용 |
+| IPA | ✅ `1.0.0 (1)` · Apple Distribution 서명 · App Store 프로파일 · `get-task-allow=false` · 확장도 서명됨 |
+| 실기기 | ✅ 기기 등록 + 릴리스 빌드 설치. 옛 번들 `com.nomara.modi.app` 제거(이름이 같아 혼동됐다) |
+| 운영 서버 | ✅ `/rooms` 401 · `/actuator/health` 404 — 기대값과 일치 |
+
+고친 것은 커밋 `6669f85`. 상세는 [`ios-release.md`](./ios-release.md) 3절.
+
+### 🔴 남은 것 — 사람이 해야 한다
+
+1. **App Store Connect 앱 레코드** (번들 `com.intpsquad.modi`) — 없으면 업로드 자체가 안 된다
+2. **개인정보처리방침 URL** — 앱 안에 전문은 있으나(`app/lib/features/legal/legal_content.dart`)
+   **웹에 호스팅된 주소가 없다.** 없으면 제출 버튼이 막힌다
+3. **카카오 콘솔에 iOS 번들 ID 등록** — 아래 6절. 안 하면 카카오 로그인이 실패하고
+   **동작하지 않는 기능은 Guideline 2.1 거부 사유다**. (버튼을 숨기는 안은 검토했다가
+   *"카카오가 팀 핵심 기능"* 이라 **그대로 두기로 했다** — 2026-08-14 결정)
+4. **스크린샷** · App Privacy 설문 · 연령 등급 · 지원 URL · 수출 규정
+5. **실기기 확인** — 아래
+
+### 🔴 실기기에서 아직 한 번도 확인 안 된 것
+
+빌드는 이미 아이폰에 깔려 있어 TestFlight 없이 지금 바로 볼 수 있다.
+
+- [ ] **공유 확장 E2E** — Safari 링크 공유 → MODI → 방·폴더 → 등록. **가장 위험하다.**
+      URL 추출 로직은 Swift 테스트로 검증됐지만 이 경로 전체는 0회다
+- [ ] Sign in with Apple · 계정 삭제(Apple 필수 요건) · 알림 권한 요청
+- [ ] 프로필 사진 업로드 · 투두 추천
+
+### 업로드하는 법
+
+`.p8` APNs 키·App Store Connect API 키 모두 없다. **Xcode Organizer** 가 가장 간단하다
+(이미 로그인돼 있다) — 단 `flutter build ipa` 로 만든 아카이브여야 한다. `.ipa` 를 직접
+올리려면 **Transporter**(Mac App Store). 자세한 건 `ios-release.md` 4절.
+
+> ⚠️ 안드로이드 네이티브 테스트(아래 2절 끝)는 **돌릴 수 없다** — `app/android/gradlew`
+> 래퍼가 저장소에 없다. 안드로이드는 릴리스 경로 자체가 없으므로 지금은 문제되지 않는다.
+
+---
+
 ## 왜 Mac 이 필요한가
 
 Windows 에서 할 수 있는 것은 다 했다. Mac 이 필요한 것은 셋뿐이다:

@@ -72,7 +72,18 @@ MODI_DEVELOPMENT_TEAM = <Apple Team ID>
 ./scripts/build-ios-ipa.sh          # 산출물: app/build/ios/ipa/MODI.ipa
 ```
 
-### 🔴 `flutter build ipa` 는 이 프로젝트에서 실패한다 *(2026-08-14 실측)*
+> ✅ **2026-08-14 오후 정정 — 기기를 하나 등록한 뒤로는 `flutter build ipa` 도 정상 동작한다.**
+> 아래 실패는 **팀에 등록된 기기가 0대일 때** 일어난다. 기기가 있으면 개발용 프로파일이 만들어져
+> 아카이브가 통과하고, 나온 IPA 도 배포 서명이 제대로 붙는다(실측). 그러니 평소에는
+> `flutter build ipa --release --dart-define-from-file=env/prod.json` 을 써도 된다.
+> **이 스크립트는 등록된 기기가 없을 때(계정을 새로 팠거나 기기가 빠졌을 때)를 위한 보험**이고,
+> 검증 게이트가 붙어 있다는 이점도 있다. 아래 설명은 그 상황의 기록이다.
+>
+> ⚠️ **Organizer 로 배포하려면 `flutter build ipa` 쪽 아카이브를 써야 한다.** 이 스크립트의
+> 아카이브는 일부러 서명이 없어 Organizer 가 `No Team Found in Archive` 로 거부한다
+> (스크립트가 내놓는 `.ipa` 자체는 정상이므로 **Transporter 로는 그대로 올릴 수 있다**).
+
+### 🔴 등록된 기기가 0대면 `flutter build ipa` 가 실패한다 *(2026-08-14 실측)*
 
 ```
 Communication with Apple failed: Your team has no devices from which to
