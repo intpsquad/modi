@@ -421,10 +421,10 @@ Jenkins 는 한 파이프라인의 스테이지라서 "테스트가 통과해야
 | 잡 | 하는 일 |
 |---|---|
 | `changes` | 경로 필터. 아래 세 잡을 켜고 끈다 |
-| `app` | Flutter **3.44.7** · `firebase_options` 템플릿 복사 · `dart format --set-exit-if-changed` · `analyze` · `test` |
+| `app` | Flutter **3.44.8** · `firebase_options` 템플릿 복사 · `dart format --set-exit-if-changed` · `analyze` · `test` |
 | `server` | JDK 21 · `./gradlew build`(Testcontainers 로 Postgres·Redis 를 띄운다) · **OpenAPI 드리프트 검사** |
 | `ai` | uv **0.11.26** · `uv sync --frozen` · `ruff format --check` · `ruff check` · `pytest` |
-| `deploy` | `dev` push 일 때만. SSH → 서버에서 `git reset --hard origin/dev && ./deploy/deploy.sh` |
+| `deploy` | `dev` push 일 때만. 러너가 소스를 **rsync** 로 서버에 밀어 넣고 SSH 로 `./deploy/deploy.sh` 실행 (서버는 GitHub 을 읽지 않는다 — 아래 "소스는 러너가 서버로 rsync 한다") |
 
 ### deploy 잡의 `if` 를 건드리지 말 것
 

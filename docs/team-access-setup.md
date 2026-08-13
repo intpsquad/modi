@@ -312,7 +312,7 @@ git fetch origin
   - 🔴 **`dev`에 머지되면 그 즉시 운영 서버에 배포됩니다.** 스테이징이 없습니다.
   - PR을 열면 체크리스트가 자동으로 붙습니다(`.github/pull_request_template.md`).
     빈 칸으로 두지 말고, 해당 없으면 취소선 + 한 줄 이유를 남겨주세요.
-- **도구 버전을 CI와 맞춰야 합니다.** Flutter `3.44.7` · JDK `21` · uv `0.11.26`.
+- **도구 버전을 CI와 맞춰야 합니다.** Flutter `3.44.8` · JDK `21` · uv `0.11.26`.
   Flutter 버전이 다르면 **로컬은 통과하고 CI 만 포맷 검사에서 깨집니다** — `dart format` 출력이
   버전마다 달라서입니다. `cd app && fvm install` 로 `.fvmrc`의 버전을 자동으로 맞출 수 있습니다.
 - 로컬에서 각자 준비해야 하는 파일(`.env`·Firebase 설정 등)은 저장소 `README.md`의
@@ -336,7 +336,25 @@ flutter run
 
 ---
 
-## 7. 브랜치 보호 — **김주우가 1회 설정**
+## 7. 브랜치 보호 — 🔴 **지금 플랜에서는 불가능하다** (2026-08-14 확인)
+
+> **먼저 읽을 것.** 아래 설정은 **현재 켤 수 없다.** 오가니제이션 `modintps` 가 **Free 플랜**이고,
+> GitHub 은 **프라이빗 저장소의 브랜치 보호·Ruleset 을 유료 플랜에서만** 허용한다. API 로 확인:
+>
+> ```
+> GET /repos/modintps/modi/branches/dev/protection  → 403
+> GET /repos/modintps/modi/rulesets                 → 403
+> "Upgrade to GitHub Pro or make this repository public to enable this feature."
+> ```
+>
+> 선택지는 셋이다:
+> 1. **GitHub Team 플랜으로 올린다** (인당 월 $4 수준) — 아래 표대로 설정 가능해진다
+> 2. **저장소를 public 으로 돌린다** — 무료로 가능해지지만 코드가 공개된다
+> 3. **규칙 없이 운영한다** — 지금 상태다. `dev` 직접 push 가 막히지 않으므로
+>    **CLAUDE.md 의 "push 전 `git fetch` → `git merge origin/dev`" 규칙을 사람이 지켜야 한다.**
+>    (2026-07-30 에 이 규칙을 어겨 배포 설정이 통째로 사라진 사고가 실제로 있었다.)
+>
+> 아래 표는 **1번을 선택했을 때** 그대로 쓰면 되는 설정이다.
 
 `dev`에 push할 수 있는 사람은 **서버에서 임의 코드를 돌릴 수 있는 사람**입니다(배포 잡이 SSH로
 들어와 저장소의 `deploy/deploy.sh`를 그대로 실행합니다). 그래서 직접 push를 막습니다.
@@ -364,7 +382,7 @@ GitHub → Settings → Branches(또는 Rules) → `dev`:
 - [ ] SSH 키 만들어 **공개키(`.pub`)** 보내기 → 등록되면 `ssh modi` 확인
 - [ ] GitHub 저장소 초대 수락 + `git remote set-url` + **GitHub 사용자명 알려주기**
       (CODEOWNERS에 넣어야 리뷰어가 자동으로 붙습니다)
-- [ ] 도구 버전 확인 — Flutter `3.44.7` / JDK `21` (`flutter --version`, `java -version`)
+- [ ] 도구 버전 확인 — Flutter `3.44.8` / JDK `21` (`flutter --version`, `java -version`)
 
 **프론트 (윤주하 · 김예원)**
 - [ ] Firebase 콘솔 초대 수락 → `flutterfire configure` → **debug SHA-1 지문 등록**
