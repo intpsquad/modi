@@ -1,0 +1,26 @@
+# 운영 데이터 백업(PostgreSQL + MinIO). modi-backup.timer 가 매일 부른다.
+#
+# 설치(서버에서 1회):
+#   sudo cp ~/maramodi/repo/deploy/systemd/modi-backup.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now modi-backup.timer
+#
+# ExecStart 는 **저장소 안**을 가리킨다 — 배포 rsync 가 스크립트를 갱신하면 다음 실행부터
+# 자동으로 새 버전이 돈다. 유닛 파일 자체를 바꿨을 때만 위 cp 를 다시 한다.
+#
+# 로그: journalctl -u modi-backup.service
+[Unit]
+Description=MODI 운영 데이터 백업 (PostgreSQL + MinIO)
+Documentation=file:///home/ubuntu/maramodi/repo/deploy/backup.sh
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=docker
+ExecStart=/home/ubuntu/maramodi/repo/deploy/backup.sh
+# 백업이 CPU 를 물어 API 응답이 느려지지 않게 뒤로 물린다(ARM 4코어 공유).
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min

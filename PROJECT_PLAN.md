@@ -145,6 +145,7 @@ repo/
   - CI/CD: **GitHub Actions**(`.github/workflows/ci.yml`). Jenkins·Shorebird 자동화는 제거했다.
   - AI: **OpenAI 직접 호출** + 세 기능 모델 `gpt-5.4-nano` 통일(`ai/docs/EXPERIMENTS.md` #34).
   - **남은 것**: ① GitHub Actions 배선(Secrets 3개 + 서버 read-only deploy key) — **이 파이프라인은 아직 한 번도 돌지 않았다.** ② `dev` 브랜치 보호(필수 체크 `gate`) ③ **DNS 전환** — 가비아 계정 확보 후 `api`·`storage` A레코드를 새 서버로, `jenkins` 레코드는 삭제. 전환 직전 옛 서버에서 마지막 증분 백업을 뜨고, `MINIO_ENDPOINT` 를 `https://storage.maramodi.cloud` 로 되돌린다. 절차는 `README.md` "배포" 절.
+- [x] **운영 데이터 백업 — 완료** *(2026-08-14)*: `deploy/backup.sh`(PostgreSQL 덤프 + MinIO 볼륨) + `deploy/restore.sh` + systemd 타이머(매일 04:00 KST, daily 14세대 / weekly 8세대). 그전까지 **백업이 아예 없었다** — 크론탭·systemd 타이머·덤프 파일 전부 확인해 0건이었고, 디스크 한 장이 날아가면 복구 수단이 없는 상태였다. **검증**: 임시 컨테이너에 실제로 복구해 20개 테이블 행 수가 운영과 전부 일치(users 20 · rooms 32 · todos 87 · archive_items 90), 세대 정리·하드링크 동작 확인. 절차는 `README.md` "배포 → 백업·복구". **남은 것**: 백업이 원본과 같은 디스크에 있다 — 서버 밖(오라클 오브젝트 스토리지) 전송은 OCI API 키 발급이 선행돼야 한다.
 - [ ] 앱 아이콘/스토어 메타데이터 (스플래시 UI는 구현 완료)
 - [ ] 빌드/서명/제출 — **iOS 전용** · **2026-08-14: IPA 빌드·서명까지 완료**(`1.0.0 (1)`, Apple Distribution 서명, App Store 프로파일 검증). Swift 테스트 13건도 이날 처음 실행돼 전부 통과. **남은 것은 App Store Connect 앱 레코드·개인정보처리방침 URL·카카오 콘솔 번들 ID 등록·스크린샷·실기기 확인** — 상세는 `docs/ios-submission-handoff.md`.(2026-08-13 확정, 안드로이드 릴리스 경로 없음). Apple Developer 계정 구매 → 번들 ID 확인 → `docs/ios-release.md` 절차. 크래시·분석(Sentry)은 미착수
 - [ ] 앱 release용 `app/env/prod.json` 생성 (`API_BASE_URL=https://api.maramodi.cloud`) — 서버 배포가 실제로 뜬 뒤에

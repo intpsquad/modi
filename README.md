@@ -673,6 +673,51 @@ cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml --env-fi
 - **앱이 쓰는 API는 영향 없다.** 실측: `/rooms`·`/me`·`/rooms/1/todos`·`/invite-codes/*`·`/me/fcm-token` 모두 통과.
 - Swagger UI의 "Try it out"은 Bearer 토큰을 쓰므로 그대로 동작할 것으로 보지만 브라우저로는 미검증이다.
 
+### 백업·복구 — 2026-08-14
+
+**서버가 한 대고 디스크도 한 장이다.** `postgres-data` 볼륨이 날아가면 가입자·방·투두·아카이브가 전부 사라진다. blue/green 무중단 배포는 **배포 사고**를 막아줄 뿐 **데이터 손실**과는 아무 상관이 없다.
+
+| | |
+|---|---|
+| 대상 | PostgreSQL 전체 덤프 + MinIO 볼륨 통째 |
+| 주기 | 매일 **04:00 KST** (systemd 타이머) |
+| 위치 | `~/maramodi/backups/` — **저장소 밖**이라 배포 rsync 의 `--delete` 가 건드리지 않는다 |
+| 보관 | daily 14세대 + weekly(일요일자) 8세대 |
+| 스크립트 | [`deploy/backup.sh`](./deploy/backup.sh) · [`deploy/restore.sh`](./deploy/restore.sh) |
+| 유닛 | [`deploy/systemd/`](./deploy/systemd/) |
+
+**MinIO 도 같이 뜨는 이유**: DB 만 복구하면 `archive_items.image_url` 과 프로필 사진이 전부 깨진 링크가 된다. 둘은 한 시점의 짝으로만 의미가 있어 같은 디렉터리에 같은 타임스탬프로 넣는다.
+
+```bash
+ssh modi '~/maramodi/repo/deploy/backup.sh'
+```
+
+복구는 **세대 목록을 먼저 보고** 고른다. `restore.sh` 는 인자가 없으면 목록만 출력한다.
+
+```bash
+ssh modi '~/maramodi/repo/deploy/restore.sh'
+```
+
+```bash
+ssh modi -t '~/maramodi/repo/deploy/restore.sh 20260814-190000'
+```
+
+`restore.sh` 는 되돌릴 수 없어서 ① 복구 **전에 현재 상태를 먼저 백업하고** ② `RESTORE` 를 손으로 입력해야 진행한다. 복구 중에는 spring 두 색을 세워 쓰기를 막고, 끝나면 원래 켜져 있던 색을 다시 띄운다.
+
+⚠️ **앱 코드는 되돌아가지 않는다.** 오래된 백업을 지금 코드에 복구하면 Flyway 가 "이미 적용된 마이그레이션이 DB 에 없다"며 부팅을 막을 수 있다. 그때는 앱도 그 시점 커밋으로 함께 되돌려야 한다(위 "스키마 변경 규칙").
+
+상태 확인:
+
+```bash
+ssh modi 'systemctl list-timers modi-backup.timer; journalctl -u modi-backup.service -n 20 --output=cat'
+```
+
+**검증 방법이 스크립트에 들어 있다.** 덤프를 뜨는 것과 복구되는 것은 다르므로, 매 실행마다 `pg_restore --list` 와 `tar tzf` 로 읽히는지 확인하고 깨졌으면 그 세대를 남기지 않고 실패한다. 반쯤 만들어진 백업이 "성공한 백업"인 척 남는 것이 제일 위험해서, 임시 디렉터리에 다 만든 뒤 마지막에 이름을 바꾼다.
+
+> 2026-08-14 최초 구축 시 실제로 임시 컨테이너에 복구해 **20개 테이블 행 수가 운영과 전부 일치**하는 것을 확인했다.
+
+🔴 **아직 남은 한계 — 백업이 원본과 같은 디스크에 있다.** 지금은 실수로 지운 데이터·잘못된 마이그레이션·테이블 손상은 복구되지만, **인스턴스나 부트 볼륨 자체가 날아가면 백업도 같이 사라진다.** 서버 밖(오라클 오브젝트 스토리지 등)으로 보내는 것이 다음 과제이며, OCI API 키 발급이 선행돼야 한다.
+
 ### 로그 회전
 
 Docker 기본 `json-file` 드라이버는 크기 제한이 없어 방치하면 디스크를 채운다. compose에 회전을 걸어뒀다.

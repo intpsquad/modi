@@ -1,0 +1,18 @@
+# 매일 04:00 KST 에 백업을 돌린다. 사용자가 가장 적은 시간대다.
+#
+# Persistent=true 가 중요하다 — 서버가 04:00 에 꺼져 있었다면(재부팅·점검) 켜지자마자
+# 놓친 실행을 한 번 돌린다. 이게 없으면 재부팅한 날의 백업이 조용히 없어진다.
+#
+# 상태 확인: systemctl list-timers modi-backup.timer
+[Unit]
+Description=MODI 백업 매일 실행 (04:00 KST)
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Asia/Seoul
+Persistent=true
+# 정각에 몰리지 않게 0~5분 흩뿌린다.
+RandomizedDelaySec=300
+Unit=modi-backup.service
+
+[Install]
+WantedBy=timers.target
