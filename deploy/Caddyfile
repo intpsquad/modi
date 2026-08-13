@@ -1,0 +1,91 @@
+# Caddy — TLS 종료 + 리버스 프록시. 외부에 열린 포트는 80/443 뿐이다.
+# 인증서는 Let's Encrypt 에서 자동 발급·자동 갱신된다(별도 certbot 크론 없음).
+# 80 을 닫으면 HTTP-01 챌린지가 실패해 발급이 안 된다 — 보안그룹에서 열어둘 것.
+
+# ACME 등록 이메일은 일부러 넣지 않는다. Let's Encrypt 는 이메일 없이도 발급해주고,
+# `email {$ACME_EMAIL}` 식으로 환경변수를 쓰면 값이 비었을 때 인자 개수 오류로
+# **Caddy 자체가 기동하지 않아 사이트 전체가 내려간다**(2026-07-29 caddy validate 로 실측).
+# 만료 경고 메일을 받고 싶으면 전역 옵션 블록을 파일 맨 위에 직접 적는다(환경변수 말고 값으로):
+#   {
+#       email you@example.com
+#   }
+
+api.maramodi.cloud {
+	# Actuator 는 배포 스크립트가 컨테이너 내부에서만 호출한다(2026-07-29 확정).
+	# 외부에 노출하지 않는다 — 존재 자체를 숨기려고 403 대신 404 로 답한다.
+	@actuator path /actuator /actuator/*
+	respond @actuator 404
+
+	# Swagger UI 와 OpenAPI 문서는 **Basic 인증**으로 감싼다(2026-07-30 확정, 이전엔 무인증
+	# 공개였다). 엔드포인트 46개는 전부 FirebaseAuthFilter 뒤에 있어서 문서 노출이 곧 무단
+	# 접근은 아니지만, 공격자에게 엔드포인트·파라미터명·스키마 전체를 공짜로 주는 셈이고
+	# swagger-ui 자체도 과거 XSS CVE 가 있었다. 도메인은 이미 봇에게 스캔되고 있다.
+	#
+	# 경로가 셋이라는 점이 중요하다(실측 2026-07-30):
+	#   /docs                       → 302 로 /swagger-ui/index.html 로 보낸다(진입점뿐)
+	#   /swagger-ui/*               → **실제 UI 와 자산이 여기 있다.** 이걸 빼면 그대로 열린다
+	#   /v3/api-docs, /v3/api-docs/* → 전체 API 스키마 본문(가장 민감)
+	# /swagger-ui.html 은 springdoc 기본 경로라 혹시 살아있을 때를 대비해 함께 막는다.
+	#
+	# 자격증명은 deploy/.env 의 DOCS_USER / DOCS_PASSWORD_HASH 로 주입한다(bcrypt).
+	# **값이 없으면 fail-closed** — 실측 확인: 빈 값이면 Caddy 는 정상 기동하고 모든 요청이
+	# 401 이 된다(빈 해시를 "누구나 통과"로 처리하지 않는다).
+	@apidocs path /docs /docs/* /swagger-ui /swagger-ui/* /swagger-ui.html /v3/api-docs /v3/api-docs/*
+	basic_auth @apidocs {
+		{$DOCS_USER} {$DOCS_PASSWORD_HASH}
+	}
+
+	# 🔴 **살아있는 blue/green 색이 이 파일 한 줄에 적혀 있다**(2026-08-13, 무중단 배포).
+	# 내용은 `reverse_proxy spring-blue:8080` 또는 `reverse_proxy spring-green:8080` 뿐이다.
+	#
+	# 배포(`deploy/deploy.sh`)가 새 색을 띄워 healthy 를 확인한 뒤 이 파일을 바꾸고
+	# `caddy reload` 한다. reload 는 **진행 중인 연결을 떨구지 않는다** — 그래서 전환이 무중단이다.
+	#
+	# ⚠️ **이 파일은 저장소 안이 아니라 서버의 상태 디렉터리에 있다**(`${MARAMODI_STATE_DIR}`,
+	# 기본 `/home/ubuntu/maramodi`). 저장소에 두면 배포 잡의 `git reset --hard origin/dev` 가
+	# **매 배포마다 활성 색을 커밋된 값으로 되돌려** 트래픽이 멈춘 색을 향하게 된다.
+	# 마운트는 `deploy/docker-compose.infra.yml`, 원본은 `deploy/active-upstream.conf.example`.
+	#
+	# ⚠️ **파일이 없으면 Caddy 가 기동 자체를 못 한다**(= 사이트 전체 다운). 인프라 층을 올리기
+	# 전에 `caddy validate` 로 확인할 것(README "배포" 절). 다만 `reload` 는 실패해도 Caddy 가
+	# 옛 설정을 유지하므로, **떠 있는 상태에서는** 이 파일이 깨져도 서비스가 멈추지 않는다.
+	import active-upstream.conf
+
+	encode zstd gzip
+	log
+}
+
+# 🔴 2026-08-13: jenkins.maramodi.cloud 블록을 제거했다. CI/CD 가 GitHub Actions 로
+# 옮겨가 서버에 Jenkins 가 없다. **DNS 의 jenkins A레코드도 함께 지워야 한다** —
+# 레코드만 남으면 Caddy 가 그 호스트로 오는 요청에 인증서를 발급하려다 실패하고,
+# 남의 스캐너에게 "여기 뭔가 있었다"는 신호만 준다(가비아 DNS, README 배포 절 참고).
+
+# MinIO(프로필 사진 등 이미지). postgres/redis 처럼 숨길 수 없다 — 앱이 서버가 발급한
+# presigned PUT URL 로 **직접** 올리고, 아바타도 이 호스트에서 직접 받아간다.
+#
+# Host 헤더를 그대로 넘기는 것이 중요하다. presigned URL 의 SigV4 서명에 host 가 포함되므로
+# Host 를 minio:9000 으로 바꿔 쓰면 서명이 깨져 업로드가 403 이 된다. Caddy 의 reverse_proxy 는
+# 기본적으로 원본 Host 를 보존하므로 별도 설정을 하지 않는다(nginx 와 다른 점).
+#
+# 관리 콘솔(9001)은 프록시하지 않는다 — 인터넷에 열지 않고 SSH 터널로만 본다.
+storage.maramodi.cloud {
+	reverse_proxy minio:9000
+
+	# 이미지 업로드는 이미 압축된 바이너리라 encode 를 걸지 않는다(CPU 만 쓴다).
+
+	# presigned URL 은 SigV4 서명을 **쿼리스트링**에 담는다. 그냥 로그를 켜면
+	# X-Amz-Signature(서명)와 X-Amz-Credential(액세스 키 ID 포함)이 평문으로 남는다.
+	# 서명은 만료가 있지만 유효 시간 안에는 그 URL 로 실제 업로드가 가능하고,
+	# X-Amz-Credential 은 만료가 없다. 둘 다 가린다.
+	log {
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					replace X-Amz-Signature REDACTED
+					replace X-Amz-Credential REDACTED
+				}
+			}
+		}
+	}
+}

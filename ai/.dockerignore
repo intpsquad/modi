@@ -1,0 +1,14 @@
+# 가상환경은 이미지 안에서 uv 가 새로 만든다. 호스트(윈도우) 것을 넣으면 깨진다.
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# 시크릿 — 운영 값은 compose 가 환경변수로 주입한다.
+.env
+.env.*
+
+# 런타임에 필요 없다(테스트는 CI 의 `ai` 잡에서 돈다 — .github/workflows/ci.yml).
+tests/
+docs/

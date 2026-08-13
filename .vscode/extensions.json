@@ -1,0 +1,4 @@
+{
+  // VS Code는 Flutter 앱(app/) 개발용으로만 설정한다. 서버(server/)는 IntelliJ에서 실행.
+  "recommendations": ["Dart-Code.dart-code", "Dart-Code.flutter"]
+}

@@ -1,0 +1,19 @@
+// Copy this file to Local.xcconfig and fill in the real values.
+// Local.xcconfig is gitignored and must never be committed with real values.
+// Both Debug.xcconfig and Release.xcconfig pull it in with `#include? "Local.xcconfig"`.
+
+// Kakao Native App Key. Info.plist reads it as `kakao$(KAKAO_NATIVE_APP_KEY)`
+// for the custom URL scheme, so a wrong value breaks Kakao login silently.
+KAKAO_NATIVE_APP_KEY = YOUR_KAKAO_NATIVE_APP_KEY
+
+// Apple Developer Team ID (10 characters, e.g. A1B2C3D4E5).
+// Find it at developer.apple.com -> Membership details -> Team ID.
+//
+// 2026-08-13: this used to be hardcoded in Runner.xcodeproj/project.pbxproj (6 places),
+// naming a developer account the team no longer owns. An account identifier does not
+// belong in a repository at all, so project.pbxproj now reads
+// `DEVELOPMENT_TEAM = "$(MODI_DEVELOPMENT_TEAM)"` from here.
+//
+// Leaving it empty is fine for **simulator** builds. Device builds, archives, and
+// TestFlight uploads all fail without it (see docs/ios-release.md).
+MODI_DEVELOPMENT_TEAM =

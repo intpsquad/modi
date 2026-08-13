@@ -1,0 +1,299 @@
+# 앱 층 — Spring API + AI 서버 + PostgreSQL + Redis.
+#
+# dev 브랜치에 push 될 때마다 GitHub Actions(.github/workflows/ci.yml)가 SSH 로
+# deploy/deploy.sh 를 돌려 이 파일만 재배포한다
+# (Caddy 는 docker-compose.infra.yml 에 있어 건드리지 않는다).
+#
+# **호스트에 포트를 바인딩하는 서비스가 하나도 없다.** 외부 진입점은 Caddy(443)뿐이고,
+# Caddy 는 edge 네트워크로 spring 과 minio 만 찾아간다. postgres/redis/ai 는 internal
+# 네트워크 안에서만 보인다 — 보안그룹을 잘못 열어도 DB 가 인터넷에 노출되지 않는다.
+#
+# Spring 은 **blue/green 두 벌**이다(아래 x-spring 앵커). 배포가 멈춰 있는 색을 띄우고
+# Caddy 를 그쪽으로 돌린 뒤 옛 색을 세운다 — 자세한 것은 아래 앵커 주석과 deploy/deploy.sh.
+
+name: maramodi-app
+
+# Docker 기본 json-file 드라이버는 **크기 제한이 없다** — 방치하면 로그가 디스크를 채운다.
+# spring 두 색은 일부러 제외한다(2026-07-30 사용자 확정): 애플리케이션 로그는 장애 원인
+# 추적에 쓰이므로 이력을 자르지 않는다. 대신 `docker system df` 로 주기적으로 확인할 것.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# 🔴 **Spring 은 blue/green 두 벌이다**(2026-08-13, 무중단 배포). 정의는 이 앵커 하나에만 두고
+# 아래 두 서비스가 `<<: *spring` 으로 상속한다 — **색마다 다른 것은 container_name 뿐이다.**
+# 한쪽에만 환경변수를 추가하면 배포 색이 바뀔 때 그 기능이 조용히 꺼진다.
+#
+# 동작: 배포가 멈춰 있는 색을 띄우고 → healthy 를 기다리고 → Caddy 를 그 색으로 돌리고 →
+# 옛 색을 graceful 하게 세운다. **평상시 떠 있는 것은 한 색뿐이다**(다른 색은 stop 상태로 남아
+# 롤백용으로 쓰인다). 어느 색이 살아있는지는 `docker ps` 로 바로 보인다.
+#
+# `restart: unless-stopped` 라서 **명시적으로 stop 한 색은 호스트가 재부팅돼도 그대로 멈춰 있다** —
+# 두 색이 동시에 뜨는 사고가 나지 않는다.
+x-spring: &spring
+  build:
+    context: ../server
+  # 두 색이 **같은 이미지 태그**를 공유한다. 새 색을 빌드하면 이 태그가 새 이미지를 가리키고,
+  # 돌고 있는 옛 색은 자기가 만들어진 이미지 ID 를 계속 쓴다(태그를 잃은 그 이미지는
+  # deploy.sh 가 `:previous` 로 잡아 둔다). 색마다 태그를 따로 두면 디스크만 두 배로 쓴다.
+  image: maramodi-spring:latest
+  restart: unless-stopped
+  # 🔴 위 application.yml 의 `spring.lifecycle.timeout-per-shutdown-phase`(30s)보다 **커야 한다.**
+  # 작으면 Docker 가 graceful shutdown 이 끝나기 전에 SIGKILL 을 보내 in-flight 요청이 잘린다 —
+  # graceful 설정이 있는데도 효과가 없고, 로그에 흔적이 없어 발견이 어렵다.
+  # `BlueGreenDeployContractTest` 가 두 파일의 숫자를 읽어 이 대소를 묶는다.
+  stop_grace_period: 40s
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    # MinioConfig 가 기동 중에 버킷을 만들고 공개 읽기 정책을 건다 — MinIO 가 먼저 떠 있어야 한다.
+    minio:
+      condition: service_healthy
+  environment:
+    # application.yml 이 전부 환경변수로 오버라이드되게 짜여 있어 prod 프로파일이 따로 없다.
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+    SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+    SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    SPRING_REDIS_HOST: redis
+    SPRING_REDIS_PORT: "6379"
+    # 아카이브 자동 태깅(S-25-C)이 LLM API 를 직접 호출할 때 쓴다. 비면 OpenAiConfig 의 빈이
+    # 생성되지 않고 태그 없이 등록만 진행된다(specs/0001-architecture.md).
+    # 담기는 값은 OpenAI 플랫폼 키(sk-...)다. (2026-08-13: 회수된 게이트웨이의 이름을 딴 변수명을 개명했다.)
+    # ⚠️ 이름을 또 바꿀 때는 서버 .env 를 **같은 배포에서** 함께 바꿀 것 — 어긋나면
+    # 부팅은 성공하고 AI 기능만 조용히 꺼진다.
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    # 🔴 **LLM 제공사를 .env 만으로 갈아끼우기 위한 통과 줄들이다**(2026-08-12). 옛 LLM 게이트웨이
+    # 키가 회수되면 태깅·요약이 죽으므로 다른 제공사로 옮겨야 했는데, 이 세 값은 그때까지
+    # `application.yml` 에 **하드코딩**돼 있었다. 즉 키만 바꿔도 Spring 은 계속 옛 게이트웨이
+    # 주소를 부르고, 그때 실패는 폴백에 흡수돼 **경고 없이 태깅·요약만 조용히 죽는다**
+    # (YOUTUBE_API_KEY 가 겪은 것과 정확히 같은 함정이다).
+    #
+    # `application.yml` 이 이제 이 이름들을 `${...}` 플레이스홀더로 직접 읽는다(2026-08-13) —
+    # relaxed binding 에 기대지 않으므로 덮어쓰기 경로가 두 파일에서 모두 눈에 보인다.
+    #
+    # ⚠️ **기본값을 빈 문자열로 두면 안 된다.** `${VAR:-}` 로 두면 변수를 안 채운 상태에서
+    # 컨테이너에 `VAR=` 가 들어가고, Spring 이 그 빈 문자열을 프로퍼티로 바인딩해
+    # base-url 이 비어버린다. 위 OPENAI_API_KEY 처럼 "비면 기능만 꺼진다"가 아니라 **부팅이 깨진다.**
+    # 그래서 아래 ai 서비스의 OPENAI_BASE_URL 과 같은 방식으로 **현재 값을 기본값으로** 둔다.
+    #
+    # 제공사를 또 바꿀 때는 서버의 .env 에 이 세 개를 채우기만 하면 된다(코드 변경 없음).
+    # 기본값은 **OpenAI 직접**이다 — 옛 LLM 게이트웨이는 2026-08-14 키 회수로 사라졌다.
+    SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-https://api.openai.com/v1/}
+    # 아래 세 모델은 **일부러 같은 값이다**(2026-08-13 통일, ai/docs/EXPERIMENTS.md #34).
+    # 태깅만 gpt-5-nano 였던 근거는 게이트웨이 크레딧 등급이었고, 게이트웨이와 함께 사라졌다.
+    # 셋을 따로 두는 줄을 남겨 두는 이유는 한 기능만 모델을 바꿔 재보고 싶을 때가 오기 때문이다.
+    # 태깅 모델. application.yml 의 spring.ai.openai.chat.options.model 을 덮는다.
+    SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:-gpt-5.4-nano}
+    # 요약 모델(modi.archive.summary-model). application.yml 이 이 환경변수를 읽도록 이미
+    # 짜여 있었지만 **compose 가 통과시키지 않아서 .env 에 넣어도 안 들어갔다** — 즉 요약
+    # 모델은 2026-08-12 이전까지 사실상 이미지에 고정돼 있었다.
+    ARCHIVE_SUMMARY_MODEL: ${ARCHIVE_SUMMARY_MODEL:-gpt-5.4-nano}
+    # 🔴 유튜브 자료 크롤링(2026-08-05). **이 줄이 없으면 서버 .env 에 키를 넣어도 컨테이너 안에
+    # 안 들어가고, 유튜브 링크만 전부 등록에 실패한다.** 운영 서버는 데이터센터 IP 라
+    # youtube.com HTML 이 구글 CAPTCHA 에 막힌다 — Data API 가 유일한 경로다(폴백 없음).
+    YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+    # 기존 자료에 임베딩을 채운다. **기본 꺼짐** — 자료 1건당 LLM 호출 1회라 돈이 나가고
+    # 한 번만 필요한 작업이다. 여기 변수를 통과시켜 두는 이유는, 없으면 켜려는 운영자가
+    # 배포가 덮어쓰는 이 파일을 손으로 고쳐야 하기 때문이다.
+    # 켜는 법: 서버의 .env 에 ARCHIVE_BACKFILL_EMBEDDINGS=true 를 넣고 재기동 → 로그의
+    # "임베딩 백필 완료" 확인 → 다시 지우고 재기동.
+    ARCHIVE_BACKFILL_EMBEDDINGS: ${ARCHIVE_BACKFILL_EMBEDDINGS:-false}
+    # 요약 없이 등록된 기존 자료에 요약을 채우고 **그 요약으로 벡터를 다시 만든다**
+    # **기본 꺼짐** — 자료 1건당 LLM 호출 2회다. 켜고 끄는 법은 위와 같다.
+    # ⚠️ 위 ARCHIVE_BACKFILL_EMBEDDINGS 로는 이 문제를 못 고친다 — 그쪽은 벡터가 NULL 인 것만
+    # 찾는데, 요약 없이 등록된 자료는 이미 '본문으로 만든' 벡터가 있어 건너뛴다.
+    ARCHIVE_BACKFILL_SUMMARIES: ${ARCHIVE_BACKFILL_SUMMARIES:-false}
+    # 이미 노출한 후보를 다음 추천에서 제외할 것인가. **기본 false — 껐다**
+    # (2026-08-10 확정, 회차마다 후보가 줄어 "매번 6~8개"를 못 맞췄다). 되켜려면 서버 .env 에
+    # true 를 넣는다 — 위 CRITIQUE_MAX_ATTEMPTS 와 같은 이유로 여기 통과시켜 둔다.
+    TODO_SUGGESTION_EXCLUDE_RECENT: ${TODO_SUGGESTION_EXCLUDE_RECENT:-false}
+    # 투두 추천(S-16-B)은 아래 ai 서비스를 경유한다. 서비스명으로 붙는다.
+    AI_SERVER_BASE_URL: http://ai:8000
+    INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+    # 이메일 자체가입 인증코드. 비면 EmailConfig의 빈이 생성되지 않고
+    # 발송 API만 503으로 폴백한다(server/.env.example 참고).
+    SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+    SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+    SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+    # FirebaseConfig 는 클래스패스가 아니라 **파일 경로**를 읽는다. 아래 볼륨과 짝이다.
+    FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-service-account.json
+    # MinIO 는 **공개 도메인**으로 준다(http://minio:9000 이 아니다). MinioClient 가 이 값으로
+    # presigned PUT URL 과 아바타 공개 URL 을 만들고, 그 URL 을 실제로 여는 건 사용자 휴대폰이다.
+    # 내부 주소로 만들면 앱이 열 수 없는 URL 이 나온다.
+    # 인스턴스 안에서 자기 공인 IP 로는 접속이 안 되므로(옛 EC2 실측) Caddy 컨테이너에
+    # storage.maramodi.cloud 네트워크 별칭을 달아 내부 DNS 가 Caddy 를 직접 가리키게 했다
+    # — docker-compose.infra.yml 의 caddy.networks.edge.aliases 참고.
+    # 로컬에서 이 compose 를 그대로 띄워 검증할 때만 http://minio:9000 으로 덮어쓴다
+    # (그 경우 presigned URL 은 컨테이너 밖에서 못 열지만 부팅·버킷 생성은 검증된다).
+    MINIO_ENDPOINT: ${MINIO_ENDPOINT:-https://storage.maramodi.cloud}
+    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    MINIO_BUCKET: ${MINIO_BUCKET:-modi}
+  volumes:
+    # 이미지에 굽지 않고 호스트 파일을 읽기전용으로 마운트한다(server/.dockerignore 참고).
+    - ${SECRETS_DIR}/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+  healthcheck:
+    # 🔴 **전체 health 가 아니라 `deploy` 그룹을 본다**(2026-08-05 사고).
+    #
+    # 전체 `/actuator/health` 는 `mail`·`ssl` 처럼 앱이 요청을 처리하는 데 필요하지 않은
+    # 지표까지 포함한다. 그래서 SMTP 가 잠깐 안 되면 앱은 멀쩡한데 503 이 오고, deploy.sh 의
+    # 헬스체크가 240초를 넘겨 **배포가 실패한다** — 실제로 그렇게 막혔다(앱은 요청을 정상
+    # 처리하며 로그를 찍고 있었다).
+    #
+    # 그룹 정의는 `server/src/main/resources/application.yml` 의
+    # `management.endpoint.health.group.deploy` 다. ⚠️ **이름이 어긋나면 404 가 되고 `-fsS` 가
+    # 실패해 모든 배포가 실패한다** — `ActuatorHealthGroupTest` 가 두 파일을 묶어 검사한다.
+    test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/deploy"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    # Flyway 마이그레이션 + 컨텍스트 기동 시간. 넉넉히 준다 — 이 시간 안에는
+    # 실패로 카운트하지 않는다.
+    start_period: 60s
+  networks:
+    - edge
+    - internal
+
+services:
+  # blue/green 두 색. **정의는 위 x-spring 앵커에만 있다** — 여기서 색마다 덮는 것은
+  # container_name 뿐이다. Caddy 는 이 서비스 이름으로 찾아가므로(내부 DNS) 이름을 바꾸면
+  # `deploy/active-upstream.conf` 와 `deploy/deploy.sh` 도 함께 바꿔야 한다 —
+  # 어긋나면 Caddy 가 upstream 을 못 찾아 **502** 다. BlueGreenDeployContractTest 가 묶는다.
+  spring-blue:
+    <<: *spring
+    container_name: maramodi-spring-blue
+
+  spring-green:
+    <<: *spring
+    container_name: maramodi-spring-green
+
+  ai:
+    build:
+      context: ../ai
+    image: maramodi-ai:latest
+    container_name: maramodi-ai
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # 기본값 **OpenAI 직접**(2026-08-13). 옛 LLM 게이트웨이는 키 회수로 사라졌다.
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1/}
+      # 위 spring 서비스의 두 모델과 **같은 값**이다(2026-08-13 통일).
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-nano}
+      # Spring 과 **같은 값**이어야 한다. 비면 양쪽 다 검증을 건너뛴다.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+      # 후보 검수 노드. 0 = 검수 안 함. **기본 1(켬)이 운영값이다.**
+      #
+      # 🔴 이 줄이 없으면 서버 .env 에 넣어도 컨테이너 안에 안 들어간다 — 위 YOUTUBE_API_KEY 가
+      # 겪은 것과 정확히 같은 함정이라 미리 통과시켜 둔다.
+      #
+      # 시연에는 0 으로 내려서 쓴다. 검수를 끄면 후보가 1~3개 → 7~8개가 되고 응답이 12초 →
+      # 7초로 떨어진다(운영 춘천여행 방 실측). 대가는 '일정 짜기' 같은 바로 실행 못 하는 후보가
+      # 섞이는 것이라 **시연이 끝나면 반드시 되돌린다.**
+      #
+      # ⚠️ 기본값 1 은 ai/src/modi_ai/config.py 의 critique_max_attempts 와 **같은 값**이어야 한다.
+      # 두 곳에 적힌 값이라 한쪽만 바꾸면 조용히 갈라진다.
+      CRITIQUE_MAX_ATTEMPTS: ${CRITIQUE_MAX_ATTEMPTS:-1}
+      # 운영에서 켜면 사용자 자료 본문이 외부 SaaS 로 전송된다(ai/.env.example). 하드코딩으로 막는다.
+      LANGSMITH_TRACING: "false"
+    healthcheck:
+      # 이미지에 curl 이 없다 — 대신 파이썬 표준 라이브러리로 확인한다.
+      # /v1/health 는 외부 의존(OpenAI)을 타지 않으므로 남의 장애로 실패하지 않는다.
+      test:
+        ["CMD", "python", "-c",
+         "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks:
+      # edge 에 넣지 않는다 — 외부에 노출하지 않고 Spring 만 호출한다(아키텍처 확정).
+      - internal
+
+  minio:
+    # 🔴 **태그를 고정한다**(2026-08-12). `latest` 는 움직이는 태그라, 새 호스트에서 처음 `up` 하면
+    # 지금 운영에 떠 있는 것과 **다른 버전**이 내려온다. 옛 EC2 가 돌리고 있던 것은
+    # RELEASE.2025-09-07T16-13-09Z 였고(`minio --version` 실측), MinIO 는 커뮤니티 에디션에서
+    # 관리 콘솔 기능을 대거 제거한 전례가 있어 버전이 튀면 조용히 깨질 수 있다. 프로필 사진
+    # 업로드가 안 되는데 원인이 "옮기면서 버전이 바뀐 것"이라는 걸 알아채기가 매우 어렵다.
+    #
+    # 다른 아키텍처로 옮겨도 되는 태그인지 확인했다 — 이 태그의 매니페스트에
+    # **linux/arm64** · amd64 · ppc64le 가 다 있다(오라클 Ampere A1 이관 대비).
+    #
+    # 올릴 때는 릴리스 노트를 읽고 태그를 **명시적으로** 바꾼다. postgres/redis 처럼 메이저만
+    # 고정하는 방식을 쓰지 않는 이유는, MinIO 의 버전 체계가 날짜라서 마이너/패치 구분이 없다.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: maramodi-minio
+    restart: unless-stopped
+    logging: *logging
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      # 업로드된 프로필 사진이 여기 있다. postgres-data 와 같은 취급 — 지우면 아바타가 다 깨진다.
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      # edge: Caddy 가 storage.maramodi.cloud 요청을 여기로 보낸다.
+      #   postgres/redis 와 달리 숨길 수 없다 — 앱(휴대폰)이 presigned PUT URL 로 직접 올리고
+      #   아바타도 이 호스트에서 직접 받아간다.
+      # internal: Spring 이 붙는 통로.
+      # **콘솔(9001)은 어디에도 노출하지 않는다** — Caddyfile 에 블록이 없어 인터넷에서 닫혀 있고,
+      #   필요하면 SSH 터널로 본다(README "배포" 절).
+      - edge
+      - internal
+
+  postgres:
+    # 로컬 개발(server/docker-compose.yml)과 같은 메이저를 유지한다.
+    image: postgres:17-alpine
+    container_name: maramodi-postgres
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # 도메인 데이터 전부가 여기 있다. `docker compose down -v` 를 절대 쓰지 않는다.
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: maramodi-redis
+    restart: unless-stopped
+    logging: *logging
+    # 초대코드 전용(TTL 1일). 휘발성이라 볼륨을 붙이지 않는다 — 재시작하면 유효한
+    # 초대코드가 사라지고 다시 발급받으면 된다(specs/0002-data-model.md).
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+networks:
+  edge:
+    name: maramodi-edge
+    external: true
+  internal:
+
+volumes:
+  postgres-data:
+  minio-data:

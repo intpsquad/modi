@@ -1,0 +1,69 @@
+{
+  // Flutter 앱은 app/ 하위에 있으므로 cwd를 app으로 지정한다(워크스페이스 루트 기준).
+  // 기기는 하단 상태바에서 선택한 것이 쓰인다 — 기기 ID는 PC마다 달라 하드코딩하지 않는다.
+  // app/에는 android/, ios/만 있어 실행 타깃은 Android/iOS뿐이다(web/, windows/ 없음).
+  //
+  // 서버 주소(API_BASE_URL)는 `app/env/dev.json`(로컬 전용, 커밋 안 됨) 한 곳에서 관리한다.
+  // 이 값은 Dart(Env.apiBaseUrl)와 Android 네이티브(ShareActivity의 BuildConfig.API_BASE_URL)에
+  // 동시에 주입된다 — 자세한 건 README "로컬 전용 파일" 및 app/android/app/build.gradle.kts 참고.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // 에뮬레이터용 — 파일을 안 넘기면 기본값 http://10.0.2.2:8080(에뮬레이터에서 호스트 localhost).
+      "name": "app (debug)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env/dev.json"]
+    },
+    {
+      // 실기기용. env/dev.json에 PC 주소를 넣어둔다 — 둘 중 하나:
+      //   1) LAN IP    : "http://<PC의 Wi-Fi IP>:8080"  (폰과 같은 Wi-Fi, USB 불필요)
+      //   2) adb reverse: "http://localhost:8080"       (먼저 `adb reverse tcp:8080 tcp:8080`)
+      "name": "app (real device)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env/dev.json"]
+    },
+    {
+      "name": "app (profile)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "flutterMode": "profile",
+      "args": ["--dart-define-from-file=env/dev.json"]
+    },
+    {
+      // release는 API_BASE_URL이 없으면 Gradle이 빌드를 실패시킨다(에뮬레이터 기본값 배포 방지).
+      "name": "app (release)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": ["--dart-define-from-file=env/dev.json"]
+    },
+    {
+      // ⚠️ **운영 서버(api.maramodi.cloud)에 붙는다.** 넣은 자료·투두가 실제 DB에 남는다.
+      //
+      // 상시 개발에 쓰지 말 것 — 로컬(`app (debug)`)이 빠르고 서버 로그도 볼 수 있다.
+      // 이 구성은 **배포 후 환경 차이를 확인할 때만** 쓴다: 크롤링(운영 EC2 는 데이터센터 IP 라
+      // 인스타·유튜브가 soft-block 될 수 있다 — `specs/OPEN.md`), MinIO 이미지, Firebase 등
+      // 외부와 통신하는 것들. 기능 자체는 로컬에서 확인한다.
+      //
+      // `env/prod.json` 은 로컬 전용이다(커밋 안 됨) — 만드는 법은 README "로컬 전용 파일".
+      // debug 모드로 두는 이유: release 는 서명·난독화가 붙어 확인이 느려지고, 여기서 재려는
+      // 것은 **서버 환경**이라 앱 빌드 모드와 무관하다.
+      "name": "app (운영 서버 확인용)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env/prod.json"]
+    }
+  ]
+}

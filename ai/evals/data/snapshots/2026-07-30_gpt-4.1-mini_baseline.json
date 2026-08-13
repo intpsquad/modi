@@ -1,0 +1,348 @@
+{
+  "_comment": "동결 스냅샷 — 그때 모델이 실제로 낸 후보를 고정한 것이다. 절대 손으로 고치지 말 것. 요약 도입 전 기준선이며, 요약을 넣은 뒤 같은 자료로 다시 돌려 이것과 나란히 비교한다. docs/EXPERIMENTS.md #13 의 수치는 전부 이 파일에서 나온다.",
+  "measured_at": "2026-07-30",
+  "model": "gpt-4.1-mini",
+  "rule4": true,
+  "temperature": 0.0,
+  "cases": [
+    {
+      "stem": "001_gangneung_food",
+      "raw_candidate_count": 5,
+      "candidates": [
+        {
+          "title": "강릉에서 식사 맛집 4곳 방문하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 카페 3곳 방문하며 휴식 취하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 디저트 6곳 맛보기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 소품샵 4곳 둘러보기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 사근진해변과 경포호 스팟 방문하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "002_sqld_review",
+      "raw_candidate_count": 7,
+      "candidates": [
+        {
+          "title": "와우패스 SQLD 8월 환급반 정보 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "퇴근 후 SQLD 단기합격 공부 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "김익서 강사님의 SQLD 강의 듣기 시작하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "파랭이책으로 SQLD 기초 개념 정리하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "노랭이책 문제와 해설 반복해서 풀기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "시험 전날 연차 내고 SQLD 최종 복습하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "와우패스 SQLD 환급반 댓글에 [100] 남겨서 혜택 문의하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "003_busan_hanroro_combine",
+      "raw_candidate_count": 7,
+      "candidates": [
+        {
+          "title": "부산 수영구 모치플레지르 위치 및 방문 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 수영구 밤산책방 방문 시간 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 해운대구 요트탈래 요트투어 예약 정보 조사하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 부산진구 히떼 로스터리 커피 메뉴 및 운영시간 알아보기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 부산진구 사랑방다실 방문 일정 잡기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 부산진구 DELIGHT MUSIC BAR 방문 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 동구 별미청 돼지국밥 맛집 방문 및 영업시간 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "004_busan_1n2d",
+      "raw_candidate_count": 6,
+      "candidates": [
+        {
+          "title": "부산 1박 2일 코스 일정 짜기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 바다 산책할 장소 선정하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 골목 구경 코스 조사하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 꼭 먹어봐야 할 메뉴 리스트 작성하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 오션뷰 카페 리스트 만들기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 야경 명소 정리하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "005_busan_hanroro_tripgoing",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "한로로 블로그 소개한 부산 여행 코스 7곳 일정 계획하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "006_busan_knewnew",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "광안역 인근 공원 @6ongone 방문 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "007_anyang_2cha",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "경기도 안양 2차 약속 장소 리스트 만들기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "안양 늦은 퇴근 후 방문할 곳 조사하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "경기도 안양 술집 분위기별 분류하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "008_fashion_shoulder",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "남자 어깨핏 커버 가능한 옷 스타일 조사하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "009_fashion_promtome",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "Instagram 프롬투미님 스타일 정보 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "010_jeongcheogi_lion",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "정보처리기사 실기 요약노트 출시 일정 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "011_jeongcheogi_igijeok",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "네이버 '이기적 스터디 카페'에서 정처기 합격 후기 더 찾아보기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "이기적 수험서 Instagram에서 정처기 필기 1트 합격 후기 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "012_jeongcheogi_potato",
+      "raw_candidate_count": 4,
+      "candidates": [
+        {
+          "title": "2026년 1회 정보처리기사 실기 이론 압축 PDF 다운로드 및 인쇄하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "25년 2회와 3회 정보처리기사 이론 문제 출제 경향 분석하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "정보처리기사 실기 시험 대비 기출 키워드 암기 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "정처기 감자님 인스타그램 계정 방문하여 최신 자료 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "013_jeongcheogi_sogood",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "기출 문제 오답노트 작성하여 실기점수 90점 이상 목표로 하자",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "퀴즐렛과 계산기 활용법 익히기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "외우기 어려운 부분은 이해 중심으로 공부 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    },
+    {
+      "stem": "014_playlist_empty",
+      "raw_candidate_count": 0,
+      "candidates": []
+    },
+    {
+      "stem": "015_seoul_extreme",
+      "raw_candidate_count": 8,
+      "candidates": [
+        {
+          "title": "을지면옥 방문해보기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "대림창고 카페에서 커피 마시기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "성수미쓰리에서 디저트 즐기기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "오브젝트 소품샵 구경 가기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "서울숲 산책하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "몽탄 술집에서 음료 한잔하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "뚝섬한강공원 산책 코스 체험하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "남박 술집 방문 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ]
+    }
+  ]
+}

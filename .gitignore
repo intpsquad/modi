@@ -1,0 +1,52 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Local QA artifacts
+.playwright-mcp/
+
+# Local Firebase tooling
+.firebase/
+firebase-debug.log
+
+# IDE
+.idea/
+# .vscode/ 는 팀 공유 설정(아래 4개)만 커밋하고 나머지 개인 파일은 무시한다.
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+*.iml
+
+# 시크릿 (CLAUDE.md: 건드리지도, 커밋하지도 않는다)
+.env
+.env.*
+!.env.example
+**/firebase-service-account*.json
+**/google-services.json
+**/GoogleService-Info.plist
+app/lib/firebase_options.dart
+*.pem
+*.p8
+*.p12
+*.key
+
+# 로컬 개발 서버 주소 (--dart-define-from-file) — 개발자마다 값이 달라 커밋하지 않는다.
+# 템플릿인 *.example.json만 커밋한다. 자세한 사용법은 README "로컬 전용 파일" 참고.
+app/env/*.json
+!app/env/*.example.json
+
+# Local iOS build settings (Kakao Native App Key, etc.)
+app/ios/Flutter/Local.xcconfig
+
+# Android 서명 키 — release keystore를 만들면 실수로 커밋되지 않도록 미리 막아둔다.
+# (debug keystore는 ~/.android/ 에 있어 저장소에 들어오지 않는다.)
+*.jks
+*.keystore
+**/key.properties
+
+# Flutter 골든 테스트 실패 산출물(*Diff.png 등) — 실수로 커밋되지 않게 막는다.
+app/test/**/failures/
+# 골든 테스트 실패 시 flutter_test 가 남기는 비교 이미지. 산출물이라 커밋하지 않는다.
+**/test/**/failures/

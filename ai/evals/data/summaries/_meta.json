@@ -1,0 +1,6 @@
+{
+  "model": "gpt-5.4-nano",
+  "prompt_fingerprint": "5d1149d57db4",
+  "prompt_source": "server/src/main/java/com/nomara/modi/server/domain/archive/client/OpenAiSummaryClient.java (SYSTEM_PROMPT)",
+  "note": "temperature 미지정 — 운영(Spring)과 같은 조건. 재현성은 이 파일들의 동결로 얻는다."
+}

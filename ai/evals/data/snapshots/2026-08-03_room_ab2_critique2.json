@@ -1,0 +1,1030 @@
+{
+  "_comment": "동결 스냅샷(방 단위 러너) — 그때 모델이 실제로 낸 후보를 고정한 것이다. 절대 손으로 고치지 말 것. docs/EXPERIMENTS.md 의 수치는 이 파일에서 나온다. 실행 이름: ab2_critique2",
+  "measured_at": "2026-08-03",
+  "run": "ab2_critique2",
+  "model": "gpt-5.4-nano",
+  "rounds": 3,
+  "repeats": 5,
+  "start_excluded": "fresh",
+  "critique_max_attempts": 2,
+  "temperature": "운영 기본값",
+  "fixture_digests": {
+    "busan_travel": "b599d02f81b90dad",
+    "opic_study": "8f4b787dfe151f58"
+  },
+  "rooms": {
+    "busan_travel": {
+      "summary": {
+        "room_label": "주우",
+        "captured_at": "2026-08-03T10:26:20",
+        "archive_items": 13,
+        "repeats": 5,
+        "rounds": 3,
+        "errors": 0,
+        "per_round": [
+          {
+            "round": 1,
+            "samples": 5,
+            "count_mean": 3.2,
+            "count_sd": 2.28,
+            "count_min": 1,
+            "count_max": 6
+          },
+          {
+            "round": 2,
+            "samples": 5,
+            "count_mean": 3.6,
+            "count_sd": 2.3,
+            "count_min": 1,
+            "count_max": 7
+          },
+          {
+            "round": 3,
+            "samples": 5,
+            "count_mean": 1.8,
+            "count_sd": 1.3,
+            "count_min": 1,
+            "count_max": 4
+          }
+        ],
+        "total_candidates": 43,
+        "title_length": {
+          "min": 13,
+          "median": 19,
+          "max": 32,
+          "over_20": 18
+        },
+        "categories": {
+          "known": [
+            "부산 맛집"
+          ],
+          "kinds": 14,
+          "new_kinds": 13,
+          "new_names": [
+            "관광",
+            "관광지",
+            "관람",
+            "명소",
+            "숙소",
+            "숙소준비",
+            "식도락",
+            "액티비티",
+            "여행명소",
+            "여행코스",
+            "체험",
+            "축제",
+            "카페"
+          ]
+        },
+        "prompt_tokens": 64832,
+        "completion_tokens": 6238,
+        "seconds_mean": 5.82
+      },
+      "rounds": [
+        {
+          "repeat": 1,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "감천문화마을 골목 탐방하기",
+              "category": "여행명소",
+              "source_item_id": 1
+            },
+            {
+              "title": "부산역 초량해 칼국수 점심 먹기",
+              "category": "부산 맛집",
+              "source_item_id": 36
+            },
+            {
+              "title": "해운대 해변 씨라이프 부산아쿠아리움 가기",
+              "category": "여행명소",
+              "source_item_id": 37
+            },
+            {
+              "title": "해운대블루라인파크 방문하기",
+              "category": "여행명소",
+              "source_item_id": 37
+            },
+            {
+              "title": "광안리해수욕장에서 광안대교 야경 즐기기",
+              "category": "여행명소",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4268,
+          "completion_tokens": 443,
+          "seconds": 6.31,
+          "error": null
+        },
+        {
+          "repeat": 1,
+          "round_index": 2,
+          "excluded_before": 5,
+          "candidates": [
+            {
+              "title": "고래사어묵해운대점 어묵 맛보기",
+              "category": "부산 맛집",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4363,
+          "completion_tokens": 520,
+          "seconds": 6.49,
+          "error": null
+        },
+        {
+          "repeat": 1,
+          "round_index": 3,
+          "excluded_before": 6,
+          "candidates": [
+            {
+              "title": "더웨이브펜션 체크인 3시·체크아웃 11시 확인하기",
+              "category": "숙소준비",
+              "source_item_id": 32
+            }
+          ],
+          "prompt_tokens": 4400,
+          "completion_tokens": 529,
+          "seconds": 6.95,
+          "error": null
+        },
+        {
+          "repeat": 2,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "해운대 씨라이프 부산아쿠아리움 관람하기",
+              "category": "부산 맛집",
+              "source_item_id": 37
+            },
+            {
+              "title": "감천문화마을 골목 탐방 넣기",
+              "category": "부산 맛집",
+              "source_item_id": 37
+            },
+            {
+              "title": "광안리해수욕장에서 광안대교 야경 즐기기",
+              "category": "부산 맛집",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4236,
+          "completion_tokens": 349,
+          "seconds": 4.57,
+          "error": null
+        },
+        {
+          "repeat": 2,
+          "round_index": 2,
+          "excluded_before": 3,
+          "candidates": [
+            {
+              "title": "웨이브온 커피에서 바다 풍경 즐기기",
+              "category": "카페",
+              "source_item_id": 3
+            },
+            {
+              "title": "고래사어묵해운대점 어묵 맛보기",
+              "category": "부산 맛집",
+              "source_item_id": 37
+            },
+            {
+              "title": "런닝맨 부산점에서 실내 액티비티 체험하기",
+              "category": "체험",
+              "source_item_id": 37
+            },
+            {
+              "title": "더웨이브펜션 체크인 3시·체크아웃 11시 일정 맞추기",
+              "category": "숙소",
+              "source_item_id": 32
+            }
+          ],
+          "prompt_tokens": 4352,
+          "completion_tokens": 469,
+          "seconds": 5.78,
+          "error": null
+        },
+        {
+          "repeat": 2,
+          "round_index": 3,
+          "excluded_before": 7,
+          "candidates": [
+            {
+              "title": "부네치아 운영시간·입장 확인하기",
+              "category": "명소",
+              "source_item_id": 1
+            },
+            {
+              "title": "국립해양박물관 전시 관람하기",
+              "category": "관람",
+              "source_item_id": 1
+            },
+            {
+              "title": "해운대블루라인파크 방문하기",
+              "category": "액티비티",
+              "source_item_id": 37
+            },
+            {
+              "title": "삼진어묵 영도본점 방문 전 영업시간 확인하기",
+              "category": "부산 맛집",
+              "source_item_id": 39
+            }
+          ],
+          "prompt_tokens": 4378,
+          "completion_tokens": 353,
+          "seconds": 5.44,
+          "error": null
+        },
+        {
+          "repeat": 3,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "해운대블루라인파크 이용시간 확인하기",
+              "category": "여행코스",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4230,
+          "completion_tokens": 405,
+          "seconds": 5.57,
+          "error": null
+        },
+        {
+          "repeat": 3,
+          "round_index": 2,
+          "excluded_before": 1,
+          "candidates": [
+            {
+              "title": "씨라이프 부산아쿠아리움 입장정보 확인하기",
+              "category": "관광지",
+              "source_item_id": 37
+            },
+            {
+              "title": "부산역 초량해 칼국수 점심 먹기",
+              "category": "식도락",
+              "source_item_id": 36
+            },
+            {
+              "title": "초량해 칼국수 방문 전 영업여부 확인하기",
+              "category": "식도락",
+              "source_item_id": 36
+            },
+            {
+              "title": "더웨이브펜션 체크인·체크아웃 시간 맞추기",
+              "category": "숙소",
+              "source_item_id": 32
+            }
+          ],
+          "prompt_tokens": 4315,
+          "completion_tokens": 449,
+          "seconds": 5.93,
+          "error": null
+        },
+        {
+          "repeat": 3,
+          "round_index": 3,
+          "excluded_before": 5,
+          "candidates": [
+            {
+              "title": "고래사어묵해운대점 어묵 맛보기",
+              "category": "부산 맛집",
+              "source_item_id": 37
+            },
+            {
+              "title": "런닝맨 부산점 실내 액티비티 체험하기",
+              "category": "액티비티",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4351,
+          "completion_tokens": 427,
+          "seconds": 5.46,
+          "error": null
+        },
+        {
+          "repeat": 4,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "해운대 씨라이프 부산아쿠아리움 방문하기",
+              "category": "관광지",
+              "source_item_id": 37
+            },
+            {
+              "title": "감천문화마을 골목 탐방하기",
+              "category": "여행코스",
+              "source_item_id": 1
+            },
+            {
+              "title": "부산역 초량해 칼국수 점심 먹기",
+              "category": "부산 맛집",
+              "source_item_id": 36
+            },
+            {
+              "title": "남포동 톤쇼우 방문해보기",
+              "category": "부산 맛집",
+              "source_item_id": 36
+            },
+            {
+              "title": "원조복국 박옥희 할매집에서 복국 맛보기",
+              "category": "부산 맛집",
+              "source_item_id": 35
+            },
+            {
+              "title": "삼진어묵 영도본점 방문 전 영업시간 변동 확인하기",
+              "category": "부산 맛집",
+              "source_item_id": 39
+            }
+          ],
+          "prompt_tokens": 4267,
+          "completion_tokens": 417,
+          "seconds": 6.16,
+          "error": null
+        },
+        {
+          "repeat": 4,
+          "round_index": 2,
+          "excluded_before": 6,
+          "candidates": [
+            {
+              "title": "더웨이브펜션 체크인 3시·체크아웃 11시 확인하기",
+              "category": "숙소",
+              "source_item_id": 32
+            },
+            {
+              "title": "코오롱 씨클라우드 호텔·코티스 앰버서더 해운대 확인하기",
+              "category": "숙소",
+              "source_item_id": 31
+            }
+          ],
+          "prompt_tokens": 4347,
+          "completion_tokens": 325,
+          "seconds": 5.55,
+          "error": null
+        },
+        {
+          "repeat": 4,
+          "round_index": 3,
+          "excluded_before": 8,
+          "candidates": [
+            {
+              "title": "부산 해운대블루라인파크 이용하기",
+              "category": "관광",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4363,
+          "completion_tokens": 293,
+          "seconds": 6.15,
+          "error": null
+        },
+        {
+          "repeat": 5,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "더웨이브펜션 체크인 3시·체크아웃 11시 확인하기",
+              "category": "숙소",
+              "source_item_id": 32
+            }
+          ],
+          "prompt_tokens": 4290,
+          "completion_tokens": 561,
+          "seconds": 6.93,
+          "error": null
+        },
+        {
+          "repeat": 5,
+          "round_index": 2,
+          "excluded_before": 1,
+          "candidates": [
+            {
+              "title": "광안리해수욕장 광안대교 야경 즐기기",
+              "category": "관광",
+              "source_item_id": 37
+            },
+            {
+              "title": "해운대 해수욕장 축제 구경하기",
+              "category": "축제",
+              "source_item_id": 36
+            },
+            {
+              "title": "감천문화마을 골목 탐방하기",
+              "category": "관광",
+              "source_item_id": 37
+            },
+            {
+              "title": "태종대 수국축제 일정 확인하며 보기",
+              "category": "축제",
+              "source_item_id": 3
+            },
+            {
+              "title": "부산해양자연사박물관 방문하기",
+              "category": "관광",
+              "source_item_id": 1
+            },
+            {
+              "title": "초량해 칼국수 점심 먹기",
+              "category": "부산 맛집",
+              "source_item_id": 36
+            },
+            {
+              "title": "씨라이프부산아쿠아리움 방문하기",
+              "category": "관광",
+              "source_item_id": 37
+            }
+          ],
+          "prompt_tokens": 4293,
+          "completion_tokens": 344,
+          "seconds": 5.1,
+          "error": null
+        },
+        {
+          "repeat": 5,
+          "round_index": 3,
+          "excluded_before": 8,
+          "candidates": [
+            {
+              "title": "부산 맛집 10선에서 영업시간 변동 여부 확인하고 방문하기",
+              "category": "부산 맛집",
+              "source_item_id": 39
+            }
+          ],
+          "prompt_tokens": 4379,
+          "completion_tokens": 354,
+          "seconds": 4.94,
+          "error": null
+        }
+      ]
+    },
+    "opic_study": {
+      "summary": {
+        "room_label": "회화 스터디",
+        "captured_at": "2026-08-03T10:27:29",
+        "archive_items": 21,
+        "repeats": 5,
+        "rounds": 3,
+        "errors": 0,
+        "per_round": [
+          {
+            "round": 1,
+            "samples": 5,
+            "count_mean": 5.4,
+            "count_sd": 1.82,
+            "count_min": 3,
+            "count_max": 8
+          },
+          {
+            "round": 2,
+            "samples": 5,
+            "count_mean": 3.6,
+            "count_sd": 0.55,
+            "count_min": 3,
+            "count_max": 4
+          },
+          {
+            "round": 3,
+            "samples": 5,
+            "count_mean": 3.4,
+            "count_sd": 0.55,
+            "count_min": 3,
+            "count_max": 4
+          }
+        ],
+        "total_candidates": 62,
+        "title_length": {
+          "min": 17,
+          "median": 24.0,
+          "max": 36,
+          "over_20": 51
+        },
+        "categories": {
+          "known": [
+            "문법",
+            "단어",
+            "템플릿",
+            "어휘 학습"
+          ],
+          "kinds": 30,
+          "new_kinds": 27,
+          "new_names": [
+            "감정표현",
+            "고급표현",
+            "답변마무리",
+            "롤플레이",
+            "말하기",
+            "말하기구조",
+            "말하기기술",
+            "말하기전략",
+            "말하기훈련",
+            "모의고사",
+            "문장구성",
+            "발화전략",
+            "서베이",
+            "서베이전략",
+            "스토리텔링",
+            "시험구성",
+            "시험센터",
+            "시험운영",
+            "시험전략",
+            "시험정보",
+            "시험준비",
+            "영어말하기",
+            "영어회화",
+            "오픽 시험구성",
+            "오픽 전략",
+            "오픽 준비",
+            "오픽전략"
+          ]
+        },
+        "prompt_tokens": 79053,
+        "completion_tokens": 5523,
+        "seconds_mean": 5.51
+      },
+      "rounds": [
+        {
+          "repeat": 1,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "OPIc 시험센터 위치 확인하기",
+              "category": "시험센터",
+              "source_item_id": 9
+            },
+            {
+              "title": "공식 홈페이지 시험접수 탭에서 시험장·시간 변경 가능기간 확인하기",
+              "category": "시험준비",
+              "source_item_id": 9
+            },
+            {
+              "title": "서베이 항목을 개수에 맞춰 미리 정해 암기하기",
+              "category": "서베이",
+              "source_item_id": 25
+            },
+            {
+              "title": "완료시제(현재완료·과거완료)로 경험답변에 반영 연습하기",
+              "category": "문법",
+              "source_item_id": 26
+            },
+            {
+              "title": "답변 끝에 마무리 멘트로 결론 정리 연습하기",
+              "category": "말하기기술",
+              "source_item_id": 28
+            },
+            {
+              "title": "돌발 질문 핵심 질문 막히면 1개 과감히 스킵 전략 연습하기",
+              "category": "롤플레이",
+              "source_item_id": 28
+            }
+          ],
+          "prompt_tokens": 5186,
+          "completion_tokens": 381,
+          "seconds": 6.98,
+          "error": null
+        },
+        {
+          "repeat": 1,
+          "round_index": 2,
+          "excluded_before": 6,
+          "candidates": [
+            {
+              "title": "서베이 질문별 답변 흐름 반복 연습하기",
+              "category": "말하기훈련",
+              "source_item_id": 25
+            },
+            {
+              "title": "오픽 템플릿 5종으로 문장 변형 반복하기",
+              "category": "템플릿",
+              "source_item_id": 20
+            },
+            {
+              "title": "체크리스트로 신분증 원본·OT·본시험 일정 확인하기",
+              "category": "시험준비",
+              "source_item_id": 30
+            }
+          ],
+          "prompt_tokens": 5270,
+          "completion_tokens": 307,
+          "seconds": 5.35,
+          "error": null
+        },
+        {
+          "repeat": 1,
+          "round_index": 3,
+          "excluded_before": 9,
+          "candidates": [
+            {
+              "title": "서베이 자신 주제 3~4개 준비하기",
+              "category": "서베이전략",
+              "source_item_id": 13
+            },
+            {
+              "title": "오픽 답변에 감정표현 넣어 말하기",
+              "category": "감정표현",
+              "source_item_id": 26
+            },
+            {
+              "title": "부사·형용사·숙어로 답변 확장 연습",
+              "category": "고급표현",
+              "source_item_id": 26
+            },
+            {
+              "title": "답변 두 번 듣고 두괄식으로 말하기",
+              "category": "시험운영",
+              "source_item_id": 16
+            }
+          ],
+          "prompt_tokens": 5329,
+          "completion_tokens": 278,
+          "seconds": 4.6,
+          "error": null
+        },
+        {
+          "repeat": 2,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "신분증 원본 지참 조건 확인하기",
+              "category": "시험준비",
+              "source_item_id": 9
+            },
+            {
+              "title": "완료시제 넣어서 경험답변 말하기 연습",
+              "category": "문장구성",
+              "source_item_id": 26
+            },
+            {
+              "title": "답변 끝에 결론 마무리 멘트 활용하기",
+              "category": "답변마무리",
+              "source_item_id": 28
+            }
+          ],
+          "prompt_tokens": 5136,
+          "completion_tokens": 347,
+          "seconds": 5.49,
+          "error": null
+        },
+        {
+          "repeat": 2,
+          "round_index": 2,
+          "excluded_before": 3,
+          "candidates": [
+            {
+              "title": "응시료 84,000원과 재응시 25일 제한 확인하기",
+              "category": "시험준비",
+              "source_item_id": 30
+            },
+            {
+              "title": "OPIc 서베이에서 자신 있는 주제 3~4개 미리 준비하기",
+              "category": "서베이",
+              "source_item_id": 13
+            },
+            {
+              "title": "자기소개·경험이야기·비교 템플릿 문장 변형 연습",
+              "category": "템플릿",
+              "source_item_id": 20
+            },
+            {
+              "title": "오픽 빈출 어휘를 예문과 함께 문맥 사용 연습하기",
+              "category": "어휘 학습",
+              "source_item_id": 18
+            }
+          ],
+          "prompt_tokens": 5246,
+          "completion_tokens": 430,
+          "seconds": 5.76,
+          "error": null
+        },
+        {
+          "repeat": 2,
+          "round_index": 3,
+          "excluded_before": 7,
+          "candidates": [
+            {
+              "title": "유튜브 모의고사로 주제별 답변 구조 연습하기",
+              "category": "모의고사",
+              "source_item_id": 14
+            },
+            {
+              "title": "답변에 감정표현 넣어 소통감 강화하기",
+              "category": "감정표현",
+              "source_item_id": 26
+            },
+            {
+              "title": "자주 쓰는 주제별 빈출 단어 예문 만들어 쓰기",
+              "category": "어휘 학습",
+              "source_item_id": 23
+            }
+          ],
+          "prompt_tokens": 5296,
+          "completion_tokens": 334,
+          "seconds": 5.31,
+          "error": null
+        },
+        {
+          "repeat": 3,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "OPIc 템플릿 4종 구조로 답변 반복하기",
+              "category": "영어말하기",
+              "source_item_id": 20
+            },
+            {
+              "title": "서베이에서 관심 주제 3~4개 준비하기",
+              "category": "시험전략",
+              "source_item_id": 13
+            },
+            {
+              "title": "완료시제(현재완료·과거완료)로 경험답변 넣기",
+              "category": "문법",
+              "source_item_id": 26
+            },
+            {
+              "title": "끝맺음 마무리 멘트로 결론 정리해 말하기",
+              "category": "말하기구조",
+              "source_item_id": 28
+            },
+            {
+              "title": "시험 40분 동안 12~15개 콤보·돌발질문 순서 연습하기",
+              "category": "시험구성",
+              "source_item_id": 13
+            },
+            {
+              "title": "OPIc 빈출 주제별 어휘를 예문으로 적용하기",
+              "category": "어휘 학습",
+              "source_item_id": 23
+            },
+            {
+              "title": "모의고사로 주제별 답변 구조 1분 이상 연습하기",
+              "category": "모의고사",
+              "source_item_id": 14
+            },
+            {
+              "title": "웹페이지 연습 시 마이크 점검 후 말하기 시작하기",
+              "category": "시험준비",
+              "source_item_id": 13
+            }
+          ],
+          "prompt_tokens": 5206,
+          "completion_tokens": 386,
+          "seconds": 5.14,
+          "error": null
+        },
+        {
+          "repeat": 3,
+          "round_index": 2,
+          "excluded_before": 8,
+          "candidates": [
+            {
+              "title": "응시 전 규정신분증 원본 준비하기",
+              "category": "시험준비",
+              "source_item_id": 9
+            },
+            {
+              "title": "현장에서 질문 들은 뒤 TMI 적당히 말하기",
+              "category": "오픽전략",
+              "source_item_id": 25
+            },
+            {
+              "title": "모르면 Skip 전략으로 다음 질문 이어가기",
+              "category": "오픽전략",
+              "source_item_id": 28
+            },
+            {
+              "title": "답변에 부사·형용사·숙어와 filler 다양하게 넣기",
+              "category": "어휘 학습",
+              "source_item_id": 26
+            }
+          ],
+          "prompt_tokens": 5306,
+          "completion_tokens": 320,
+          "seconds": 5.0,
+          "error": null
+        },
+        {
+          "repeat": 3,
+          "round_index": 3,
+          "excluded_before": 12,
+          "candidates": [
+            {
+              "title": "오픽 템플릿 4종으로 문장 변형해 말하기 연습",
+              "category": "템플릿",
+              "source_item_id": 20
+            },
+            {
+              "title": "응시 전 오픽 공식 사이트 가이드 PDF 평가기준 확인하기",
+              "category": "오픽 준비",
+              "source_item_id": 14
+            },
+            {
+              "title": "시험 1주일 전 신분증 원본과 84,000원 확인하기",
+              "category": "시험정보",
+              "source_item_id": 30
+            }
+          ],
+          "prompt_tokens": 5412,
+          "completion_tokens": 417,
+          "seconds": 5.92,
+          "error": null
+        },
+        {
+          "repeat": 4,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "OPIc 빈출 어휘 예문으로 3회 반복하기",
+              "category": "어휘 학습",
+              "source_item_id": 18
+            },
+            {
+              "title": "자기소개·경험담 템플릿으로 답변 구조 훈련하기",
+              "category": "말하기",
+              "source_item_id": 20
+            },
+            {
+              "title": "완료시제(현재완료·과거완료)로 경험답변 문장 점검하기",
+              "category": "문법",
+              "source_item_id": 26
+            },
+            {
+              "title": "답변 끝에 결론 마무리 멘트 추가해 마감하기",
+              "category": "말하기",
+              "source_item_id": 28
+            },
+            {
+              "title": "평소에 감정표현+두괄식으로 1문장씩 연습하기",
+              "category": "말하기",
+              "source_item_id": 16
+            }
+          ],
+          "prompt_tokens": 5173,
+          "completion_tokens": 335,
+          "seconds": 5.19,
+          "error": null
+        },
+        {
+          "repeat": 4,
+          "round_index": 2,
+          "excluded_before": 5,
+          "candidates": [
+            {
+              "title": "마이크 점검 후 약 40분 답변 리듬 맞추기",
+              "category": "오픽 시험구성",
+              "source_item_id": 13
+            },
+            {
+              "title": "부사·형용사·숙어로 답변 확장 연습하기",
+              "category": "어휘 학습",
+              "source_item_id": 26
+            },
+            {
+              "title": "OPIC 빈출 주제별 어휘를 예문으로 말해보기",
+              "category": "어휘 학습",
+              "source_item_id": 18
+            },
+            {
+              "title": "예상 답을 유튜브 진행 방식으로 모의 연습하기",
+              "category": "모의고사",
+              "source_item_id": 24
+            }
+          ],
+          "prompt_tokens": 5295,
+          "completion_tokens": 423,
+          "seconds": 5.22,
+          "error": null
+        },
+        {
+          "repeat": 4,
+          "round_index": 3,
+          "excluded_before": 9,
+          "candidates": [
+            {
+              "title": "OPIc 평가기준·문제유형 가이드 PDF 훑어보기",
+              "category": "시험구성",
+              "source_item_id": 14
+            },
+            {
+              "title": "OPIc 시험센터 위치 공식 홈페이지에서 확인하기",
+              "category": "시험센터",
+              "source_item_id": 9
+            },
+            {
+              "title": "시험 당일 신분증 원본·일정(OT20+본40) 확인하기",
+              "category": "시험준비",
+              "source_item_id": 30
+            }
+          ],
+          "prompt_tokens": 5350,
+          "completion_tokens": 386,
+          "seconds": 5.78,
+          "error": null
+        },
+        {
+          "repeat": 5,
+          "round_index": 1,
+          "excluded_before": 0,
+          "candidates": [
+            {
+              "title": "완료시제(현재완료·과거완료)로 경험답변 점검하기",
+              "category": "문법",
+              "source_item_id": 26
+            },
+            {
+              "title": "답변 끝에 마무리 멘트로 결론 정리하기",
+              "category": "말하기전략",
+              "source_item_id": 28
+            },
+            {
+              "title": "OPIc 빈출 주제별 어휘를 예문으로 익히기",
+              "category": "어휘 학습",
+              "source_item_id": 18
+            },
+            {
+              "title": "오픽 템플릿 4종(자기소개·경험·비교·미래계획)로 반복 연습하기",
+              "category": "템플릿",
+              "source_item_id": 20
+            },
+            {
+              "title": "필러는 문장당 2~3개만 쓰는 연습하기",
+              "category": "발화전략",
+              "source_item_id": 28
+            }
+          ],
+          "prompt_tokens": 5193,
+          "completion_tokens": 412,
+          "seconds": 5.66,
+          "error": null
+        },
+        {
+          "repeat": 5,
+          "round_index": 2,
+          "excluded_before": 5,
+          "candidates": [
+            {
+              "title": "오픽 응시 전 규정신분증 원본 챙기기",
+              "category": "시험준비",
+              "source_item_id": 9
+            },
+            {
+              "title": "답변 후속 질문 대비해 경험을 수치·장소·사람으로 구체화하기",
+              "category": "스토리텔링",
+              "source_item_id": 29
+            },
+            {
+              "title": "시험 1주일 전 신분증 원본과 총 60분 일정 확인하기",
+              "category": "시험준비",
+              "source_item_id": 30
+            }
+          ],
+          "prompt_tokens": 5330,
+          "completion_tokens": 523,
+          "seconds": 7.02,
+          "error": null
+        },
+        {
+          "repeat": 5,
+          "round_index": 3,
+          "excluded_before": 8,
+          "candidates": [
+            {
+              "title": "서베이 항목 3~4개 자신 있게 준비하기",
+              "category": "오픽 전략",
+              "source_item_id": 13
+            },
+            {
+              "title": "스픽 어플로 하루 10~30분씩 수강하기",
+              "category": "영어회화",
+              "source_item_id": 11
+            },
+            {
+              "title": "완전 암기 대신 템플릿 맞춤 문장 변형 연습하기",
+              "category": "템플릿",
+              "source_item_id": 20
+            },
+            {
+              "title": "서베이에서 현장에서 답변 흐름 암기해두기",
+              "category": "오픽 전략",
+              "source_item_id": 25
+            }
+          ],
+          "prompt_tokens": 5325,
+          "completion_tokens": 244,
+          "seconds": 4.17,
+          "error": null
+        }
+      ]
+    }
+  },
+  "_note": "A/B. critique_max_attempts=2."
+}

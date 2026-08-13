@@ -1,0 +1,12 @@
+# Android release 서명 자격증명 템플릿(로컬 전용, 커밋 금지 — .gitignore가 `key.properties`를 이미 막고 있다).
+# 사용법: 이 파일을 같은 디렉터리에 `key.properties`로 복사한 뒤 실제 값을 채운다.
+# ⚠️ 출시 대상은 iOS 뿐이다(2026-08-13) — 안드로이드는 CI·릴리스 경로가 없어 이 파일이 지금
+#    필요한 사람은 없다. 되살릴 때 `keytool -genkey -v -keystore release-keystore.jks \
+#    -keyalg RSA -keysize 2048 -validity 10000 -alias modi` 로 키스토어를 만든다.
+#
+# storeFile은 app/android/app/build.gradle.kts 기준(=app/android/app/)의 상대 경로다.
+# 예: 키스토어를 app/android/release-keystore.jks에 두면 아래처럼 한 단계 위로 올라간다.
+storePassword=
+keyPassword=
+keyAlias=
+storeFile=../release-keystore.jks

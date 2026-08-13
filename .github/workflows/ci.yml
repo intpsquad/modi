@@ -1,0 +1,188 @@
+# CI/CD — 2026-08-13 에 Jenkins(저장소 루트 Jenkinsfile, 497줄)를 대체했다.
+#
+# **왜 워크플로를 여러 파일로 쪼개지 않았나**: Jenkins 는 한 파이프라인의 스테이지라서
+# "테스트가 통과해야 배포가 돈다"가 공짜였다. 워크플로를 파일로 쪼개면 그 게이팅이
+# 사라진다 — deploy 워크플로가 테스트 결과를 모른 채 dev push 만 보고 배포한다.
+# `workflow_run` 으로 묶는 방법도 있지만, 경로 필터로 스킵된 워크플로는 애초에
+# 실행되지 않아 트리거가 오지 않는다. 그래서 잡을 한 파일에 두고 `needs` 로 묶는다.
+#
+# 옛 Jenkinsfile 의 스테이지 대응:
+#   detect changed paths      → changes 잡 (dorny/paths-filter)
+#   app: analyze & test       → app 잡
+#   server: build & test      → server 잡
+#   ai: lint & test           → ai 잡
+#   deploy                    → deploy 잡
+#   app: shorebird patch      → **제거**(2026-08-13, iOS 전용화로 안드로이드 릴리스 경로 없음)
+#   iOS: TestFlight           → **옮기지 않음**. Mac 에서 사람이 돌린다(docs/ios-release.md).
+#                                프라이빗 저장소의 macOS 러너는 분수를 10배로 소모한다.
+name: CI
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 경로 필터를 무시하고 전부 돌린다 (옛 Jenkinsfile 의 FORCE_ALL)
+        type: boolean
+        default: false
+
+# 같은 브랜치에 연속 push 가 오면 앞의 실행을 취소한다. 단 배포가 섞이면 위험하므로
+# dev 는 취소하지 않는다 — 배포 도중 취소되면 컨테이너가 중간 상태로 남는다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      server: ${{ steps.filter.outputs.server }}
+      ai: ${{ steps.filter.outputs.ai }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'app/**'
+              - '.github/workflows/ci.yml'
+            server:
+              - 'server/**'
+              - 'docs/api/openapi.json'
+              - '.github/workflows/ci.yml'
+            ai:
+              - 'ai/**'
+              - '.github/workflows/ci.yml'
+
+  app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true' || inputs.force_all
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          # 3.44.7 고정. 3.44.0 은 Dart 3.12.0 이라 app/pubspec.yaml 의 `sdk: ^3.12.2` 를
+          # 만족하지 못한다(옛 deploy/ci/flutter/Dockerfile 주석에 남아 있던 실측).
+          flutter-version: 3.44.7
+          channel: stable
+          cache: true
+      # lib/firebase_options.dart 는 실제 Firebase 키가 들어 있어 커밋하지 않는다
+      # (.gitignore, README "로컬 전용 파일"). 그런데 main.dart 가 이걸 import 하므로
+      # 없으면 flutter analyze 가 "Target of URI doesn't exist" 로 깨진다.
+      # analyze/test 는 앱을 실행하지 않아 실제 키가 필요 없으므로 템플릿을 복사한다.
+      - name: firebase_options 템플릿 채우기
+        run: '[ -f lib/firebase_options.dart ] || cp lib/firebase_options.example.dart lib/firebase_options.dart'
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test
+
+  server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true' || inputs.force_all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      # SchemaValidationTest·RoomServiceTest 가 Testcontainers 로 Postgres·Redis 를 띄운다.
+      # ubuntu-latest 러너에는 Docker 가 이미 있고 잡이 러너 호스트에서 직접 돌기 때문에,
+      # 옛 Jenkins 처럼 docker.sock 마운트나 --network host 를 맞춰줄 필요가 없다.
+      - name: 빌드 + 테스트
+        run: ./gradlew build
+        working-directory: server
+      # OpenApiExportTest 가 테스트 중 docs/api/openapi.json 을 재생성한다.
+      # 컨트롤러를 바꾸고 이 파일을 커밋하지 않았다면 여기서 실패한다 —
+      # CLAUDE.md "문서 자동화" 의 드리프트 방지 장치다.
+      - name: OpenAPI 드리프트 검사
+        run: git diff --exit-code -- docs/api/openapi.json
+
+  ai:
+    needs: changes
+    if: needs.changes.outputs.ai == 'true' || inputs.force_all
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          # **ai/Dockerfile 과 같은 버전을 유지할 것** — CI 와 운영이 갈리면 안 된다.
+          version: 0.11.26
+          python-version: '3.12'
+          enable-cache: true
+      # --frozen: uv.lock 을 갱신하지 않고 그대로 쓴다. pyproject.toml 을 고치고 lock 을
+      # 커밋하지 않았다면 여기서 실패한다(server 잡의 openapi.json 검사와 같은 의도).
+      - run: uv sync --frozen
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pytest
+
+  # 🔴 **브랜치 보호가 요구할 단 하나의 상태 체크.** `app`/`server`/`ai` 를 직접 필수로 걸면
+  # 안 된다 — 경로 필터로 **스킵된** 잡을 필수 체크로 지정하면 PR 이 영구히 머지 대기에
+  # 걸릴 위험이 있다(문서만 고친 PR 은 세 잡이 다 스킵된다). 아래 조건은 `deploy` 잡이 이미
+  # 쓰는 것과 같다: 스킵은 통과로 보고 **실패만** 막는다.
+  #
+  # 설정: GitHub → Settings → Rules/Branches → `dev` → Require status checks → **`gate` 만** 선택.
+  # ⚠️ 체크 목록에는 **한 번 돌아본 뒤에야** 나타난다. 첫 push 뒤에 설정할 것.
+  gate:
+    needs: [app, server, ai]
+    if: always() && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "app/server/ai 잡 중 실패한 것이 없다."
+
+  deploy:
+    needs: [changes, app, server, ai]
+    # `always() && !failure() && !cancelled()` 이어야 한다. 경로 필터로 스킵된 잡은
+    # 결과가 skipped 인데, 기본 동작은 **의존 잡이 스킵되면 이쪽도 스킵**이다 —
+    # 그러면 문서만 고친 커밋이 영영 배포되지 않는다. 실패했을 때만 막는 것이 의도다.
+    if: |
+      always() && !failure() && !cancelled()
+      && github.ref == 'refs/heads/dev'
+      && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # 🔴 서버가 GitHub 에서 직접 fetch 한다 — 저장소가 **프라이빗**이므로 서버에
+      # 읽기 전용 deploy key 가 등록돼 있어야 하고 remote 가 SSH 여야 한다.
+      #   서버에서 1회: ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ''
+      #                 (공개키를 GitHub 저장소 Settings → Deploy keys 에 read-only 로 등록)
+      #                 git remote set-url origin git@github.com:modintps/modi.git
+      # 설정이 안 돼 있으면 아래 fetch 가 인증 실패로 죽는다 — 조용히 옛 커밋을
+      # 재배포하지 않는다.
+      #
+      # **빌드는 서버(ARM)에서 한다.** 러너(x86_64)에서 만든 이미지는 오라클 A1 에서 못 뜬다.
+      - name: SSH 키 준비
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # 호스트 키를 시크릿으로 고정한다. StrictHostKeyChecking=no 로 열어두면
+          # 중간자에게 배포 명령과 서버 접근을 그대로 넘겨주는 셈이 된다.
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: 배포
+        run: |
+          ssh -o StrictHostKeyChecking=yes \
+              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              'set -euo pipefail
+               cd ~/maramodi/repo
+               git fetch origin dev
+               git reset --hard origin/dev
+               ./deploy/deploy.sh'

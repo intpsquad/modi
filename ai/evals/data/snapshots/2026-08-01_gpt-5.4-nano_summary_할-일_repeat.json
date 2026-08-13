@@ -1,0 +1,356 @@
+{
+  "_comment": "동결 스냅샷 — 그때 모델이 실제로 낸 후보를 고정한 것이다. 절대 손으로 고치지 말 것. docs/EXPERIMENTS.md 의 수치는 이 파일에서 나온다. 실행 이름: gpt-5.4-nano_summary_할 일_repeat",
+  "measured_at": "2026-08-01",
+  "run": "gpt-5.4-nano_summary_할 일_repeat",
+  "model": "gpt-5.4-nano",
+  "rule4": true,
+  "schema_category_hint": true,
+  "input": "summary",
+  "categories": [
+    "할 일"
+  ],
+  "temperature": 0.0,
+  "summary": {
+    "cases": 15,
+    "candidates": 35,
+    "dropped_by_filter": 0,
+    "new_categories": 0,
+    "title_length": {
+      "min": 15,
+      "median": 23,
+      "max": 31,
+      "over_20": 25
+    },
+    "prompt_tokens": 13597,
+    "completion_tokens": 1212,
+    "seconds": 30.7,
+    "errors": 0
+  },
+  "cases": [
+    {
+      "stem": "001_gangneung_food",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "KTX 청량리→강릉 당일 식사 3회 루트 저장하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 카페 3곳 동선 순서대로 저장하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 디저트 6곳 도는 일정 루트 저장하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 932,
+      "seconds": 2.77,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "002_sqld_review",
+      "raw_candidate_count": 5,
+      "candidates": [
+        {
+          "title": "SQLD 합격 전략대로 2주 학습 실행하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "파랭이책 기초 개념 정리 2주 과정 진행",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "노랭이책 문제·해설 3회독 일정 잡기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "퇴근 후 매일 2~3시간 SQLD 문제풀이하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "전날 최종 복습으로 마무리하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 947,
+      "seconds": 2.03,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "003_busan_hanroro_combine",
+      "raw_candidate_count": 4,
+      "candidates": [
+        {
+          "title": "부산 한로로 블로그 코스 따라 이동하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "모치플레지르와 밤산책방 방문 일정 만들기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "히떼 로스터리 방문 계획 세우기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "별미청 돼지국밥 방문 코스 포함하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 907,
+      "seconds": 1.73,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "004_busan_1n2d",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "부산 1박 2일 코스 정리한 내용 행동화하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 912,
+      "seconds": 2.21,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "005_busan_hanroro_tripgoing",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "한로로 블로그 부산여행 코스 7곳 저장하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산여행 코스 7곳 방문 순서 동선 정하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 917,
+      "seconds": 2.77,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "006_busan_knewnew",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "공원 6ongone 광안역 도보 3분 거리 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산만의 감성 공간 소개 문구 정리하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "기차로 자주 가는 부산 낭만 콘텐츠 구성하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 907,
+      "seconds": 2.26,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "007_anyang_2cha",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "안양 2차 약속 장소 추천받기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 891,
+      "seconds": 1.22,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "008_fashion_shoulder",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "어깨핏 의상 선택법 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 887,
+      "seconds": 1.98,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "009_fashion_promtome",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "‘옷’ 남겨 관련 정보 요청하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 870,
+      "seconds": 2.05,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "010_jeongcheogi_lion",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "정보처리기사 실기 대비 요약노트 배포 여부 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 918,
+      "seconds": 1.56,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "011_jeongcheogi_igijeok",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "정처기 1회차 합격 후기 기반 공부방법 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "네이버 이기적 스터디 카페에서 합격 후기 더 찾기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "과목별 시험 팁 정리해 학습 계획에 반영하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 895,
+      "seconds": 2.25,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "012_jeongcheogi_potato",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "정보처리기사 이론 압축 PDF 기출키워드 7장 반복",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "작년 2회·3회 이론 11문제/12문제 출제 9문제 체크",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 919,
+      "seconds": 1.42,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "013_jeongcheogi_sogood",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "기출 반복 풀이 후 오답노트 정리하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "퀴즐렛과 계산기 활용해 기출 풀기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "오답노트에 퀴즐렛 학습 내용 반영하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 911,
+      "seconds": 2.32,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "014_playlist_empty",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "윤마치 노래모음 MRCH 플레이리스트 확인하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 871,
+      "seconds": 1.43,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "015_seoul_extreme",
+      "raw_candidate_count": 4,
+      "candidates": [
+        {
+          "title": "을지로3가역→지하철 이동으로 3일 코스 정주행하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "맛집 9곳 카페 7곳 디저트 6곳 순서대로 방문하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "방문 후 3일 코스 저장하고 다음 여행에 활용하기",
+          "category": "할 일",
+          "source_item_id": 1
+        },
+        {
+          "title": "다음 서울 여행 함께 갈 사람 태그하기",
+          "category": "할 일",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 913,
+      "seconds": 2.71,
+      "dropped_by_filter": 0,
+      "error": null
+    }
+  ]
+}

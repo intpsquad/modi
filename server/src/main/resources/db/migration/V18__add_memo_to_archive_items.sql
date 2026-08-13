@@ -1,0 +1,1 @@
+ALTER TABLE archive_items ADD COLUMN memo VARCHAR(500);

@@ -1,0 +1,70 @@
+{
+  // app: * 태스크는 CI(.github/workflows/ci.yml)의 app 잡과 같은 명령을 쓴다.
+  // db: * 태스크는 로컬 PostgreSQL(server/docker-compose.yml) 기동용.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "app: pub get",
+      "type": "shell",
+      "command": "flutter pub get",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "app: format",
+      "type": "shell",
+      "command": "dart format .",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "app: format check",
+      "type": "shell",
+      "command": "dart format --output=none --set-exit-if-changed .",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "app: analyze",
+      "type": "shell",
+      "command": "flutter analyze",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "app: test",
+      "type": "shell",
+      "command": "flutter test",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      // 커밋 전 CI 예행: format check → analyze → test 순차 실행
+      "label": "app: preflight",
+      "dependsOrder": "sequence",
+      "dependsOn": ["app: format check", "app: analyze", "app: test"],
+      "problemMatcher": []
+    },
+    {
+      "label": "db: up",
+      "type": "shell",
+      "command": "docker compose up -d",
+      "options": { "cwd": "${workspaceFolder}/server" },
+      "problemMatcher": []
+    },
+    {
+      "label": "db: down",
+      "type": "shell",
+      "command": "docker compose down",
+      "options": { "cwd": "${workspaceFolder}/server" },
+      "problemMatcher": []
+    },
+    {
+      "label": "db: psql",
+      "type": "shell",
+      "command": "docker exec -it modi-postgres psql -U modi -d modi",
+      "problemMatcher": []
+    }
+  ]
+}

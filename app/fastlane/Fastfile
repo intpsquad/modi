@@ -1,0 +1,160 @@
+require "shellwords"
+require "base64"
+
+opt_out_usage
+default_platform(:ios)
+
+IOS_BUNDLE_IDENTIFIER = "com.nomara.modi.app"
+IOS_SHARE_EXTENSION_BUNDLE_IDENTIFIER = "com.nomara.modi.app.ShareExtension"
+# 기본값을 두지 않는다(2026-08-13). 팀 ID 는 계정 식별자라 저장소에 넣지 않으며,
+# 기본값이 있으면 **엉뚱한 팀으로 서명이 나가도 빌드가 성공한다** — 틀린 프로파일로
+# 업로드가 거절되기 전까지 아무도 모른다. 없으면 여기서 즉시 KeyError 로 멈춘다.
+IOS_TEAM_ID = ENV.fetch("APPLE_TEAM_ID")
+IOS_BUNDLE_IDENTIFIERS = [
+  IOS_BUNDLE_IDENTIFIER,
+  IOS_SHARE_EXTENSION_BUNDLE_IDENTIFIER,
+].freeze
+
+def require_file(path, description)
+  UI.user_error!("#{description}이(가) 없습니다: #{path}") unless File.file?(path)
+end
+
+platform :ios do
+  desc "Build the Flutter iOS app and upload it to TestFlight"
+  lane :beta do
+    # Fastlane may evaluate the lane from either app/ or app/fastlane/.
+    # Detect the project root without relying on Fastlane's eval __dir__ value.
+    app_root = if File.directory?(File.join(Dir.pwd, "ios"))
+      Dir.pwd
+    else
+      File.expand_path("..", Dir.pwd)
+    end
+
+    api_key_path = ENV.fetch("ASC_API_KEY_PATH")
+    match_git_url = ENV.fetch("MATCH_GIT_URL")
+    # Resolve the default from the app project root so app/env/prod.json is found
+    # consistently no matter which directory fastlane was invoked from.
+    prod_env_path = ENV["PROD_ENV_PATH"].to_s
+    prod_env_path = File.join(app_root, "env", "prod.json") if prod_env_path.empty?
+    prod_env_path = File.expand_path(prod_env_path, app_root)
+    require_file(api_key_path, "App Store Connect API Key JSON")
+    require_file(prod_env_path, "iOS 운영 dart-define 파일")
+
+    setup_ci
+
+    # Runner와 ShareExtension의 배포 인증서/프로파일을 별도 private repo에서 읽는다.
+    # 저장소 주소는 MATCH_GIT_URL 로만 준다(하드코딩 없음). HTTPS 주소면 아래에서 토큰을,
+    # SSH 주소면 로컬 키를 쓴다. MATCH_PASSWORD 가 저장소를 복호화한다.
+    # ⚠️ 이 서명 저장소는 아직 새로 만들지 않았다 — Apple Developer 계정 확보 후에 만든다.
+    match_options = {
+      type: "appstore",
+      readonly: true,
+      git_url: match_git_url,
+      app_identifier: IOS_BUNDLE_IDENTIFIERS,
+      api_key_path: api_key_path,
+    }
+    if match_git_url.start_with?("https://")
+      match_username = ENV.fetch("MATCH_GIT_USERNAME", "")
+      match_password = ENV.fetch("MATCH_GIT_PASSWORD", "")
+      UI.user_error!("GitLab HTTPS credential가 없습니다") if match_username.empty? || match_password.empty?
+      match_options[:git_basic_authorization] = Base64.strict_encode64("#{match_username}:#{match_password}")
+    end
+    sync_code_signing(**match_options)
+
+    xcode_project_path = File.join(app_root, "ios/Runner.xcodeproj/project.pbxproj")
+    original_xcode_project = File.binread(xcode_project_path)
+
+    begin
+    # Xcode 프로젝트는 개발 중 Automatic Signing을 유지하고, CI checkout에서만
+    # match가 내려받은 프로파일을 사용하도록 Release/Profile 설정을 임시 변경한다.
+    # 프로파일 이름은 Apple에서 이미 같은 이름을 사용 중이면 suffix가 붙을 수 있으므로
+    # match가 반환한 mapping을 기본값으로 사용한다.
+    profile_mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING] || {}
+    runner_profile = ENV["IOS_PROFILE_APP"].to_s
+    runner_profile = profile_mapping[IOS_BUNDLE_IDENTIFIER] if runner_profile.empty?
+    share_extension_profile = ENV["IOS_PROFILE_EXTENSION"].to_s
+    share_extension_profile = profile_mapping[IOS_SHARE_EXTENSION_BUNDLE_IDENTIFIER] if share_extension_profile.empty?
+    UI.user_error!("Runner provisioning profile을 match에서 찾지 못했습니다") if runner_profile.to_s.empty?
+    UI.user_error!("ShareExtension provisioning profile을 match에서 찾지 못했습니다") if share_extension_profile.to_s.empty?
+
+    update_code_signing_settings(
+      path: File.join(app_root, "ios/Runner.xcodeproj"),
+      use_automatic_signing: false,
+      team_id: IOS_TEAM_ID,
+      targets: ["Runner"],
+      build_configurations: ["Release", "Profile"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: runner_profile,
+      sdk: "iphoneos*",
+    )
+    update_code_signing_settings(
+      path: File.join(app_root, "ios/Runner.xcodeproj"),
+      use_automatic_signing: false,
+      team_id: IOS_TEAM_ID,
+      targets: ["ShareExtension"],
+      build_configurations: ["Release", "Profile"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: share_extension_profile,
+      sdk: "iphoneos*",
+    )
+
+    # App Store Connect에 이미 올라간 build number의 다음 번호를 쓴다.
+    # ⚠️ iOS 릴리스는 Mac에서 사람이 돌린다(docs/ios-release.md) — CI가 없으므로 동시 실행을
+    # 막아주는 장치도 없다. **두 사람이 같은 시각에 돌리면 build number가 충돌한다.**
+    latest_build_number = app_store_build_number(
+      app_identifier: IOS_BUNDLE_IDENTIFIER,
+      api_key_path: api_key_path,
+      live: false,
+      initial_build_number: "0",
+    ).to_i
+    # BUILD_NUMBER 로 하한을 덮을 수 있다. 옛 Jenkins 가 자동으로 주던 값이라 CI 가 없어진
+    # 지금은 아무도 안 넣는다 — 사람이 손으로 번호를 밀어야 할 때만 쓴다.
+    floor_build_number = ENV.fetch("BUILD_NUMBER", "1").to_i
+    build_number = [latest_build_number + 1, floor_build_number].max
+    UI.message("iOS build number: #{build_number}")
+
+    sh(
+      "cd #{Shellwords.escape(app_root)} && flutter pub get && " \
+      "cd ios && pod install --deployment && cd .. && " \
+      "flutter build ios --release --no-codesign " \
+      "--build-number=#{Shellwords.escape(build_number.to_s)} " \
+      "--dart-define-from-file=#{Shellwords.escape(prod_env_path)}",
+    )
+
+    build_app(
+      workspace: File.join(app_root, "ios/Runner.xcworkspace"),
+      scheme: "Runner",
+      configuration: "Release",
+      clean: true,
+      export_method: "app-store",
+      export_options: {
+        method: "app-store",
+        signingStyle: "manual",
+        provisioningProfiles: {
+          IOS_BUNDLE_IDENTIFIER => runner_profile,
+          IOS_SHARE_EXTENSION_BUNDLE_IDENTIFIER => share_extension_profile,
+        },
+      },
+      output_directory: File.join(app_root, "build/ios/ipa"),
+      output_name: "Runner.ipa",
+      include_symbols: true,
+      include_bitcode: false,
+    )
+
+    ipa_path = Actions.lane_context[SharedValues::IPA_OUTPUT_PATH]
+    ipa_path ||= File.join(app_root, "build/ios/ipa/Runner.ipa")
+    require_file(ipa_path, "생성된 IPA")
+
+    # 업로드만 수행한다. Apple의 processing 완료/테스터 배포는 App Store Connect에서 이어진다.
+    upload_to_testflight(
+      ipa: ipa_path,
+      api_key_path: api_key_path,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+    )
+    ensure
+      # update_code_signing_settings가 바꾼 tracked Xcode 설정을 CI checkout 원본으로 복원한다.
+      File.binwrite(xcode_project_path, original_xcode_project)
+    end
+  end
+end

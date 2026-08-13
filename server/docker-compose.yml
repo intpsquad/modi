@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    # docker exec / .vscode "db: psql" 태스크에서 참조하므로 이름을 고정한다.
+    container_name: modi-postgres
+    environment:
+      POSTGRES_DB: modi
+      POSTGRES_USER: modi
+      POSTGRES_PASSWORD: modi
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U modi -d modi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # 초대코드 전용(TTL 1일) — 영속화 불필요, 볼륨 없음.
+    container_name: modi-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    # 프로필 사진 등 이미지 업로드용 S3 호환 오브젝트 스토리지. 루트 계정은 postgres와
+    # 동일하게 로컬 전용 고정값 — 민감정보 아님, README "로컬 전용 파일" 절 대상 아님.
+    container_name: modi-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  minio-data:

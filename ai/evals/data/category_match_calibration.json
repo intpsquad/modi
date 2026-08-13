@@ -1,0 +1,155 @@
+{
+  "_comment": "카테고리 매칭 임계값의 근거. 손으로 고치지 말 것 — uv run python -m evals.calibrate_category_match --freeze 로 다시 만든다. ⚠️ 기존 카테고리 1개 기준 — map_categories 는 N개에 대해 최댓값을 취한다.",
+  "measured_at": "2026-08-01",
+  "embedding_model": "text-embedding-3-small",
+  "threshold": 0.5,
+  "should_fold": [
+    {
+      "existing": "운동",
+      "topic": "헬스",
+      "score": 0.2022
+    },
+    {
+      "existing": "공부",
+      "topic": "SQLD 학습",
+      "score": 0.2059
+    },
+    {
+      "existing": "여행",
+      "topic": "장소 방문",
+      "score": 0.2844
+    },
+    {
+      "existing": "공부",
+      "topic": "시험 준비",
+      "score": 0.2903
+    },
+    {
+      "existing": "운동",
+      "topic": "러닝",
+      "score": 0.3038
+    },
+    {
+      "existing": "공부",
+      "topic": "정보처리기사 공부",
+      "score": 0.3177
+    },
+    {
+      "existing": "공부",
+      "topic": "자격증 공부",
+      "score": 0.3283
+    },
+    {
+      "existing": "여행",
+      "topic": "부산 여행",
+      "score": 0.5555
+    },
+    {
+      "existing": "여행",
+      "topic": "여행/식도락",
+      "score": 0.6549
+    },
+    {
+      "existing": "운동",
+      "topic": "운동 루틴",
+      "score": 0.6563
+    },
+    {
+      "existing": "여행",
+      "topic": "여행 코스",
+      "score": 0.6803
+    },
+    {
+      "existing": "여행",
+      "topic": "여행 일정",
+      "score": 0.7134
+    },
+    {
+      "existing": "공부",
+      "topic": "공부 계획",
+      "score": 0.7612
+    }
+  ],
+  "should_keep": [
+    {
+      "existing": "여행",
+      "topic": "패션",
+      "score": 0.3414
+    },
+    {
+      "existing": "여행",
+      "topic": "운동",
+      "score": 0.3288
+    },
+    {
+      "existing": "공부",
+      "topic": "여행",
+      "score": 0.3077
+    },
+    {
+      "existing": "운동",
+      "topic": "자격증 공부",
+      "score": 0.2901
+    },
+    {
+      "existing": "운동",
+      "topic": "패션",
+      "score": 0.2861
+    },
+    {
+      "existing": "공부",
+      "topic": "패션",
+      "score": 0.2726
+    },
+    {
+      "existing": "공부",
+      "topic": "장소 방문",
+      "score": 0.2466
+    },
+    {
+      "existing": "운동",
+      "topic": "여행/식도락",
+      "score": 0.2301
+    },
+    {
+      "existing": "공부",
+      "topic": "여행/식도락",
+      "score": 0.2226
+    },
+    {
+      "existing": "여행",
+      "topic": "자격증 공부",
+      "score": 0.1987
+    },
+    {
+      "existing": "여행",
+      "topic": "플레이리스트",
+      "score": 0.1967
+    },
+    {
+      "existing": "공부",
+      "topic": "맛집 방문",
+      "score": 0.1855
+    },
+    {
+      "existing": "운동",
+      "topic": "플레이리스트",
+      "score": 0.1611
+    },
+    {
+      "existing": "여행",
+      "topic": "정보처리기사 공부",
+      "score": 0.152
+    },
+    {
+      "existing": "공부",
+      "topic": "여행 일정",
+      "score": 0.1448
+    },
+    {
+      "existing": "공부",
+      "topic": "플레이리스트",
+      "score": 0.098
+    }
+  ]
+}

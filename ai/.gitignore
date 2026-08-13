@@ -1,0 +1,32 @@
+# Python 관련 무시 규칙은 ai/ 안에서만 적용한다 — 루트 .gitignore를 오염시키지 않기 위함.
+# 시크릿(.env)은 루트 .gitignore의 `.env` 규칙이 모든 하위 디렉터리에 이미 적용되므로 여기 적지 않는다.
+
+__pycache__/
+*.py[cod]
+
+# uv가 만드는 가상환경
+.venv/
+venv/
+
+# 도구 캐시
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 커버리지
+.coverage
+htmlcov/
+
+# 평가 러너 출력. 커밋하지 않는다 — 실행마다 덮어써지고 어느 실행인지 파일만 보면 알 수 없다.
+# 남길 값이 있는 출력은 evals/data/snapshots/ 에 날짜·모델과 함께 동결하고,
+# 수치는 docs/EXPERIMENTS.md 에 조건과 함께 적는다(단일 진실).
+evals/data/suggest_eval_export.json
+evals/data/room_eval_export.json
+
+# LangGraph Studio 로컬 런타임(스레드·체크포인트 캐시). `langgraph dev` 가 만든다.
+.langgraph_api/
+
+# 발표·공유용 산출물(HTML·머메이드 등). 폴더째 커밋하지 않는다 — 저장소의 진실은
+# docs/EXPERIMENTS.md · docs/DECISIONS.md 이고, 여기 있는 것은 그걸 청중용으로
+# 다시 쓴 사본이라 원본과 어긋나면 혼란만 만든다.
+documents/

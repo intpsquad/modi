@@ -1,0 +1,329 @@
+{
+  "_comment": "동결 스냅샷 — 그때 모델이 실제로 낸 후보를 고정한 것이다. 절대 손으로 고치지 말 것. docs/EXPERIMENTS.md 의 수치는 이 파일에서 나온다. 실행 이름: gpt-5.4-nano_summary_공부_rule4v3_hintv2",
+  "measured_at": "2026-08-01",
+  "run": "gpt-5.4-nano_summary_공부_rule4v3_hintv2",
+  "model": "gpt-5.4-nano",
+  "rule4": true,
+  "schema_category_hint": true,
+  "rule4_version": "v3",
+  "schema_hint_version": "v2",
+  "input": "summary",
+  "categories": [
+    "공부"
+  ],
+  "temperature": 0.0,
+  "summary": {
+    "cases": 15,
+    "candidates": 29,
+    "dropped_by_filter": 0,
+    "new_categories": 0,
+    "title_length": {
+      "min": 16,
+      "median": 25,
+      "max": 37,
+      "over_20": 24
+    },
+    "prompt_tokens": 14302,
+    "completion_tokens": 1096,
+    "seconds": 25.4,
+    "errors": 0
+  },
+  "cases": [
+    {
+      "stem": "001_gangneung_food",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "KTX로 청량리→강릉 맛집 투어 루트 따라가기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉에서 식사 3번·카페 3곳·디저트 6곳 일정대로 돌기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 979,
+      "seconds": 2.07,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "002_sqld_review",
+      "raw_candidate_count": 5,
+      "candidates": [
+        {
+          "title": "SQLD 합격 전략대로 2주 출퇴근 강의 청취하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "파랭이책 기초 개념 정리부터 시작하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "노랭이책 문제·해설 3회독 진행하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "퇴근 후 매일 2~3시간 문제풀이로 SQLD 준비하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "전날 최종 복습으로 출제 방식 익숙해지기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 994,
+      "seconds": 2.28,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "003_busan_hanroro_combine",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "부산 한로로 블로그 코스대로 장소 방문하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "모치플레지르-밤산책방-히떼 로스터리 순서로 코스 돌기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "별미청 돼지국밥 방문해 코스 마무리하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 954,
+      "seconds": 2.44,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "004_busan_1n2d",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "부산 1박2일 코스 동선 반나절 단위로 확인하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 959,
+      "seconds": 1.28,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "005_busan_hanroro_tripgoing",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "한로로 블로그 부산여행 코스 7곳 저장하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "부산여행 동선으로 카페·맛집·서점·술집 7곳 정리하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 964,
+      "seconds": 1.69,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "006_busan_knewnew",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "광안역에서 도보 3분 공원 6ongone 위치 확인하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 954,
+      "seconds": 1.74,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "007_anyang_2cha",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "안양 2차 약속 장소 후보 추천받기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "안양 2차 장소 분위기별로 3곳 추려보기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 938,
+      "seconds": 1.67,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "008_fashion_shoulder",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "어깨가 넓어 보이지 않게 옷 어깨핏 점검하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 934,
+      "seconds": 1.83,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "009_fashion_promtome",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "‘옷’으로 관련 정보 요청하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 917,
+      "seconds": 1.21,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "010_jeongcheogi_lion",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "2024년 1회 정처기 실기 대비 요약노트 찾기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 965,
+      "seconds": 1.68,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "011_jeongcheogi_igijeok",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "정처기 2회차 합격 후기 찾아 공부법 정리하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "정처기 과목별 시험 팁 체크리스트 만들기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 942,
+      "seconds": 1.38,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "012_jeongcheogi_potato",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "정보처리기사 실기 이론 압축 PDF 기출 키워드 7장 반복 학습하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 966,
+      "seconds": 1.44,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "013_jeongcheogi_sogood",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "기출 문제 반복 풀이하고 오답노트 작성하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "퀴즐렛과 계산기로 기출 숙지 점검하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 958,
+      "seconds": 1.53,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "014_playlist_empty",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "윤마치 노래모음 MRCH 플레이리스트 확인하기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 918,
+      "seconds": 1.35,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "015_seoul_extreme",
+      "raw_candidate_count": 4,
+      "candidates": [
+        {
+          "title": "을지로3가역 출발 3일 코스 그대로 정주행하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "을지로·성수 맛집 9곳 카페 7곳 디저트 6곳 확인하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "방문 후 3일 코스를 저장해 다음 서울 여행에 활용하기",
+          "category": "공부",
+          "source_item_id": 1
+        },
+        {
+          "title": "3일 코스 함께 갈 사람을 태그해 다음 여행에 쓰기",
+          "category": "공부",
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 960,
+      "seconds": 1.85,
+      "dropped_by_filter": 0,
+      "error": null
+    }
+  ],
+  "_note": "규칙4 문구만 바꿔서는 안 된다는 음성 결과(#21). 이 실행 뒤 운영 프롬프트가 '주제 자유 기술 + 코드 매칭'으로 바뀌어 재현 불가 — 그래서 얼려 둔다."
+}

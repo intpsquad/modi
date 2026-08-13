@@ -1,0 +1,296 @@
+{
+  "_comment": "기각 근거 (docs/EXPERIMENTS.md #27). 손으로 고치지 말 것. 변이 쌍의 코사인이 전부 임계값을 넘으므로 글자 정규화 층이 불필요하고, 회차 안에서는 접을 쌍이 사실상 없으므로 후보끼리 군집화도 이득이 없다.",
+  "measured_at": "2026-08-03",
+  "threshold": 0.5,
+  "source_snapshot": "2026-08-03_room_baseline_clean.json",
+  "variant_pairs": [
+    {
+      "a": "서베이 전략",
+      "b": "서베이전략",
+      "cosine": 0.77
+    },
+    {
+      "a": "시험 준비",
+      "b": "시험준비",
+      "cosine": 0.777
+    },
+    {
+      "a": "오픽 전략",
+      "b": "오픽전략",
+      "cosine": 0.91
+    },
+    {
+      "a": "말하기 훈련",
+      "b": "말하기훈련",
+      "cosine": 0.962
+    },
+    {
+      "a": "오픽 준비",
+      "b": "오픽준비",
+      "cosine": 0.75
+    },
+    {
+      "a": "말하기",
+      "b": "말하기전략",
+      "cosine": 0.677
+    }
+  ],
+  "within_round": {
+    "busan_travel": [
+      {
+        "repeat": 1,
+        "round_index": 1,
+        "category_count": 3,
+        "candidate_count": 7,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 1,
+        "round_index": 2,
+        "category_count": 4,
+        "candidate_count": 8,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 1,
+        "round_index": 3,
+        "category_count": 2,
+        "candidate_count": 4,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 2,
+        "round_index": 1,
+        "category_count": 3,
+        "candidate_count": 7,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 2,
+        "round_index": 2,
+        "category_count": 1,
+        "candidate_count": 3,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 2,
+        "round_index": 3,
+        "category_count": 1,
+        "candidate_count": 1,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 3,
+        "round_index": 1,
+        "category_count": 6,
+        "candidate_count": 7,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 3,
+        "round_index": 2,
+        "category_count": 3,
+        "candidate_count": 4,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 3,
+        "round_index": 3,
+        "category_count": 3,
+        "candidate_count": 4,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 4,
+        "round_index": 1,
+        "category_count": 5,
+        "candidate_count": 7,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 4,
+        "round_index": 2,
+        "category_count": 3,
+        "candidate_count": 4,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 4,
+        "round_index": 3,
+        "category_count": 3,
+        "candidate_count": 5,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 5,
+        "round_index": 1,
+        "category_count": 3,
+        "candidate_count": 7,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 5,
+        "round_index": 2,
+        "category_count": 5,
+        "candidate_count": 5,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 5,
+        "round_index": 3,
+        "category_count": 2,
+        "candidate_count": 3,
+        "foldable_pairs": []
+      }
+    ],
+    "opic_study": [
+      {
+        "repeat": 1,
+        "round_index": 1,
+        "category_count": 5,
+        "candidate_count": 6,
+        "foldable_pairs": [
+          [
+            "시험전략",
+            "시험준비",
+            0.546
+          ]
+        ]
+      },
+      {
+        "repeat": 1,
+        "round_index": 2,
+        "category_count": 4,
+        "candidate_count": 4,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 1,
+        "round_index": 3,
+        "category_count": 2,
+        "candidate_count": 4,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 2,
+        "round_index": 1,
+        "category_count": 5,
+        "candidate_count": 5,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 2,
+        "round_index": 2,
+        "category_count": 4,
+        "candidate_count": 5,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 2,
+        "round_index": 3,
+        "category_count": 5,
+        "candidate_count": 7,
+        "foldable_pairs": [
+          [
+            "시험 준비",
+            "오픽 준비",
+            0.577
+          ]
+        ]
+      },
+      {
+        "repeat": 3,
+        "round_index": 1,
+        "category_count": 5,
+        "candidate_count": 6,
+        "foldable_pairs": [
+          [
+            "말하기훈련",
+            "영어말하기",
+            0.5
+          ]
+        ]
+      },
+      {
+        "repeat": 3,
+        "round_index": 2,
+        "category_count": 4,
+        "candidate_count": 5,
+        "foldable_pairs": [
+          [
+            "시험일정",
+            "시험준비",
+            0.587
+          ]
+        ]
+      },
+      {
+        "repeat": 3,
+        "round_index": 3,
+        "category_count": 2,
+        "candidate_count": 2,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 4,
+        "round_index": 1,
+        "category_count": 6,
+        "candidate_count": 6,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 4,
+        "round_index": 2,
+        "category_count": 4,
+        "candidate_count": 5,
+        "foldable_pairs": [
+          [
+            "오픽전략",
+            "오픽준비",
+            0.507
+          ]
+        ]
+      },
+      {
+        "repeat": 4,
+        "round_index": 3,
+        "category_count": 4,
+        "candidate_count": 4,
+        "foldable_pairs": [
+          [
+            "오픽 말하기",
+            "오픽 문장확장",
+            0.68
+          ]
+        ]
+      },
+      {
+        "repeat": 5,
+        "round_index": 1,
+        "category_count": 7,
+        "candidate_count": 8,
+        "foldable_pairs": [
+          [
+            "시험 운영",
+            "시험 준비",
+            0.616
+          ]
+        ]
+      },
+      {
+        "repeat": 5,
+        "round_index": 2,
+        "category_count": 2,
+        "candidate_count": 3,
+        "foldable_pairs": []
+      },
+      {
+        "repeat": 5,
+        "round_index": 3,
+        "category_count": 3,
+        "candidate_count": 3,
+        "foldable_pairs": []
+      }
+    ]
+  }
+}

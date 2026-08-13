@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "LangGraph Studio config (dev only).",
+    "Run it with: PYTHONUTF8=1 uv run --group studio langgraph dev",
+    "PYTHONUTF8=1 is REQUIRED on a cp949 Windows box. Without it three separate reads die",
+    "with UnicodeDecodeError: this file, ai/.env, and langgraph_api's own bundled openapi.json.",
+    "Keep this file ASCII anyway so the failure mode is one thing, not three.",
+    "See src/modi_ai/studio.py for why graphs points at a separate graph object."
+  ],
+  "dependencies": ["."],
+  "graphs": {
+    "todo-suggestions": "./src/modi_ai/studio.py:graph"
+  },
+  "env": ".env"
+}

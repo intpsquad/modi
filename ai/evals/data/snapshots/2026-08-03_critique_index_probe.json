@@ -1,0 +1,3904 @@
+{
+  "_comment": "검수 판정 누락 재현 프로브. 운영 `_critique` 와 같은 프롬프트·스키마로 검수만 떼어 부른 결과다. 후보 묶음은 `2026-08-03_room_ab_critique0.json` 에서 가져온 실측값이고 새 생성 호출은 없다.",
+  "measured_at": "2026-08-03",
+  "run": "critique_index_probe",
+  "model": "gpt-5.4-nano",
+  "repeats": 5,
+  "conditions": {
+    "zero_based": 0,
+    "one_based": 1
+  },
+  "batch_sizes": {
+    "busan_8a": 8,
+    "busan_8b": 8,
+    "busan_8c": 8,
+    "opic_8": 8,
+    "busan_7": 7,
+    "near_dup": 8
+  },
+  "summary": {
+    "zero_based": {
+      "rounds": 30,
+      "outcomes": {
+        "ok": 20,
+        "count_mismatch": 10
+      },
+      "missing_positions": {
+        "last": 10
+      },
+      "rejected_mean": 4.13,
+      "seconds_mean": 2.39
+    },
+    "one_based": {
+      "rounds": 30,
+      "outcomes": {
+        "ok": 30
+      },
+      "missing_positions": {},
+      "rejected_mean": 3.9,
+      "seconds_mean": 2.66
+    }
+  },
+  "rounds": [
+    {
+      "condition": "zero_based",
+      "batch": "busan_8a",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 3.12,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "이용시간 확인하기는 계획·확인(일정/운영 정보 검토) 행위에 해당합니다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "골목 탐방 ‘일정 넣기’는 동선/일정 구성에 해당합니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "관람 계획하기는 일정에 묶는 계획 수립 행위에 해당합니다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "산책 동선 확보하기는 동선 짜기 행위에 해당합니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "확인해보기는 웨이팅/가능 여부 확인을 위한 계획·확인 행위에 해당합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "축제 일정 확인해보기는 일정/가능 여부를 검토하는 계획·확인 행위에 해당합니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "카페 여유 있게 ‘배치하기’는 일정/동선 구성에 해당합니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8a",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 2.91,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "이용시간 확인이 특정 장소를 전제로 하긴 하나 ‘확인하기’는 계획·확인 행위로 분류되어 반려입니다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "골목 탐방을 위한 ‘일정 넣기’가 동선/일정 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘관람 계획하기’는 일정 수립(계획) 행위라 반려입니다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘동선 확보하기’는 동선 짜기/확인 성격의 계획 행위로 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘확인해보기’가 웨이팅 있는 특정 음식점 여부를 계획·확인하는 행위로 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘일정 확인해보기’는 계획·확인 행위로 반려입니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘여유 있게 배치하기’는 일정/동선 구성을 의미해 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8a",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 6,
+      "outcome": "ok",
+      "seconds": 3.17,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 구체적인 대상/조건이 정해지지 않고 일정으로만 넣어 확인이 필요해 반려입니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "관람 계획하기는 일정·코스로 묶는 행위라 계획 단계에 해당해 반려입니다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "동백섬 산책 동선 확보하기는 동선 짜기/계획에 해당해 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "웨이팅 있는 해운대명품호떡을 ‘확인해보기’는 경우의 수를 전제해 선택/확인 책임이 사용자에게 넘어가 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "수국축제·센텀맥주축제의 일정 확인은 계획·확인 단계에 해당해 반려입니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "야경·바다뷰 카페를 여유 있게 배치하기는 일정/동선 배치로 계획 단계라 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8a",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.26,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "감천문화마을 골목을 어떤 범위로/어떤 일정으로 넣을지 대상이 구체적으로 특정되지 않았습니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "관람 계획을 세우는 것으로 동선/일정 구성(계획·확인)에 해당합니다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "동백섬 산책을 위한 동선 확보는 일정/동선 짜기에 해당해 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "광안리 야경·바다뷰 카페를 어떻게 배치할지 동선/일정 구성이 포함되어 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8a",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 6,
+      "outcome": "ok",
+      "seconds": 2.55,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 구체적인 범위가 정해지지 않아 계획을 넣는 대상이 특정되지 않았다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "관람 계획은 일정에 넣는 행위로, 장소(관람 방식/시간)가 구체적으로 특정되지 않았다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "동선 확보는 코스/동선 짜기(계획·확인)로 반려 규칙에 해당한다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "웨이팅 있는 해운대명품호떡을 ‘확인해보기’는 특정되지 않은 대상 선택/확정으로 떠넘기는 성격이 있어 반려다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "특정 일정들을 확인하는 것으로 계획·확인(가능 여부/일정 확인) 행위에 해당해 반려다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘여유 있게 배치하기’는 일정/동선 계획에 해당해 반려 규칙에 해당한다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8b",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 2.67,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "‘부산 서면 돼지국밥 맛집 후보’를 확인하는 것은 대상이 특정되지 않아 어디/무엇을 해야 하는지가 목록 수준으로만 남아 있습니다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘영도 미피카페·모모스커피 중 방문 후보로 정하기’처럼 후보를 고르라는 요구가 포함돼 있습니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘남포 톤쇼우 방문 일정에 넣기’는 일정 편성(계획/확인)에 해당합니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘국제밀면 방문 전 캐치테이블 확인하기’는 예약 가능 여부 확인 후 예약을 전제로 한 계획 행위에 해당합니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘부네치아 등 가볼만한 곳 목록에 추가하기’는 추가할 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘어묵 체험 일정 잡기’는 일정에 넣는 계획 행위에 해당합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘실내 액티비티 체험 일정 넣기’는 일정 편성(계획) 행위에 해당합니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8b",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 2.96,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "대상이 ‘돼지국밥 맛집 후보’로만 되어 있어 어디를/무엇을 할지 특정되지 않았습니다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "미피카페·모모스커피 중 후보로 정하기는 선택/추리로 사용자를 떠넘깁니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘방문 일정에 넣기’는 계획·확인(일정 구성) 행위입니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘확인하기’로 캐치테이블 가능 여부를 확인해 예약/방문 계획을 하려는 것으로 일정·확인에 해당합니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘등 가볼만한 곳’처럼 목록에 추가하는 지시로 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "어묵 체험 ‘일정 잡기’는 계획·확인 행위입니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "실내 액티비티 ‘체험 일정 넣기’는 계획·확인 행위입니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8b",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 3.41,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "‘맛집 후보’처럼 대상이 후보 목록으로만 제시되어 어디를 특정하지 못했다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘방문 후보로 정하기’처럼 후보를 고르는 행동을 사용자에게 떠넘겼다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘일정에 넣기’는 계획·확인(일정 구성) 행위에 해당한다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘확인하기(캐치테이블 가능 여부 확인)’로 예약/방문 가능 여부를 점검해 계획 단계다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘등 가볼만한 곳 목록’처럼 대상이 특정되지 않은 상태로 목록 추가 지시다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘일정 잡기’는 계획 수립 행위에 해당한다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘체험 일정 넣기’는 일정 구성(계획·확인) 행위다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8b",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 3.25,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "‘돼지국밥 맛집 후보’처럼 구체적인 대상이 확정되지 않아 어디/무엇을 확인할지 불명확합니다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘방문 후보로 정하기’처럼 여러 후보 중 고르는 일을 사용자에게 떠넘깁니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘방문 일정에 넣기’는 일정·계획 수립 행위에 해당합니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부를 확인해 예약하려는 계획 확인/진행에 해당합니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘가볼만한 곳 목록에 추가’는 목록 작성/추가 같은 계획 행위로 실행 가능한 단일 일이 아닙니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘일정 잡기’는 동선/일정 계획 수립에 해당합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘일정 넣기’는 활동을 일정에 편성하는 계획 행위에 해당합니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8b",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 3.43,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "대상이 ‘돼지국밥 맛집’으로 특정되지 않아 어디를 고를지(목록/조건)만 제시되어 실행할 수 없다."
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "미피카페·모모스커피 중 ‘방문 후보로 정하기’는 후보 선택을 사용자에게 떠넘긴다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘방문 일정에 넣기’는 일정 편성/계획 행위로 동선·일정 확인에 해당한다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘방문 전 캐치테이블 확인하기’는 가능 여부 확인을 통해 예약/방문 계획을 세우는 행위이기 때문이다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘가볼만한 곳 목록에 추가하기’는 대상 선택이 불명확해 바로 실행 가능한 일로 보기 어렵다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘어묵 체험 일정 잡기’는 일정 편성(계획) 행위에 해당한다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘실내 액티비티 체험 일정 넣기’는 일정에 추가하는 계획 행위이기 때문이다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8c",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "count_mismatch",
+      "seconds": 2.0,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "후보군(맛집) 선택을 전제로 일정 짜기를 포함해 계획/확인성 행위를 하면서 대상이 특정되지 않아 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8c",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "count_mismatch",
+      "seconds": 1.62,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘캐치테이블 가능 여부 표시된 맛집’처럼 선택·고르기를 포함해 사용자가 특정해야 하는 일이어서 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8c",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 2,
+      "outcome": "count_mismatch",
+      "seconds": 2.05,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘웨이팅 확인 후 방문’처럼 가능 여부를 확인하는 계획 행위에 해당합니다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘가능 여부 표시된 맛집’으로 고르고 ‘일정 짜기’까지 포함해 계획·확인 및 선택을 사용자에게 떠넘기는 형태입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8c",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "count_mismatch",
+      "seconds": 1.85,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "캐치테이블로 ‘가능 여부’ 확인을 포함해 일정까지 짜는 계획 행위라 반려한다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_8c",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 2,
+      "outcome": "count_mismatch",
+      "seconds": 2.25,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "민락동 첨벙 숙성회처럼 대상을 특정했지만 '웨이팅 확인 후 방문'이 확인·계획 단계라 실행 일로 보기 어렵다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부로 맛집을 골라 일정까지 짜는 것은 동선·계획에 해당해 반려이다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "opic_8",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "count_mismatch",
+      "seconds": 2.52,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "서베이 항목을 ‘개수에 맞춰’ 미리 정하라는 것은 선택·구성이 필요해 사용자에게 고르는 일을 떠넘긴다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "사전 점검용 PDF를 ‘훑기’는 대상(어떤 PDF인지)이 특정되지 않아 실행 대상이 불명확하다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "시험 40분 동안 12~15개 콤보를 ‘순서대로’ 정해 말하기는 조합·선정이 필요한 계획/확인 행위라 반려한다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "opic_8",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 2,
+      "outcome": "count_mismatch",
+      "seconds": 1.85,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "서베이 항목을 ‘개수에 맞춰’ 미리 정하는 대상/범위가 특정되지 않았다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘12~15개 콤보’의 구체 목록/대상이 제공되지 않아 무엇을 말할지 특정되지 않았다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "opic_8",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 2,
+      "outcome": "count_mismatch",
+      "seconds": 2.23,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "서베이 항목을 미리 무엇/어떤 개수로 정할지 대상과 조건이 정해지지 않았습니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "시험 당일의 콤보 12~15개를 무엇인지(후보/대상) 선택·정해야 하므로 사용자의 선정이 필요합니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "opic_8",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 2,
+      "outcome": "count_mismatch",
+      "seconds": 2.0,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "서베이 항목을 구체적으로 무엇으로 정할지 대상이 특정되지 않고 ‘미리 정하기’가 범위를 정하지 않아 실행이 바로 되지 않습니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘12~15개 콤보’와 ‘순서대로’처럼 선택/구성이 필요해 사용자에게 고르는 일을 떠넘겼습니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "opic_8",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [
+        7
+      ],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "count_mismatch",
+      "seconds": 2.23,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "서베이 항목을 개수에 맞춰 ‘무엇을’ 미리 정하라는 대상(항목/조건)이 특정되지 않았다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "OPIC 평가기준·문제유형 가이드 PDF를 ‘훑기’의 대상 PDF가 어떤 것인지 특정되지 않았다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "시험 당일 12~15개 콤보를 ‘순서대로 말하기’는 구체적인 콤보 선택(후보/목록)이 사용자에게 떠넘겨졌다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_7",
+      "repeat": 1,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.06,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "이용 일정 잡기는 동선/계획 수립에 해당해서 반려합니다."
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "골목 탐방의 일정에 넣기는 일정 계획 행위로 반려합니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "코스/경로를 짜기는 동선 계획 행위로 반려합니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "웨이팅 감안해 방문하기는 방문 가능/조건 확인 및 계획에 해당해 반려합니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_7",
+      "repeat": 2,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.19,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "대상이 정해져 있어도 ‘이용 일정 잡기’처럼 일정·계획을 짜는 행위라 반려입니다."
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘일정 넣기’로 동선/일정을 구성하는 계획 행위라 반려입니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘코스 경로 짜기’처럼 동선/코스를 계획하는 행위라 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_7",
+      "repeat": 3,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 1.65,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "이용 일정 잡기는 일정·동선 계획 행위로 반려 대상입니다."
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "골목 탐방 일정에 넣기는 일정 구성(계획) 행위라 반려 대상입니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "코스 경로 짜기는 동선 계획 행위로 반려 대상입니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_7",
+      "repeat": 4,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 5,
+      "outcome": "ok",
+      "seconds": 2.36,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "이용 일정 잡기는 동선·일정 계획으로 반려 조건에 해당한다."
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "골목 탐방 일정에 넣기는 일정 편성(계획·확인) 행위라 반려 조건에 해당한다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "코스/경로를 짜기는 동선 계획이므로 반려 조건에 해당한다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "야경 구경을 위한 방문 코스/일정 계획에 해당할 수 있어 반려 조건에 해당한다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "웨이팅 감안해 방문하기는 방문 가능·시간 조건을 확인/계획하는 행위로 반려 조건에 해당한다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "busan_7",
+      "repeat": 5,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 5,
+      "outcome": "ok",
+      "seconds": 1.88,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": false,
+          "reason": "이용 일정 잡기는 동선·일정 계획 행위라서 반려입니다."
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "골목 탐방 일정 넣기는 일정 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "코스 경로 짜기는 동선 계획 행위라서 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "야경 구경을 위한 일정·동선 묶기 성격의 코스 계획으로 보여 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "웨이팅 감안해 방문하기는 가능 여부·조건 확인/계획에 해당해 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "near_dup",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.19,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 구체적인 대상/범위가 없어 실행 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "관람 계획이라 일정·코스 묶기 수준의 계획 행위라서 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동선 확보는 이동 계획(코스 짜기)에 해당해 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "축제 일정 확인은 계획·확인 행위로 동선/일정 정리 목적이라 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "near_dup",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 5,
+      "outcome": "ok",
+      "seconds": 2.41,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 구체적인 시간·순서 없이 일정을 넣으라는 계획 행위라 판단이 불명확합니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "씨라이프 부산아쿠아리움 관람 계획하기는 계획·확인 성격이라 바로 실행 가능한 일로 보기 어렵습니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동백섬 산책 동선 확보하기는 동선 짜기/계획에 해당해 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "웨이팅 있는 해운대명품호떡 확인해보기는 가능 여부 확인으로 계획·확인 행위에 해당합니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "수국축제·센텀맥주축제 일정 확인해보기는 일정 가능 여부를 확인하는 행위라 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "near_dup",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.26,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 일정화·계획(일정 넣기)이라 동선·일정 구성 행위에 해당한다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "관람 계획하기는 일정/계획 수립 행위라 실행 가능한 단일 행동이 아니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동선 확보하기는 경로를 짜는 계획 행위라 실행 가능한 단일 일로 보기 어렵다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "수국축제·센텀맥주축제 일정 확인해보기는 확인/계획 단계의 행위로 동선·일정 검토에 해당한다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "near_dup",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 1.85,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "동선/일정을 계획하듯이 특정한 방문 코스가 아니라 일정에 넣는 행위라 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "산책 동선을 확보하는 것은 일정/동선 짜기라 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "축제 일정 확인은 계획·확인 단계에 해당해 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "zero_based",
+      "batch": "near_dup",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.46,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 0,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 일정(시간/순서/구체 계획)이 비어 있어 대상이 특정되지 않았다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "아쿠아리움 관람 ‘계획하기’처럼 일정·구성을 확인/계획하는 행위라서 반려된다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동선 확보는 일정·경로 계획에 해당한다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "수국축제·센텀맥주축제의 일정 확인은 계획/확인에 해당한다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8a",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 1.99,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘감천문화마을 골목 탐방 일정 넣기’는 계획·일정 편성이어서 동선/일정 짜기에 해당한다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘관람 계획하기’는 계획·확인(코스/일정 구성)에 해당한다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘동선 확보하기’는 동선 짜기에 해당한다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "‘여유 있게 배치하기’는 일정/동선 배치(계획) 행위로 반려된다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8a",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 5,
+      "outcome": "ok",
+      "seconds": 2.42,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 구체적인 일정 대상·범위가 정해지지 않았다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "관람 계획을 세우는 행위가 일정·계획 단계라 그대로 실행하기 위한 단일 작업으로 보기 어렵다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동선 확보는 계획/확인 행위로 분류되어 반려다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "웨이팅 있는 해운대명품호떡을 ‘확인해보기’는 특정 조건(어느 곳/무엇을 선택)을 전제로 한 확인으로 반려 기준에 해당한다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "카페 배치를 포함해 일정·동선 구성(배치/여유 있게)이라 계획 단계로 반려다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8a",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.33,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "감천문화마을 골목을 어떻게/어디서 탐방할지 구체 대상과 범위가 특정되지 않아 계획 넣기는 확인·설계에 해당한다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "씨라이프 부산아쿠아리움 관람을 ‘계획’하는 것은 일정·코스 묶기 성격이라 반려한다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동백섬 산책의 ‘동선 확보’는 이동 동선 짜기/계획에 해당해 반려한다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "광안리 야경·바다뷰 카페를 ‘여유 있게 배치하기’는 일정/동선 계획에 해당해 반려한다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8a",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.69,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방을 어떤 일정/구체 동선으로 넣을지 대상과 범위가 불명확합니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "관람 계획을 세우는 행위로 일정·구성을 포함해 계획 단계에 해당합니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "산책 동선 확보는 동선/코스를 짜는 계획 단계라 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "광안리 야경·바다뷰 카페를 ‘배치’한다는 것은 일정/동선을 구성하는 계획 행위라 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8a",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 6,
+      "outcome": "ok",
+      "seconds": 3.99,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "감천문화마을 골목을 어떻게 탐방할지(구체 동선·범위)가 정해지지 않아 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "씨라이프 부산아쿠아리움을 ‘관람’하는 계획이어서 일정·코스를 짜는 행위(계획 확인)에 해당합니다."
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "동선을 확보하는 것은 동선 짜기/계획에 해당합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "웨이팅 있는 해운대명품호떡을 확인해보는 것은 ‘가능 여부 확인’ 및 예약/선택을 전제로 한 계획 행위로 볼 수 있습니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "수국축제·센텀맥주축제 일정 확인은 일정 계획을 위한 확인 행위에 해당합니다."
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "광안리 야경·바다뷰 카페를 ‘여유 있게 배치’하는 것은 일정/동선 계획에 해당합니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8b",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 3.07,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "어디의 어떤 돼지국밥 맛집을 확인할지 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "카페 2곳 중 방문할 곳을 고르는 일을 사용자에게 떠넘겼습니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "특정 일정에 넣는 행위가 계획(동선·일정 구성) 단계라 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부 확인 등 예약 가능 여부를 확인해 맛집 예약으로 이어지는 계획 행위입니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "가볼만한 곳을 목록에 추가하는 대상·범위가 불명확합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "어묵 체험 일정 잡기는 일정 구성(계획) 행위라 반려입니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "실내 액티비티 체험을 일정에 넣는 것은 계획 행위라 반려입니다."
+        },
+        {
+          "index": 8,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8b",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 3.03,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘부산 서면 돼지국밥 맛집 후보’로 범위가 특정되지 않고 목록/조건만 제시돼 바로 실행할 수 없다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘후보로 정하기’처럼 선택/선정 행위가 사용자에게 떠넘겨져 실행 단위가 아니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘방문 일정에 넣기’는 동선/일정 계획으로 행위가 계획·확인 단계에 해당한다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부 ‘확인하기’로 예약 가능 여부 확인 뒤 행동으로 이어지는 계획 단계다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘등 가볼만한 곳’처럼 대상이 특정되지 않아 추가/선정이 계획 단계로 보인다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘어묵 체험 일정 잡기’로 일정 편성(계획)에 해당한다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘체험 일정 넣기’처럼 일정 계획 행위에 해당해 바로 실행할 수 있는 일이 아니다."
+        },
+        {
+          "index": 8,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8b",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 2.75,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "서면 돼지국밥 ‘맛집 후보’가 여러 곳으로 특정되지 않아 어디를 정해 실행할지 불명확하다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "미피카페·모모스커피 중 ‘방문 후보로 정하기’처럼 선택/결정(후보 선정)을 사용자에게 떠넘긴다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘남포 톤쇼우 방문’처럼 특정 일정에 넣기는 계획 행위에 해당한다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부 확인해 예약을 시도하는 계획·확인 행위에 해당한다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "가볼만한 곳 ‘목록 추가’처럼 대상을 특정하지 않은 정리/편집 지시다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "어묵 체험 일정 ‘잡기’는 계획 수립 행위에 해당한다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "실내 액티비티 ‘체험 일정 넣기’는 일정 편성 등 계획 행위에 해당한다."
+        },
+        {
+          "index": 8,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8b",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 7,
+      "outcome": "ok",
+      "seconds": 2.92,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘돼지국밥 맛집 후보’처럼 어디를/무엇을 확정해 실행할지 대상이 특정되지 않았다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘후보로 정하기’로 선택을 사용자에게 떠넘긴다(후보 중 1곳을 고르는 행위)."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘일정에 넣기’는 계획·확인(구성) 행위에 해당한다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘캐치테이블 가능 여부 확인’ 후 예약/방문으로 이어지는 계획·확인 행위다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘가볼만한 곳 목록에 추가’처럼 대상이 구체적으로 특정되지 않아 실행할 일을 정할 수 없다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘어묵 체험 일정 잡기’는 계획·구성 행위에 해당한다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘일정 넣기’는 계획·확인(구성) 행위에 해당한다."
+        },
+        {
+          "index": 8,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8b",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 6,
+      "outcome": "ok",
+      "seconds": 2.85,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘부산 서면 돼지국밥 맛집’처럼 대상이 특정되지 않고 후보 범위만 제시돼 어디를 고를지 불명확합니다."
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "‘모모스커피·미피카페 방문 후보로 정하기’는 선택(후보 선정)을 사용자에게 떠넘깁니다."
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘남포 톤쇼우 방문 일정에 넣기’는 일정 구성(계획·확인)에 해당해 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘캐치테이블 확인하기’로 예약 가능 여부를 확인해 방문을 구성하는 행위라 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘등 가볼만한 곳 목록에 추가’는 목록 확정(범위 지정)으로 대상이 구체화되지 않아 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘실내 액티비티 체험 일정 넣기’는 일정에 배치해 계획하는 행위라 반려입니다."
+        },
+        {
+          "index": 8,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8c",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 2,
+      "outcome": "ok",
+      "seconds": 2.89,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "민락동 첨벙 숙성회 ‘웨이팅 확인 후 방문’은 방문 대상(언제/어느 가게·시간)이 목록이나 조건으로 특정되지 않았습니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "캐치테이블 ‘가능한 맛집’들을 고르고 일정까지 짜는 과정이 사용자 선택/지시를 떠넘기는 계획 행위입니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8c",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "ok",
+      "seconds": 1.84,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부를 확인해 일정에 넣는 행위(코스/일정 짜기)에 해당해 반려"
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8c",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "ok",
+      "seconds": 2.05,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부 확인해 맛집으로 일정까지 짜는 계획·확인 행위라 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8c",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "ok",
+      "seconds": 1.77,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부 확인해 맛집으로 일정 짜기는 계획·확인(반려) 항목에 해당한다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_8c",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 1,
+      "outcome": "ok",
+      "seconds": 1.71,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "캐치테이블 가능 여부 확인해 맛집으로 일정까지 짜는 계획·확인 행위라 반려"
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "opic_8",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.77,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "서베이 항목을 ‘개수에 맞춰’ 미리 정하는 것은 선택/결정 업무를 사용자에게 떠넘긴 계획에 해당해요."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "PDF를 훑어보는 계획·확인(가능 여부/범위 점검) 성격이라 일정·확인 업무에 해당해요."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "‘시험 40분 동안 12~15개 콤보 순서대로’는 구체 콤보/순서를 정해 동선·일정처럼 계획을 요구해요."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "opic_8",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.82,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "서베이 항목을 ‘개수에 맞춰 미리 정하기’처럼 고를 내용을 사용자에게 떠넘겨 실행 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "OPIC 평가기준·문제유형 가이드 PDF를 훑는 행위가 ‘어떤 PDF를’인지 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘규정신분증 원본’이 무엇인지, 어디에서 무엇을 확인할지 대상이 특정되지 않았습니다."
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "‘12~15개 콤보’와 ‘콤보 순서대로’ 중 무엇을 어떤 내용으로 말할지 선택/구성이 사용자에게 떠넘겨졌습니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "opic_8",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.73,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "서베이 항목을 미리 ‘정하기’가 구체적 대상/조건 없이 계획·선정 단계라서 반려입니다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "OPIC 평가기준·문제유형 가이드 PDF를 ‘훑기’는 확인/계획에 해당해 반려입니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "시험 40분 동안 ‘12~15개 콤보 순서대로’ 말하기는 일정·동선(순서) 짜기/확인 성격이라 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "opic_8",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.94,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "서베이 항목을 무엇으로 ‘미리 정하기’라고 구체 대상이 없이 목록/조건만 제시돼 선택 범위가 특정되지 않았다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "PDF를 ‘훑기’ 전에 어떤 기준/문제유형을 무엇을 확인할지 대상이 구체화되지 않아 계획·확인 성격으로 처리된다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "시험 40분 동안 ‘12~15개 콤보’처럼 콤보를 어떤 것들로 고르는지 사용자에게 선택을 떠넘긴 형태다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "opic_8",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.53,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": false,
+          "reason": "서베이 항목을 개수에 맞춰 ‘미리 정하기’는 어떤 항목을 고를지 목록/조건이 없어 특정되지 않았다."
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "PDF를 ‘훑기’ 전에 어떤 범위/항목을 확인할지 구체화되지 않아 대상이 특정되지 않았다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "시험 40분 동안 ‘12~15개 콤보 순서대로’는 콤보 후보/선정이 사용자에게 떠넘겨진 계획·확인 행위다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_7",
+      "repeat": 1,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 1.87,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "‘이용 일정 잡기’는 일정에 넣는 계획 행위라 동선/일정 구성으로 반려입니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "‘일정 넣기’처럼 코스를 일정에 구성하는 계획 행위라 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘코스 경로 짜기’는 동선 계획 행위라 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_7",
+      "repeat": 2,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.46,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "이용 일정 잡기는 동선/일정 계획에 해당해 바로 실행할 일이 아니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "골목 탐방 일정 넣기는 일정 계획으로 바로 실행할 일이 아니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "코스/경로 짜기는 동선 계획에 해당해 반려한다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_7",
+      "repeat": 3,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 5.71,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "이용 일정 잡기는 동선/일정 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "골목 탐방 일정 넣기는 일정 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "코스 경로 짜기는 동선 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_7",
+      "repeat": 4,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.27,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "이용 일정 잡기는 동선·일정 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "골목 탐방을 일정에 넣는 행위는 일정 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "대저생태공원~을숙도까지 코스/경로를 짜는 것은 동선 계획에 해당해 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "busan_7",
+      "repeat": 5,
+      "candidates": 7,
+      "verdict_count": 7,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 3,
+      "outcome": "ok",
+      "seconds": 2.64,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "특정 장소의 이용을 위한 일정 잡기/계획 행위로 동선·일정 구성에 해당해 반려"
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": false,
+          "reason": "골목 탐방을 일정에 넣는 등 계획·확인(일정 구성) 행위라 반려"
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "대저생태공원~을숙도까지 코스/경로를 짜는 동선 계획 행위라 반려"
+        },
+        {
+          "index": 5,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 6,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "near_dup",
+      "repeat": 1,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.78,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 일정/구체 대상이 불명확해 어디를 어떻게 할지 조건만 제시됨."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "관람 계획하기는 일정/계획 행위로 추가 확인 없이 바로 실행 가능한 일로 보기 어려움."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "산책 동선 확보하기는 동선 짜기/계획에 해당해 일정 계획 행위로 반려."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "수국축제·센텀맥주축제 일정 확인해보기가 가능 여부/확인 및 계획에 해당해 반려."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "near_dup",
+      "repeat": 2,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.62,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "감천문화마을 골목 탐방의 구체적인 대상/목적이 일정만으로 특정되지 않았습니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "관람 계획은 일정을 짜는 행위로 계획에 해당합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "동선 확보는 일정/동선 계획에 해당합니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "축제 일정 확인은 계획·확인(일정화) 행위에 해당합니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "near_dup",
+      "repeat": 3,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 6,
+      "outcome": "ok",
+      "seconds": 2.63,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "점심으로 ‘넣기’의 대상/행위가 계획·확인인지 불명확해 바로 실행할 수 있는 일이 아닙니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘일정 넣기’는 계획 행위로 동선을/일정을 구성하므로 반려입니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘관람 계획하기’는 일정/계획 수립에 해당해 반려입니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘동선 확보하기’는 동선 짜기/계획에 해당해 반려입니다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘확인해보기’가 웨이팅 있는 곳을 찾기 위한 탐색/가능 여부 확인으로 반려입니다."
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "‘일정 확인해보기’는 계획·확인 행위에 해당해 반려입니다."
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "near_dup",
+      "repeat": 4,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 4,
+      "outcome": "ok",
+      "seconds": 2.53,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": false,
+          "reason": "대상(부산역/초량해)은 정해졌지만 ‘넣기’가 실행할 수 있는 구체 행위로 불명확해 반려합니다."
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "‘골목 탐방 일정 넣기’처럼 일정/동선을 짜는 계획 행위라 반려합니다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘관람 계획하기’는 일정·확인 등 계획 행위로 반려합니다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘동선 확보하기’처럼 동선을 정하는 계획 행위라 반려합니다."
+        },
+        {
+          "index": 7,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 8,
+          "ok": true,
+          "reason": null
+        }
+      ]
+    },
+    {
+      "condition": "one_based",
+      "batch": "near_dup",
+      "repeat": 5,
+      "candidates": 8,
+      "verdict_count": 8,
+      "indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "missing": [],
+      "extra": [],
+      "duplicated": [],
+      "rejected": 5,
+      "outcome": "ok",
+      "seconds": 2.24,
+      "error": null,
+      "verdicts": [
+        {
+          "index": 1,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "reason": null
+        },
+        {
+          "index": 4,
+          "ok": false,
+          "reason": "장소는 감천문화마을로 특정돼 있지만 ‘일정 넣기’는 계획·확인 행위에 해당해 반려한다."
+        },
+        {
+          "index": 5,
+          "ok": false,
+          "reason": "‘관람 계획하기’는 계획/확인에 해당해 바로 실행할 수 있는 일로 보기 어렵다."
+        },
+        {
+          "index": 6,
+          "ok": false,
+          "reason": "‘동선 확보하기’는 코스/동선 짜기 계획에 해당해 반려한다."
+        },
+        {
+          "index": 7,
+          "ok": false,
+          "reason": "‘확인해보기’는 가능 여부(웨이팅) 확인 단계로, 예약/방문에 앞선 확인 행위라 반려한다."
+        },
+        {
+          "index": 8,
+          "ok": false,
+          "reason": "‘일정 확인해보기’는 계획·확인 단계라 바로 실행할 수 있는 일로 볼 수 없어 반려한다."
+        }
+      ]
+    }
+  ]
+}

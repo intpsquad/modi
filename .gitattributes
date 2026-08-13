@@ -1,0 +1,50 @@
+# 리눅스 컨테이너에서 실행되는 파일은 CRLF 로 체크아웃되면 안 된다.
+# (윈도우에서 커밋된 셸 스크립트가 CRLF 로 나가면 컨테이너에서
+#  "bad interpreter: /usr/bin/env: no such file or directory" 로 죽는다.)
+*.sh        text eol=lf
+gradlew     text eol=lf
+Dockerfile  text eol=lf
+Caddyfile   text eol=lf
+
+# 🔴 **자바 소스도 LF 로 고정한다**(2026-08-13). 이걸 안 하면 `core.autocrlf=true` 인 윈도우
+# 개발자의 체크아웃이 CRLF 가 되고, **`./gradlew build` 가 로컬에서만 실패한다** — spotless 의
+# googleJavaFormat 이 CRLF 를 위반으로 잡는다. CI(리눅스)는 LF 라 통과하므로
+# "CI 는 초록인데 내 PC 에서만 빌드가 깨지는" 상태가 된다.
+#
+# 실측(2026-08-13): 파일 하나를 CRLF 로 바꿔 `spotlessCheck` 를 돌리니 그 파일만 위반으로
+# 잡혔다(`-...\r\n` → `+...\n`). 이 줄이 없던 상태의 윈도우 새 체크아웃에서는 java 310개 중
+# 242개가 CRLF 였다.
+*.java      text eol=lf
+
+# 같은 이유. Gradle/YAML/속성 파일은 리눅스 도구가 읽거나 형식 검사를 받는다.
+*.gradle     text eol=lf
+*.gradle.kts text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+*.properties text eol=lf
+
+# 앱 코드도 CI 에서 `dart format --set-exit-if-changed` 검사를 받는다.
+*.dart      text eol=lf
+*.kt        text eol=lf
+*.kts       text eol=lf
+*.swift     text eol=lf
+*.py        text eol=lf
+*.sql       text eol=lf
+*.json      text eol=lf
+
+# 바이너리는 손대지 않는다(내용이 깨진다).
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.ttf    binary
+*.otf    binary
+*.jks    binary
+*.keystore binary
+*.p8     binary
+*.p12    binary
+*.pdf    binary
+*.zip    binary
+*.jar    binary

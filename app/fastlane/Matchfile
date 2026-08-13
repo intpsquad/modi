@@ -1,0 +1,15 @@
+# fastlane match — 인증서/프로비저닝 프로파일을 private git 저장소에서 읽는다.
+#
+# 🔴 **git_url 을 여기 하드코딩하지 않는다**(2026-08-13). 예전에는 저장소 주소가 이 파일에
+# 박혀 있었는데, 그건 서명 저장소의 위치를 코드에 적어두는 것이고 그 주소가 팀 소유가 아니게
+# 되면 조용히 죽는다. 이제 `MATCH_GIT_URL` 환경변수로만 받는다 — 값이 없으면 Fastfile 의
+# `ENV.fetch` 가 그 자리에서 실패하므로 "엉뚱한 저장소를 조용히 읽는" 경우가 없다.
+#
+# 절차는 docs/ios-release.md 를 따른다.
+
+storage_mode("git")
+
+# 기본 type. 실제 릴리스는 Fastfile 의 beta 레인이 "appstore" 로 덮어 쓴다.
+type("development")
+
+# The docs are available on https://docs.fastlane.tools/actions/match

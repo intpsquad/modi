@@ -1,0 +1,12 @@
+# 빌드 산출물 — 이미지 안에서 새로 빌드하므로 컨텍스트에 넣지 않는다.
+build/
+.gradle/
+
+# 시크릿. 운영에서는 compose 가 호스트 파일을 /run/secrets 로 마운트하고
+# FIREBASE_CREDENTIALS_PATH 로 가리킨다 — 이미지에 절대 굽지 않는다.
+src/main/resources/firebase-service-account*.json
+.env
+.env.*
+
+# 로컬 개발용(운영 compose 는 deploy/docker-compose.app.yml 을 쓴다)
+docker-compose.yml

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- FCM 백그라운드 알림 틴트 색 (MODI primary). -->
+    <color name="modi_notification_accent">#FF385C</color>
+</resources>

@@ -1,0 +1,6 @@
+source "https://rubygems.org"
+
+# Xcode 26 계열과 App Store Connect API Key 인증을 지원하는 fastlane line.
+gem "fastlane", "2.237.0"
+# bundle exec가 system CocoaPods를 가리지 않도록 CI 의존성으로 고정한다.
+gem "cocoapods", "1.16.2"

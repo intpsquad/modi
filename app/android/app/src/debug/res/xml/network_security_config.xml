@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  디버그 빌드 전용. targetSdk 36은 기본적으로 평문 HTTP를 막는데, 로컬 개발 서버는 HTTPS가 아니라서
+  ShareActivity(S-25-D)의 HttpURLConnection 호출이 막힌다. Dart의 http 패키지는 dart:io라 이 정책을
+  타지 않지만 Kotlin의 HttpURLConnection은 그대로 적용받아 이 설정이 필요하다.
+
+  개발 서버 주소는 실행 환경마다 달라진다(에뮬레이터 10.0.2.2 / adb reverse localhost / 실기기에서
+  붙는 PC의 LAN IP는 Wi-Fi 재접속 때마다 바뀜). 도메인을 하나씩 등록하면 그때마다 이 파일을 고쳐야
+  하므로 디버그에 한해 평문을 전면 허용한다.
+
+  이 파일은 debug 소스셋에만 있어 release 빌드에는 적용되지 않는다(release는 평문 차단 유지 →
+  프로덕션은 HTTPS 주소를 써야 한다).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

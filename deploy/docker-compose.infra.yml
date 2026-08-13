@@ -1,0 +1,94 @@
+# 인프라 층 — Caddy(TLS) 하나뿐이다.
+#
+# **앱 배포로 재시작되지 않는 층이다.** Caddy 는 발급받은 TLS 인증서를 볼륨에 들고 있어
+# 앱을 재배포할 때마다 흔들 이유가 없다. 그래서 앱(spring/ai/postgres/redis/minio)은
+# docker-compose.app.yml 로 분리했고, deploy/deploy.sh 는 그쪽만 재배포한다.
+#
+# (2026-08-13 까지는 여기에 jenkins 서비스가 함께 있었다 — 자기 자신이 든 compose 를
+#  `up -d` 하면 배포 도중 스스로 죽는 문제 때문에 층을 나눈 것이 원래 이유였다.
+#  CI/CD 가 GitHub Actions 로 옮겨가 그 제약은 사라졌지만, 인증서 때문에 분리는 유지한다.)
+#
+# 최초 1회만 사람이 직접 올린다(README "배포" 절 참고):
+#   docker network create maramodi-edge
+#   cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml \
+#       --env-file /home/ubuntu/maramodi/.env up -d --build
+
+name: maramodi-infra
+
+# Docker 기본 json-file 드라이버는 크기 제한이 없다 — 방치하면 디스크를 채운다.
+# Caddy 는 **요청 하나당 JSON 한 줄**(2KB 내외)을 찍고 도메인이 이미 봇에게 스캔되고 있어
+# 이 스택에서 가장 빠르게 쌓인다. 그래서 다른 서비스보다 크게 잡는다.
+x-logging-caddy: &logging-caddy
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: maramodi-caddy
+    restart: unless-stopped
+    logging: *logging-caddy
+    ports:
+      # 80 은 Let's Encrypt HTTP-01 챌린지에 필요하다 — 닫으면 인증서 발급이 실패한다.
+      - "80:80"
+      - "443:443"
+    environment:
+      # Swagger/OpenAPI 문서를 감싸는 Basic 인증 자격증명(Caddyfile 의 @apidocs 참고).
+      # 비어 있으면 Caddy 는 정상 기동하고 그 경로만 전부 401 이 된다(fail-closed, 실측 확인) —
+      # 그래서 compose 를 실패시키지 않고 빈 기본값을 둔다. 값은 deploy/.env 에서 온다.
+      DOCS_USER: ${DOCS_USER:-}
+      DOCS_PASSWORD_HASH: ${DOCS_PASSWORD_HASH:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # 🔴 **살아있는 blue/green 색이 적힌 한 줄.** Caddyfile 이 `import active-upstream.conf` 로
+      # 읽는다. 배포가 이 파일을 바꾸고 `caddy reload` 해서 트래픽을 새 색으로 돌린다.
+      #
+      # **저장소 안이 아니라 상태 디렉터리에 둔다** — 저장소에 두면 배포 잡의
+      # `git reset --hard origin/dev` 가 매 배포마다 활성 색을 커밋된 값으로 되돌려 버린다.
+      # `:ro` 로 마운트하는 것이 맞다: 쓰는 쪽은 컨테이너가 아니라 호스트의 deploy.sh 다.
+      #
+      # ⚠️ **호스트에 이 파일이 없으면 Docker 가 그 경로에 디렉터리를 만들고, Caddy 는 import 에
+      # 실패해 기동하지 않는다**(= 사이트 전체 다운). 인프라 층을 올리기 전에
+      # active-upstream.conf.example 을 복사하고 `caddy validate` 로 확인할 것.
+      - ${MARAMODI_STATE_DIR:-/home/ubuntu/maramodi}/active-upstream.conf:/etc/caddy/active-upstream.conf:ro
+      # 발급받은 인증서와 ACME 계정 키. 지우면 재발급을 시도하는데 Let's Encrypt 에는
+      # 도메인당 발급 레이트리밋이 있으므로 함부로 지우지 않는다.
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge:
+        aliases:
+          # Spring 은 MinIO 를 **공개 도메인**(https://storage.maramodi.cloud)으로 불러야 한다 —
+          # 그 주소로 presigned URL 을 만들어 앱에 주기 때문이다. 그런데 인스턴스 안에서 자기 자신의
+          # 공인 IP 로는 접속이 안 된다(AWS 는 인스턴스가 자기 EIP 로 헤어핀하는 걸 지원하지 않는다).
+          # 이 별칭을 달면 Docker 내부 DNS 가 그 이름을 **이 Caddy 컨테이너**로 풀어주므로
+          # 트래픽이 인터넷을 나가지 않고, SNI 도 맞아서 Caddy 가 정상 인증서를 내준다.
+          - storage.maramodi.cloud
+
+# 🔴 2026-08-13: jenkins 서비스를 제거했다. CI/CD 는 GitHub Actions 로 옮겼고
+# (.github/workflows/ci.yml), 배포는 그 deploy 잡이 SSH 로 서버의 deploy/deploy.sh 를 돌린다.
+# 그래서 이 파일에는 이제 Caddy 하나만 남는다 — 서버가 CI 를 돌리지 않으므로
+# /var/run/docker.sock 을 컨테이너에 넘길 이유도 없어졌다(호스트 root 권한과 동등한
+# 마운트였다). deploy/.env 의 DOCKER_GID 도 함께 필요 없어졌다.
+#
+# 옛 구성이 왜 그랬는지는 백업 히스토리(modi-history-backup.git)의 Jenkinsfile 과
+# deploy/jenkins/Dockerfile 에 남아 있다.
+
+networks:
+  edge:
+    # 앱 층과 공유하는 external 네트워크. Caddy 가 spring 컨테이너를 이름으로 찾는 통로다.
+    # 앱을 재배포해도 이 네트워크는 유지되므로 Caddy 설정을 다시 만질 필요가 없다.
+    name: maramodi-edge
+    external: true
+
+volumes:
+  caddy-data:
+  caddy-config:

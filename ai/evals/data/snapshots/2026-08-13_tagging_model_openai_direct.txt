@@ -1,0 +1,42 @@
+EXPERIMENTS #34 원출력 — 태깅 모델 비교 (gpt-5-nano vs gpt-5.4-nano)
+
+러너   : ai/evals/measure_tagging_model.py
+실행   : 2026-08-13, 오라클 운영 서버(modi-prod) 의 maramodi-ai 컨테이너 안
+제공사 : OpenAI 직접(api.openai.com) — 옛 LLM 게이트웨이 아님
+조건   : 픽스처 3건 × 모델 2종 × 2라운드, temperature 미지정(= 제공사 기본값, 운영과 동일)
+
+같은 픽스처의 prompt 토큰이 두 라운드에서 동일한 것(541 / 778 / 467)이 **입력이 같았다는 증거**다.
+
+────────────────────────────────────────────────────────────────────────────
+1라운드
+────────────────────────────────────────────────────────────────────────────
+base_url=https://api.openai.com/v1
+
+=== 001_gangneung_food.txt  (원문 553자 → 입력 553자) ===
+  gpt-5-nano       4.18s  prompt   541  completion   484 (추론   448)  → 강릉여행, 강릉맛집, 강릉카페, 당일치기, 맛집투어
+  gpt-5.4-nano     0.81s  prompt   541  completion    32 (추론     0)  → 강릉여행,강릉맛집,강릉당일치기,강릉카페,먹스타그램
+
+=== 002_sqld_review.txt  (원문 1099자 → 입력 1099자) ===
+  gpt-5-nano       3.94s  prompt   778  completion   478 (추론   448)  → SQLD,합격후기,비전공자,직장인,와우패스
+  gpt-5.4-nano     1.12s  prompt   778  completion    36 (추론     0)  → SQLD합격후기, 비전공자공부법, SQL입문강의, 와우패스환급반, 데이터자격증
+
+=== 003_busan_hanroro_combine.txt  (원문 534자 → 입력 534자) ===
+  gpt-5-nano       4.41s  prompt   467  completion   478 (추론   448)  → 부산,한로로,부산여행,부산카페,부산코스
+  gpt-5.4-nano     0.75s  prompt   467  completion    25 (추론     0)  → 부산여행, 부산카페, 한로로, 부산카페투어, 인스타그램
+
+────────────────────────────────────────────────────────────────────────────
+2라운드 (같은 픽스처·같은 스크립트, 연속 실행)
+────────────────────────────────────────────────────────────────────────────
+base_url=https://api.openai.com/v1
+
+=== 001_gangneung_food.txt  (원문 553자 → 입력 553자) ===
+  gpt-5-nano       4.80s  prompt   541  completion   670 (추론   640)  → 강릉여행, 강릉맛집, 당일치기, 카페투어
+  gpt-5.4-nano     0.73s  prompt   541  completion    32 (추론     0)  → 강릉여행,강릉맛집,강릉당일치기,강릉카페,먹스타그램
+
+=== 002_sqld_review.txt  (원문 1099자 → 입력 1099자) ===
+  gpt-5-nano       5.74s  prompt   778  completion   544 (추론   512)  → SQLD합격후기, 와우패스, 초보자공부법, 환급혜택
+  gpt-5.4-nano     0.76s  prompt   778  completion    28 (추론     0)  → SQLD, SQL 합격후기, 비전공자 직장인, 와우패스, 환급반
+
+=== 003_busan_hanroro_combine.txt  (원문 534자 → 입력 534자) ===
+  gpt-5-nano      15.43s  prompt   467  completion  1818 (추론  1792)  → 부산,부산여행,카페,한로로,로로
+  gpt-5.4-nano     1.32s  prompt   467  completion    25 (추론     0)  → 부산여행,부산카페,부산맛집,한로로,인스타그램

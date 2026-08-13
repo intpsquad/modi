@@ -1,0 +1,106 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.diffplug.spotless' version '8.8.0'
+	id 'org.gradle.test-retry' version '1.6.5'
+}
+
+group = 'com.nomara.modi'
+version = '0.0.1-SNAPSHOT'
+description = 'team goal app server'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.ai:spring-ai-bom:1.0.0"
+	}
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+	implementation 'com.google.firebase:firebase-admin:9.5.0'
+	// S-25-C: 아카이브 자료 등록 — 링크 크롤링(jsoup) + AI 자동 태깅(Spring AI, 옛 LLM 게이트웨이 경유 OpenAI 호환 API)
+	implementation 'org.jsoup:jsoup:1.18.3'
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+	// 프로필 사진 등 이미지 업로드 — MinIO(S3 호환) presigned URL 발급용 공식 SDK
+	implementation 'io.minio:minio:8.5.17'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	testRuntimeOnly 'com.h2database:h2'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+	// Testcontainers/Docker 네트워킹이 가끔 끊기면서 통과해야 할 테스트가 드물게 실패한다
+	// (예: ArchiveCrawlRetryQueryTest, 2026-08-07 로컬 15회 중 3회·Jenkins에서 재현·둘 다 커넥션
+	// 리셋 동반 — 코드가 아니라 인프라 문제로 확인됨). 실패한 테스트만 최대 2회 재시도하고,
+	// 재시도 끝에 통과하면 빌드는 성공으로 본다(진짜 회귀는 재시도해도 항상 실패하므로 여전히 잡힌다).
+	retry {
+		maxRetries = 2
+		failOnPassedAfterRetry = false
+	}
+}
+
+// 로컬 실행용 환경변수를 server/.env 에서 읽어 bootRun 에만 넣는다(템플릿: server/.env.example).
+// ai/.env · deploy/.env 와 같은 포맷을 쓴다 — 모듈마다 방식이 갈리지 않게.
+//
+// **bootRun 에만 건다.** test 에 걸면 개발자의 게이트웨이 키가 테스트로 새어들어가 실제 게이트웨이를
+// 호출해 크레딧을 태우고, "AI 없을 때 폴백" 검증이 무의미해진다(그래서
+// src/test/resources/application.yml 이 api-key 선언을 일부러 빼고 있다).
+tasks.named('bootRun') {
+	def envFile = file('.env')
+	if (envFile.exists()) {
+		envFile.readLines('UTF-8').each { rawLine ->
+			def line = rawLine.trim()
+			if (line.isEmpty() || line.startsWith('#') || !line.contains('=')) {
+				return
+			}
+			def (key, rawValue) = line.split('=', 2)
+			// 따옴표로 감싼 값도 받아준다(.env 관례).
+			def value = rawValue.trim().replaceAll(/^["'](.*)["']$/, '$1')
+			// 빈 값은 **건너뛴다** — 넣으면 "설정 안 함"과 동작이 달라진다.
+			// 예: OPENAI_API_KEY= 를 그대로 넣으면 application.yml 의 ${OPENAI_API_KEY:} 가 빈 문자열로
+			// 해석돼 @ConditionalOnProperty 가 참이 되고, 키 없는 빈이 만들어진다.
+			// MINIO_ENDPOINT= 는 더 나빠서 MinioClient 생성이 터져 부팅 자체가 실패한다.
+			if (!value.isEmpty()) {
+				environment key.trim(), value
+			}
+		}
+	}
+}
+
+spotless {
+	java {
+		googleJavaFormat()
+		target 'src/**/*.java'
+	}
+}
+
+tasks.named('check') {
+	dependsOn 'spotlessCheck'
+}

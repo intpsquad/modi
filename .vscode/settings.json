@@ -1,0 +1,35 @@
+{
+  // 팀 공유 설정 — 머신 종속 값(dart.flutterSdkPath 등)은 넣지 않는다.
+  // 개인 설정은 .vscode/settings.local.json이 아니라 VS Code 사용자 설정에 둘 것.
+
+  // CI(.github/workflows/ci.yml 의 app 잡)가 `dart format --set-exit-if-changed`를 돌린다.
+  // 저장 시 포맷 결과가 CI와 어긋나지 않도록 dart 기본값(80)에 맞춘다.
+  // ⚠️ 포맷터 출력은 Flutter 버전마다 달라진다 — app/.fvmrc 의 버전을 쓸 것.
+  "dart.lineLength": 80,
+  "dart.previewFlutterUiGuides": true,
+
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [80],
+    "editor.selectionHighlight": false,
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+
+  // Windows에서 CRLF가 섞이면 CI 포맷 검사가 깨진다.
+  "files.eol": "\n",
+
+  "search.exclude": {
+    "app/.dart_tool": true,
+    "app/build": true,
+    "server/.gradle": true,
+    "server/build": true
+  },
+  "files.watcherExclude": {
+    "**/app/.dart_tool/**": true,
+    "**/app/build/**": true,
+    "**/server/.gradle/**": true,
+    "**/server/build/**": true
+  }
+}

@@ -1,0 +1,379 @@
+{
+  "_comment": "동결 스냅샷 — 그때 모델이 실제로 낸 후보를 고정한 것이다. 절대 손으로 고치지 말 것. docs/EXPERIMENTS.md 의 수치는 이 파일에서 나온다. 실행 이름: gpt-5.4-nano_summary_nocat",
+  "measured_at": "2026-08-01",
+  "run": "gpt-5.4-nano_summary_nocat",
+  "model": "gpt-5.4-nano",
+  "rule4": true,
+  "schema_category_hint": true,
+  "input": "summary",
+  "categories": [],
+  "temperature": 0.0,
+  "summary": {
+    "cases": 15,
+    "candidates": 40,
+    "dropped_by_filter": 0,
+    "new_categories": 0,
+    "title_length": {
+      "min": 16,
+      "median": 22.0,
+      "max": 33,
+      "over_20": 27
+    },
+    "prompt_tokens": 13612,
+    "completion_tokens": 1320,
+    "seconds": 30.5,
+    "errors": 0
+  },
+  "cases": [
+    {
+      "stem": "001_gangneung_food",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "KTX로 청량리→강릉 당일 맛집 투어 루트 저장하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "강릉 식사 3회 카페 3곳 디저트 6곳 일정대로 방문하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 933,
+      "seconds": 6.1,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "002_sqld_review",
+      "raw_candidate_count": 5,
+      "candidates": [
+        {
+          "title": "SQLD 대비 2주 출퇴근 강의 청취하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "파랭이책 기초 개념 매일 정리하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "노랭이책 문제·해설 3회독 진행하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "퇴근 후 매일 2~3시간 SQL 문제풀이하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "시험 전날 SQL 최종 복습하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 948,
+      "seconds": 2.22,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "003_busan_hanroro_combine",
+      "raw_candidate_count": 4,
+      "candidates": [
+        {
+          "title": "부산 한로로 코스 일정표 만들기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "모치플레지르·밤산책방 방문 순서 정하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "히떼 로스터리 방문 시간대 정하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "별미청 돼지국밥 방문 일정 확정하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 908,
+      "seconds": 2.13,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "004_busan_1n2d",
+      "raw_candidate_count": 7,
+      "candidates": [
+        {
+          "title": "부산 1박2일 동선 1일차 코스 정리하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 1박2일 동선 2일차 코스 정리하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 반나절 단위 바다 산책 일정 잡기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 골목 구경 코스 동선대로 배치하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 필수 먹거리 리스트로 확인하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 오션뷰 카페 방문 시간대 정하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산 야경 코스 동선으로 마무리하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 913,
+      "seconds": 2.15,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "005_busan_hanroro_tripgoing",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "한로로 블로그 부산여행 코스 7곳 정리하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산여행 코스 7곳 저장하고 방문 리스트 만들기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "부산여행 동선 제안 코스별로 분류하기(카페/맛집/서점/술집)",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 918,
+      "seconds": 1.69,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "006_busan_knewnew",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "공원 6ongone 위치(광안역 도보 3분) 확인하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "공원 6ongone 방문 목적별(친구·연인·혼자) 정리하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 908,
+      "seconds": 1.97,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "007_anyang_2cha",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "안양 2차 약속 장소 추천 후보 3곳 정하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "안양 2차 장소 분위기별로 선택 기준 세우기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "안양 2차에 맞는 다양한 술 종류 리스트업",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 892,
+      "seconds": 1.6,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "008_fashion_shoulder",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "어깨핏 연출 방법 확인하고 적용하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 888,
+      "seconds": 1.32,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "009_fashion_promtome",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "‘옷’으로 관련 정보 요청하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 871,
+      "seconds": 1.34,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "010_jeongcheogi_lion",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "실기 요약노트 제작·배포 시점 검토하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "필기 합격 후 실기 공부 수요 확인하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 919,
+      "seconds": 1.86,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "011_jeongcheogi_igijeok",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "정처기 필기 1회차 합격 후기 공부법 확인하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 896,
+      "seconds": 1.76,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "012_jeongcheogi_potato",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "정보처리기사 이론 PDF 기출 키워드 7장 반복",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "이론 11문제 중 9문제 범위 학습 계획 세우기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "이론 12문제 중 9문제 범위 학습 계획 세우기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 920,
+      "seconds": 1.43,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "013_jeongcheogi_sogood",
+      "raw_candidate_count": 3,
+      "candidates": [
+        {
+          "title": "기출 문제 반복 풀이 후 오답노트 작성하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "퀴즐렛과 계산기로 기출 점검하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "기출 점수 60점 이상 달성 체크하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 912,
+      "seconds": 1.69,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "014_playlist_empty",
+      "raw_candidate_count": 1,
+      "candidates": [
+        {
+          "title": "윤마치 노래모음 MRCH 플레이리스트 확인하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 872,
+      "seconds": 1.81,
+      "dropped_by_filter": 0,
+      "error": null
+    },
+    {
+      "stem": "015_seoul_extreme",
+      "raw_candidate_count": 2,
+      "candidates": [
+        {
+          "title": "을지로3가역 출발 코스 그대로 정주행하기",
+          "category": null,
+          "source_item_id": 1
+        },
+        {
+          "title": "을지로·성수 3일 코스 저장 후 공유용 태그하기",
+          "category": null,
+          "source_item_id": 1
+        }
+      ],
+      "prompt_tokens": 914,
+      "seconds": 1.4,
+      "dropped_by_filter": 0,
+      "error": null
+    }
+  ]
+}

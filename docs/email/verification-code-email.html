@@ -1,0 +1,95 @@
+<!--
+  ⚠️ 서버가 실제로 읽는 런타임 사본은 server/src/main/resources/email/verification-code-email.html이다
+  (2026-08-05, VerificationEmailTemplate). 여기는 디자인 핸드오프 원본 — 디자인이 바뀌면 두 파일을 함께 갱신할 것.
+
+  MODI 이메일 인증코드 메일 템플릿 (QA, 2026-08-05)
+
+  ⚠️ 이 파일은 프론트/디자인이 만든 "핸드오프용 디자인 원본"이다.
+  실제 발송은 서버(Spring EmailSender/SMTP)가 하므로, 백엔드가 아래를 적용해야 한다:
+    1) 메일을 text/plain 이 아니라 text/html 로 보낸다
+       (Spring: `MimeMessageHelper(message, ...); helper.setText(html, true);`)
+    2) 아래 본문의 플레이스홀더를 실제 값으로 치환한다:
+         {{CODE}}            → 6자리 인증코드
+         {{EXPIRE_MINUTES}}  → 코드 유효시간(분). 현재 정책 = 5 (specs/0002)
+       치환은 단순 String.replace 로도 되고, Thymeleaf 를 쓰면 th:text 로 바꿔도 된다.
+    3) 접근성/폴백을 위해 text/plain 대체본도 함께 넣길 권장(멀티파트).
+
+  이메일 클라이언트 호환을 위해 의도적으로: 테이블 레이아웃 + 인라인 스타일 + 웹폰트 미사용
+  (Gmail/Outlook 등은 <style> 태그·외부 CSS·flex/grid 를 제한적으로만 지원).
+  색은 specs/design.md 토큰을 인라인으로 수동 미러링: primary #FF385C, ink #222222,
+  muted #6A6A6A, border #DDDDDD, surface-soft #F7F7F7.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background-color:#F7F7F7;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <!-- 카드 -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#FFFFFF;border:1px solid #DDDDDD;border-radius:16px;">
+        <!-- 브랜드 헤더 (MODI 로고 워드마크) -->
+        <tr>
+          <td align="center" style="padding:32px 32px 8px 32px;">
+            <!-- {{LOGO_URL}} = 백엔드가 공개 URL(예: MinIO 공개 버킷)로 호스팅한 modi_logo.png,
+                 또는 인라인 첨부 시 "cid:modi_logo". alt="MODI"가 이미지 차단 시 폴백 문구. -->
+            <img src="{{LOGO_URL}}" alt="MODI" width="120" height="36" style="display:block;border:0;outline:none;text-decoration:none;width:120px;max-width:120px;height:auto;" />
+          </td>
+        </tr>
+
+        <!-- 제목 -->
+        <tr>
+          <td align="center" style="padding:8px 32px 0 32px;">
+            <div style="font-family:Arial,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:20px;font-weight:700;color:#222222;">이메일 인증</div>
+          </td>
+        </tr>
+
+        <!-- 안내 -->
+        <tr>
+          <td align="center" style="padding:12px 32px 0 32px;">
+            <div style="font-family:Arial,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:14px;line-height:1.6;color:#6A6A6A;">
+              아래 인증코드를 입력하면 가입이 완료돼요.<br />
+              코드는 <strong style="color:#222222;">{{EXPIRE_MINUTES}}분간</strong> 유효합니다.
+            </div>
+          </td>
+        </tr>
+
+        <!-- 코드 박스 -->
+        <tr>
+          <td align="center" style="padding:24px 32px 8px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#F7F7F7;border-radius:12px;">
+              <tr>
+                <td align="center" style="padding:20px 32px;">
+                  <div style="font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:700;letter-spacing:10px;color:#FF385C;">{{CODE}}</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- 보조 안내 -->
+        <tr>
+          <td align="center" style="padding:8px 32px 28px 32px;">
+            <div style="font-family:Arial,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:12px;line-height:1.6;color:#929292;">
+              본인이 요청하지 않았다면 이 메일은 무시하셔도 됩니다.
+            </div>
+          </td>
+        </tr>
+
+        <!-- 구분선 -->
+        <tr>
+          <td style="padding:0 32px;">
+            <div style="border-top:1px solid #EBEBEB;font-size:0;line-height:0;">&nbsp;</div>
+          </td>
+        </tr>
+
+        <!-- 푸터 -->
+        <tr>
+          <td align="center" style="padding:20px 32px 32px 32px;">
+            <div style="font-family:Arial,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:12px;line-height:1.6;color:#929292;">
+              모디(MODI) 팀<br />
+              문의: myeonglyeonghajim@gmail.com
+            </div>
+          </td>
+        </tr>
+      </table>
+      <!-- /카드 -->
+    </td>
+  </tr>
+</table>

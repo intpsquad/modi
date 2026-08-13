@@ -1,0 +1,26 @@
+# Caddy 가 트래픽을 보낼 **살아있는 Spring 색** 한 줄. `deploy/Caddyfile` 이 import 한다.
+#
+# 이 파일을 서버의 상태 디렉터리로 복사한다(인프라 층을 처음 올리기 전에 반드시):
+#
+#   scp deploy/active-upstream.conf.example modi:/home/ubuntu/maramodi/active-upstream.conf
+#
+# 🔴 **저장소 안에 두지 않는다.** 배포 잡이 `git reset --hard origin/dev` 를 하므로 저장소 안에
+# 있으면 매 배포마다 활성 색이 커밋된 값으로 되돌아간다 — 배포는 성공했다고 보고하는데 트래픽은
+# 방금 세운 옛 색을 향하게 되고, 그러면 전부 502 다.
+#
+# 🔴 **이 파일을 손으로 고칠 때 `sed -i` 나 `mv` 를 쓰지 않는다.** 리눅스에서 단일 파일
+# bind-mount 는 **inode 를 묶는** 것이라, 새 파일을 만들어 갈아치우면 **Caddy 는 옛 내용을 계속
+# 본다**(호스트에서 `cat` 하면 새 내용인데 컨테이너 안은 그대로다 — 찾기 어려운 실패다).
+# ⚠️ **Docker Desktop(Windows/macOS)에서는 재현되지 않는다**(파일 공유가 경로 기반, 2026-08-13
+#    실측). 로컬에서 확인하고 이 규칙을 무시하면 운영 서버에서만 터진다.
+# 반드시 제자리 truncate 로 쓴다:
+#
+#   printf 'reverse_proxy spring-green:8080\n' > /home/ubuntu/maramodi/active-upstream.conf
+#   docker exec maramodi-caddy caddy reload --config /etc/caddy/Caddyfile
+#
+# 위 두 줄이 곧 **수동 롤백**이다(옛 색이 아직 stop 상태로 남아 있으면 `docker start` 를 먼저).
+# ⚠️ 롤백해도 **Flyway 마이그레이션은 되돌아오지 않는다** — README "배포 → 스키마 변경 규칙".
+#
+# 값은 `deploy/docker-compose.app.yml` 의 서비스 이름과 정확히 같아야 한다:
+#   spring-blue | spring-green
+reverse_proxy spring-blue:8080
