@@ -104,7 +104,7 @@ docs/api/       OpenAPI 명세 (자동 생성, 손으로 고치지 않음)
 
 | 도구 | 버전 | 확인 | CI 에서 고정하는 곳 |
 |---|---|---|---|
-| Flutter | **3.44.7** (stable) | `flutter --version` | `subosito/flutter-action` 의 `flutter-version` |
+| Flutter | **3.44.8** (stable) | `flutter --version` | `subosito/flutter-action` 의 `flutter-version` |
 | JDK | **21** (Temurin 권장) | `java -version` | `actions/setup-java` |
 | uv (AI 서버) | **0.11.26** | `uv --version` | `astral-sh/setup-uv` 와 `ai/Dockerfile` |
 | Docker | 로컬 PostgreSQL·Redis 구동용 | `docker --version` | — |
@@ -116,7 +116,7 @@ docs/api/       OpenAPI 명세 (자동 생성, 손으로 고치지 않음)
 >
 > ```bash
 > dart pub global activate fvm     # 1회
-> cd app && fvm install && fvm flutter --version   # .fvmrc 의 3.44.7 을 받아 쓴다
+> cd app && fvm install && fvm flutter --version   # .fvmrc 의 3.44.8 을 받아 쓴다
 > ```
 >
 > fvm 을 쓰지 않아도 된다 — 대신 `flutter --version` 이 위 표와 같은지 직접 확인할 책임이 생긴다.
@@ -126,6 +126,10 @@ docs/api/       OpenAPI 명세 (자동 생성, 손으로 고치지 않음)
 > 3자 늘어 80자를 넘겼는데, 치환 후 `analyze`·`test` 만 다시 돌려 통과로 보고했다.
 > 커밋 전 게이트는 **셋이다**: `dart format --output=none --set-exit-if-changed .` ·
 > `flutter analyze` · `flutter test`.
+>
+> 🔴 **그리고 그 셋을 CI 와 같은 Flutter 버전으로 돌려야 한다.** 같은 날 첫 CI 가 이것 때문에
+> 깨졌다 — 로컬 3.44.8 에서 포맷 검사가 통과했는데 CI 는 3.44.7 로 고정돼 있어 실패했다.
+> **`flutter-version`(ci.yml) · `.fvmrc` · 위 표 세 곳을 항상 같이 바꾼다.**
 
 Windows에서 Flutter/JDK가 설치는 됐는데 PATH에 없다면 세션에서 한 번만 추가:
 

@@ -73,9 +73,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          # 3.44.7 고정. 3.44.0 은 Dart 3.12.0 이라 app/pubspec.yaml 의 `sdk: ^3.12.2` 를
-          # 만족하지 못한다(옛 deploy/ci/flutter/Dockerfile 주석에 남아 있던 실측).
-          flutter-version: 3.44.7
+          # 🔴 **app/.fvmrc 와 같은 값이어야 한다.** 어긋나면 `dart format --set-exit-if-changed` 가
+          # **로컬은 통과하고 CI 만 실패할 수 있다** — 포맷터 출력이 버전마다 달라서다.
+          # 2026-08-13 에 이 값(3.44.7)이 개발 머신(3.44.8)과 어긋나 있는 것을 발견해 맞췄다.
+          # (그때 CI 실패의 원인은 이것이 아니라 빈 시크릿이었다 — 아래 deploy 잡 참고. 다만
+          #  어긋난 핀은 언제든 터질 잠재 결함이라 함께 고쳤다.)
+          # 3.44.0 은 Dart 3.12.0 이라 app/pubspec.yaml 의 `sdk: ^3.12.2` 를 만족하지 못한다.
+          flutter-version: 3.44.8
           channel: stable
           cache: true
       # lib/firebase_options.dart 는 실제 Firebase 키가 들어 있어 커밋하지 않는다
@@ -178,6 +182,38 @@ jobs:
       #
       # **빌드는 여전히 서버(ARM)에서 한다.** 러너(x86_64)에서 만든 이미지는 오라클 A1 에서 못 뜬다.
       - uses: actions/checkout@v4
+      # 🔴 시크릿이 비어 있을 때 **명확히 실패**시킨다. 없으면 rsync 가
+      #   "ssh: Could not resolve hostname : Name or service not known" + exit 255
+      # 로 죽는데, 호스트명이 빈 문자열이라는 걸 알아채기 어렵다(2026-08-13 첫 배포가 그랬다).
+      #
+      # ⚠️ **가장 흔한 원인**: Organization secrets 쪽에 넣은 것. GitHub 이 그 화면에 직접
+      # 써 두었듯이 org secrets 는 이 플랜에서 **프라이빗 저장소에 쓸 수 없다** — 값이 조용히
+      # 빈 문자열로 들어온다. 반드시 **Repository secrets** 에 넣어야 한다.
+      - name: 배포 시크릿 확인
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          missing=""
+          for n in SSH_HOST SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+            [ -n "${!n:-}" ] || missing="$missing $n"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::배포 시크릿이 비어 있다:$missing"
+            echo "Settings → Secrets and variables → Actions → **Repository secrets** 에 넣을 것."
+            echo "org secrets 는 프라이빗 저장소에서 안 쓰인다(값이 빈 문자열로 온다)."
+            exit 1
+          fi
+          # 비밀키는 armor 줄이 빠지면 러너에서 'error in libcrypto' 로 죽는다. 미리 잡는다.
+          case "$SSH_PRIVATE_KEY" in
+            *"BEGIN OPENSSH PRIVATE KEY"*) : ;;
+            *) echo "::error::SSH_PRIVATE_KEY 에 '-----BEGIN OPENSSH PRIVATE KEY-----' 줄이 없다."
+               echo '서버에서 `cat ~/.ssh/github_actions_deploy` 출력을 **첫 줄부터 마지막 줄까지** 넣을 것.'
+               exit 1 ;;
+          esac
+          echo "시크릿 4개 확인됨 (host=${SSH_HOST:0:3}… user=$SSH_USER)"
       - name: SSH 키 준비
         run: |
           mkdir -p ~/.ssh
