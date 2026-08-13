@@ -153,21 +153,31 @@ jobs:
     # `always() && !failure() && !cancelled()` 이어야 한다. 경로 필터로 스킵된 잡은
     # 결과가 skipped 인데, 기본 동작은 **의존 잡이 스킵되면 이쪽도 스킵**이다 —
     # 그러면 문서만 고친 커밋이 영영 배포되지 않는다. 실패했을 때만 막는 것이 의도다.
+    #
+    # `workflow_dispatch` 도 허용한다(2026-08-13). 이유 둘: ① 서버에서 손으로 `git pull` 을
+    # 할 수 없게 됐으므로(아래 참고) "최신 코드로 재배포"의 사람용 수단이 필요하다
+    # ② push 없이 SSH 배선을 시험할 수 있다. 수동 실행에서는 경로 필터가 변화를 못 잡아
+    # 테스트 잡이 스킵될 수 있는데, 그건 이미 통과한 코드를 다시 배포하는 것이라 괜찮다
+    # (전부 다시 돌리려면 실행 시 `force_all` 을 켠다).
     if: |
       always() && !failure() && !cancelled()
       && github.ref == 'refs/heads/dev'
-      && github.event_name == 'push'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
-      # 🔴 서버가 GitHub 에서 직접 fetch 한다 — 저장소가 **프라이빗**이므로 서버에
-      # 읽기 전용 deploy key 가 등록돼 있어야 하고 remote 가 SSH 여야 한다.
-      #   서버에서 1회: ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ''
-      #                 (공개키를 GitHub 저장소 Settings → Deploy keys 에 read-only 로 등록)
-      #                 git remote set-url origin git@github.com:modintps/modi.git
-      # 설정이 안 돼 있으면 아래 fetch 가 인증 실패로 죽는다 — 조용히 옛 커밋을
-      # 재배포하지 않는다.
+      # 🔴 **소스는 러너가 서버로 밀어 넣는다**(2026-08-13 변경). 예전에는 서버가 GitHub 에서
+      # 직접 `git fetch` 했는데, 그러려면 서버에 읽기 전용 deploy key 가 필요했다. 그런데
+      # 이 오가니제이션은 **정책으로 deploy key 를 금지**한다("Disabled by modintps").
       #
-      # **빌드는 서버(ARM)에서 한다.** 러너(x86_64)에서 만든 이미지는 오라클 A1 에서 못 뜬다.
+      # 방향을 뒤집어서 얻은 것: **서버에 GitHub 자격증명이 아예 필요 없다.** org 정책을
+      # 약하게 만들지 않아도 되고, "서버가 이 저장소를 상시 읽을 수 있는 상태" 자체가 사라졌다.
+      #
+      # 대가: 서버에서 `git pull` 로 최신 코드를 받을 수 없다. 사람이 최신 코드로 배포하려면
+      # Actions → CI → Run workflow 를 쓴다(위 workflow_dispatch 허용이 그 용도다).
+      # 서버에 이미 있는 코드로 다시 배포하는 것은 `./deploy/deploy.sh` 만 돌리면 된다.
+      #
+      # **빌드는 여전히 서버(ARM)에서 한다.** 러너(x86_64)에서 만든 이미지는 오라클 A1 에서 못 뜬다.
+      - uses: actions/checkout@v4
       - name: SSH 키 준비
         run: |
           mkdir -p ~/.ssh
@@ -177,12 +187,23 @@ jobs:
           # 중간자에게 배포 명령과 서버 접근을 그대로 넘겨주는 셈이 된다.
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+      # `--delete` 로 저장소에서 지워진 파일이 서버에 남지 않게 한다. 운영 `.env` 와
+      # `active-upstream.conf` 는 **저장소 밖**(`~/maramodi/`)에 있어 이 동기화가 건드리지 않는다.
+      #
+      # `-a` 가 mtime 을 보존하는 것이 중요하다 — 안 그러면 매 배포마다 Docker 빌드 캐시가
+      # 전부 무효화돼 ARM 4코어에서 빌드가 몇 분씩 길어진다.
+      #
+      # `.git` 도 함께 보낸다(checkout 이 shallow 라 작다). deploy.sh 가 배포 대상 커밋을
+      # 찍는 데 쓰고, 서버에서 `git log`·`git status` 로 확인할 수 있다.
+      - name: 서버로 소스 동기화
+        run: |
+          rsync -az --delete \
+            -e 'ssh -o StrictHostKeyChecking=yes' \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:maramodi/repo/"
       - name: 배포
         run: |
           ssh -o StrictHostKeyChecking=yes \
               "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
               'set -euo pipefail
                cd ~/maramodi/repo
-               git fetch origin dev
-               git reset --hard origin/dev
                ./deploy/deploy.sh'

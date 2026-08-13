@@ -385,6 +385,7 @@ GitHub → Settings → Branches(또는 Rules) → `dev`:
 - [ ] Tailscale 초대 발송
 - [ ] **Firebase 콘솔에 3명 편집자로 초대**
 - [ ] GitHub 저장소 초대 + **CODEOWNERS의 `@TODO-이름` 을 실제 핸들로 교체**
-- [ ] GitHub Secrets 3개 + 서버 read-only deploy key → **배포 1회 초록 확인**
+- [ ] GitHub Secrets **4개**(`SSH_HOST`·`SSH_USER`·`SSH_PRIVATE_KEY`·`SSH_KNOWN_HOSTS`) → **배포 1회 초록 확인**
+      (deploy key 는 필요 없다 — org 정책으로 금지돼 있고, 소스는 러너가 rsync 로 보낸다)
 - [ ] `dev` 브랜치 보호 (필수 체크 `gate`) ← 첫 push 뒤에
 - [ ] DNS 전환 (가비아 계정 확보 후, `MINIO_ENDPOINT` 원복과 함께)

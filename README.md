@@ -435,7 +435,31 @@ if: always() && !failure() && !cancelled() && github.ref == 'refs/heads/dev' && 
 ### 빌드는 러너가 아니라 서버에서 한다
 
 운영 서버가 **ARM(aarch64)** 이라 x86_64 러너에서 만든 이미지는 거기서 뜨지 않는다. 그래서
-`deploy` 잡은 SSH 로 트리거만 하고 `docker compose build` 는 서버에서 돈다.
+`deploy` 잡은 소스를 서버로 보내기만 하고 `docker compose build` 는 서버에서 돈다.
+
+### 소스는 러너가 서버로 rsync 한다 (서버는 GitHub 을 읽지 않는다)
+
+**서버에 GitHub 자격증명이 하나도 없다.** 예전에는 서버가 GitHub 에서 직접 `git fetch` 했고
+그러려면 읽기 전용 **deploy key** 가 필요했는데, 이 오가니제이션은 **정책으로 deploy key 를
+금지**한다("Disabled by modintps", 2026-08-13 확인). 정책을 풀 수도 있었지만 방향을 뒤집는 쪽을
+골랐다 — 러너는 이미 소스를 체크아웃했고 이미 서버 SSH 접근이 있으므로, 러너가 밀어 넣으면
+자격증명이 **하나 줄어든다**("서버가 이 저장소를 상시 읽을 수 있는 상태"가 사라진다).
+
+```sh
+rsync -az --delete -e 'ssh -o StrictHostKeyChecking=yes' ./ ubuntu@<IP>:maramodi/repo/
+ssh ubuntu@<IP> 'cd ~/maramodi/repo && ./deploy/deploy.sh'
+```
+
+- `--delete` — 저장소에서 지워진 파일이 서버에 남지 않는다. 운영 `.env` 와
+  `active-upstream.conf` 는 **저장소 밖**(`~/maramodi/`)이라 안 건드린다.
+- `-a` 가 **mtime 을 보존하는 것이 중요하다.** 안 그러면 매 배포마다 Docker 빌드 캐시가 전부
+  무효화돼 ARM 4코어에서 빌드가 몇 분씩 길어진다.
+- `.git` 도 함께 보낸다(checkout 이 shallow 라 작다). `deploy.sh` 가 배포 대상 커밋을 찍는 데
+  쓰고, 서버에서 `git log`·`git status` 가 된다.
+
+🔴 **대가: 서버에서 `git pull` 로 최신 코드를 받을 수 없다.** 사람이 최신 코드로 배포하려면
+**Actions → CI → Run workflow**(`workflow_dispatch`)를 쓴다. 서버에 이미 있는 코드로 다시
+배포하는 것은 `./deploy/deploy.sh` 만 돌리면 된다.
 
 ### 필요한 GitHub Secrets
 
@@ -443,19 +467,29 @@ if: always() && !failure() && !cancelled() && github.ref == 'refs/heads/dev' && 
 |---|---|
 | `SSH_PRIVATE_KEY` | **배포 전용** 키의 비밀키. 개인 키(`~/.ssh/oracle`)를 넣지 않는다 |
 | `SSH_HOST` / `SSH_USER` | 서버 공인 IP / `ubuntu` |
-| `SSH_KNOWN_HOSTS` | 서버 호스트 키(`ssh-keyscan <IP>`). `StrictHostKeyChecking=no` 로 열어두지 않는다 |
+| `SSH_KNOWN_HOSTS` | 서버 호스트 키. `StrictHostKeyChecking=no` 로 열어두지 않는다 |
 
-**서버 쪽 1회 설정** — 저장소가 프라이빗이라 서버가 GitHub 에서 fetch 하려면 읽기 전용
-deploy key 가 있어야 한다:
+`SSH_KNOWN_HOSTS` 는 `ssh-keyscan` 대신 **서버에서 직접** 꺼내는 것이 맞다 — keyscan 은 중간자가
+준 키를 그대로 믿는다:
+
+```sh
+# 서버에서
+awk '{print "<IP> " $1 " " $2}' /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+**서버 쪽 1회 설정** — 배포 전용 키를 새로 만들어 인가한다(개인 키를 시크릿에 넣지 않는다):
 
 ```sh
 ssh modi
-ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ''
-cat ~/.ssh/github_deploy.pub      # GitHub 저장소 Settings → Deploy keys 에 read-only 로 등록
-cd ~/maramodi/repo && git remote set-url origin git@github.com:<org>/<repo>.git
+ssh-keygen -t ed25519 -f ~/.ssh/github_actions_deploy -N '' -C 'github-actions-deploy'
+printf '\n' >> ~/.ssh/authorized_keys
+cat ~/.ssh/github_actions_deploy.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+cat ~/.ssh/github_actions_deploy      # 이 전체(BEGIN~END)를 SSH_PRIVATE_KEY 에 넣는다
 ```
 
-안 해두면 `deploy` 잡의 `git fetch` 가 인증 실패로 죽는다 — **조용히 옛 커밋을 재배포하지 않는다.**
+⚠️ `authorized_keys` 앞에 개행을 먼저 넣는 이유: 기존 파일이 개행으로 끝나지 않으면 append 가
+**마지막 키를 망가뜨려** 서버에서 잠길 수 있다.
 
 ### 테스트를 강제로 전부 돌리기
 
@@ -702,13 +736,14 @@ curl -I https://api.maramodi.cloud
 cd ~/maramodi/repo && ./deploy/deploy.sh
 ```
 
-**6. GitHub Actions 배선** — 저장소가 프라이빗이라 두 방향의 자격증명이 필요하다.
+**6. GitHub Actions 배선** — 자격증명은 **한 방향뿐이다**(GitHub → 서버).
 
-- **서버 → GitHub**(읽기): 서버에 read-only deploy key 를 만들고 remote 를 SSH 로 바꾼다.
-  절차는 위 "CI/CD → 필요한 GitHub Secrets" 절.
-- **GitHub → 서버**(배포): **배포 전용** SSH 키를 새로 만들어 공개키를 서버
-  `~/.ssh/authorized_keys` 에 넣고, 비밀키를 `SSH_PRIVATE_KEY` 시크릿으로 등록한다.
-  개인 키를 시크릿에 넣지 않는다.
+**배포 전용** SSH 키를 새로 만들어 공개키를 서버 `~/.ssh/authorized_keys` 에 넣고, 비밀키를
+`SSH_PRIVATE_KEY` 시크릿으로 등록한다. 개인 키를 시크릿에 넣지 않는다. 절차는 위
+"CI/CD → 필요한 GitHub Secrets" 절.
+
+**서버 → GitHub 방향은 없다.** 소스는 러너가 rsync 로 밀어 넣으므로 서버에 GitHub 자격증명이
+필요하지 않다(위 "소스는 러너가 서버로 rsync 한다" 절 — deploy key 는 org 정책으로 금지돼 있다).
 
 `ssh-keyscan <서버 공인 IP>` 결과를 `SSH_KNOWN_HOSTS` 로 넣어 호스트 키를 고정한다.
 
@@ -719,8 +754,10 @@ PR을 `dev`에 머지하면 끝이다. GitHub Actions 가 테스트 → SSH → 
 > 🔴 **새 환경변수를 추가한 PR은 머지 전에 서버 `.env`를 먼저 채운다.** `deploy/.env.example`을 고쳐도 서버의 `/home/ubuntu/maramodi/.env`는 **이미 존재하는 파일이라 덮이지 않고**, `deploy.sh`도 파일 존재만 확인할 뿐 필수 변수를 검증하지 않는다. 즉 머지하고 배포해도 **그 기능만 조용히 죽은 채로 뜬다**. 순서: ① 서버 `.env`에 값 추가(`nano ~/maramodi/.env` — `echo`로 붙이면 셸 히스토리에 값이 남는다) ② `docker-compose.app.yml`에 해당 서비스로 통과시키는 줄이 있는지 확인 ③ 머지. 배포 후 살아있는 색의 로그로 해당 기능의 경고가 없는지 본다: `docker logs "$(docker ps --filter name=maramodi-spring- --format '{{.Names}}')"`. ⚠️ **두 색 모두에 통과 줄이 있어야 한다** — `docker-compose.app.yml` 은 `x-spring` 앵커 하나로 정의하므로 거기에 넣으면 두 색이 함께 받는다. 색 블록에 직접 넣으면 다음 배포에서 색이 바뀔 때 그 기능이 조용히 꺼진다.
 
 ```bash
-# 수동 배포 (서버에서) — 자동 배포와 완전히 같은 스크립트다
-cd ~/maramodi/repo && git pull && ./deploy/deploy.sh
+# 서버에 이미 있는 코드로 다시 배포 (자동 배포와 완전히 같은 스크립트다)
+cd ~/maramodi/repo && ./deploy/deploy.sh
+# ⚠️ `git pull` 은 안 된다 — 서버에 GitHub 자격증명이 없다(위 rsync 절 참고).
+#    최신 코드로 배포하려면 Actions → CI → Run workflow 를 쓴다.
 
 # 지금 살아있는 색 확인 (뜬 색이 하나뿐이라 바로 보인다)
 docker ps --filter name=maramodi-spring- --format '{{.Names}}\t{{.Status}}'

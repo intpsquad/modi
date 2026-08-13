@@ -100,6 +100,6 @@
   - ⚠️ **AI 서버는 아직 단일이다** — 배포 중 몇 초 끊긴다. 태깅·요약은 폴백이 있어 조용히 스킵되지만 투두 추천은 사용자에게 실패로 보인다.
   - ⚠️ **천장**: 단일 호스트라 커널 업데이트·재부팅·클라우드 유지보수는 그대로 끊긴다. 무중단 **배포**이고 무중단 **서비스**가 아니다.
   - ⚠️ **`dev`에 push할 수 있는 사람 = 서버에서 임의 코드를 돌릴 수 있는 사람이다.** 배포 잡이 저장소의 `deploy/deploy.sh`를 그대로 실행하므로, 그 파일을 바꿀 수 있으면 서버에서 무엇이든 돌릴 수 있다. 그래서 저장소는 프라이빗이고 `dev`는 브랜치 보호 뒤에 둔다.
-  - 서버가 프라이빗 저장소에서 `git fetch`하려면 **read-only deploy key**가 서버에 있어야 한다. 없으면 배포 잡이 인증 실패로 죽는다 — 조용히 옛 커밋을 재배포하지는 않는다.
+  - **소스는 러너가 `rsync` 로 서버에 밀어 넣는다**(2026-08-13 변경). 원래는 서버가 GitHub 에서 직접 `git fetch` 하고 그러려면 read-only **deploy key** 가 필요했는데, 이 오가니제이션은 **정책으로 deploy key 를 금지**한다. 정책을 푸는 대신 방향을 뒤집었다 — 러너는 이미 소스를 체크아웃했고 이미 서버 SSH 접근이 있으므로, **서버에 GitHub 자격증명이 하나도 없는 상태**가 된다(자격증명이 줄었으므로 보안 개선이기도 하다). 대가는 서버에서 `git pull` 로 최신 코드를 받을 수 없는 것이고, 사람이 최신 코드로 배포하려면 `workflow_dispatch`(Actions → Run workflow)를 쓴다.
 - **시크릿**: 서버의 `/home/ubuntu/maramodi/.env`(compose `--env-file`) + `secrets/firebase-service-account.json`(읽기전용 볼륨 마운트, `FIREBASE_CREDENTIALS_PATH`로 지정). 이미지에 굽지 않는다. 목록·발급 방법은 `README.md`가 단일 진실.
 - 앱: EAS 아님(Flutter) → Codemagic 또는 Fastlane으로 빌드/서명/제출(서버 인프라와 무관, 변경 없음). 앱의 `API_BASE_URL`은 release에서 `https://api.maramodi.cloud`를 쓴다.
