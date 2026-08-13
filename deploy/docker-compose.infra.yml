@@ -59,6 +59,14 @@ services:
       # 실패해 기동하지 않는다**(= 사이트 전체 다운). 인프라 층을 올리기 전에
       # active-upstream.conf.example 을 복사하고 `caddy validate` 로 확인할 것.
       - ${MARAMODI_STATE_DIR:-/home/ubuntu/maramodi}/active-upstream.conf:/etc/caddy/active-upstream.conf:ro
+      # maramodi.cloud 의 소개·지원·약관 정적 페이지(Caddyfile 의 `root * /srv/site`).
+      # App Store 심사가 개인정보처리방침·지원 URL 을 요구해서 2026-08-14 에 붙였다.
+      #
+      # ⚠️ **이 마운트를 처음 다는 배포에서는 인프라 층을 한 번 재생성해야 한다**
+      # (`docker compose -f deploy/docker-compose.infra.yml up -d`). 볼륨 추가는
+      # `caddy reload` 로는 반영되지 않는다. 그 뒤로는 파일 내용만 바뀌므로
+      # rsync 배포 + `caddy reload` 로 충분하다.
+      - ./site:/srv/site:ro
       # 발급받은 인증서와 ACME 계정 키. 지우면 재발급을 시도하는데 Let's Encrypt 에는
       # 도메인당 발급 레이트리밋이 있으므로 함부로 지우지 않는다.
       - caddy-data:/data

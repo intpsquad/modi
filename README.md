@@ -673,6 +673,29 @@ cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml --env-fi
 - **앱이 쓰는 API는 영향 없다.** 실측: `/rooms`·`/me`·`/rooms/1/todos`·`/invite-codes/*`·`/me/fcm-token` 모두 통과.
 - Swagger UI의 "Try it out"은 Bearer 토큰을 쓰므로 그대로 동작할 것으로 보지만 브라우저로는 미검증이다.
 
+### 소개·지원·약관 정적 페이지 (`maramodi.cloud`) — 2026-08-14
+
+**App Store 심사가 개인정보처리방침 URL 과 지원 URL 을 요구한다.** 둘 중 하나라도 없으면 App Store Connect 가 **제출 버튼 자체를 막는다.** 약관 전문은 앱 안에 이미 있었지만(`app/lib/features/legal/legal_content.dart`) 웹에 호스팅된 주소가 없어서 만들었다.
+
+DNS 는 이전부터 이 서버를 가리키고 있었는데 Caddyfile 에 블록이 없어 **인증서가 발급된 적이 없었다** — `https://maramodi.cloud` 는 연결 자체가 실패하는 상태였다(2026-08-14 실측).
+
+| 주소 | 용도 |
+|---|---|
+| `https://maramodi.cloud/` | **지원 URL** (App Store Connect 에 등록) — 문의처 + FAQ |
+| `https://maramodi.cloud/privacy` | **개인정보처리방침 URL** (App Store Connect 에 등록) |
+| `https://maramodi.cloud/terms` | 이용약관 |
+
+파일은 `deploy/site/*.html`, 서빙은 `deploy/Caddyfile` 의 `maramodi.cloud, www.maramodi.cloud` 블록(`root * /srv/site` + `try_files`). 확장자 없는 주소로 여는 건 의도한 것이다 — **Apple 에 등록한 주소라 파일명이 바뀌어도 주소는 유지돼야 한다.**
+
+- 🔴 **본문의 단일 진실은 `legal_content.dart` 다.** 앱 약관을 고치면 `deploy/site/*.html` 도 함께 고친다. Apple 에 등록한 URL 의 내용과 앱 화면이 어긋나면 심사에서 지적된다. **`app/test/features/legal/legal_web_sync_test.dart` 가 절 제목·본문을 한 글자 단위로 대조해 CI 를 실패시킨다.**
+- ⚠️ **`./site` 마운트를 새로 다는 배포에서는 인프라 층을 한 번 재생성해야 한다.** 볼륨 추가는 `caddy reload` 로 반영되지 않는다. 그 뒤로는 파일 내용만 바뀌므로 rsync 배포 + reload 로 충분하다.
+
+  ```bash
+  cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml --env-file ~/maramodi/.env up -d
+  ```
+
+  재생성은 **전 사이트가 몇 초 끊긴다**(api·storage 포함). 다만 발급받은 인증서는 `caddy-data` 볼륨에 있어 살아남으므로 즉시 복귀한다 — 실측(2026-08-14): 재생성 직후 `/rooms` 401 · `/actuator/health` 404 · `/docs` 401 · `storage/` 403 으로 전부 기대값 그대로였고, 새 도메인 두 개(`maramodi.cloud`·`www`)의 Let's Encrypt 인증서는 첫 요청에 이미 발급돼 있었다.
+
 ### 백업·복구 — 2026-08-14
 
 **서버가 한 대고 디스크도 한 장이다.** `postgres-data` 볼륨이 날아가면 가입자·방·투두·아카이브가 전부 사라진다. blue/green 무중단 배포는 **배포 사고**를 막아줄 뿐 **데이터 손실**과는 아무 상관이 없다.

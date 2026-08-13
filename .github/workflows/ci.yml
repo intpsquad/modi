@@ -53,6 +53,11 @@ jobs:
           filters: |
             app:
               - 'app/**'
+              # 웹 약관 페이지도 app 잡이 검사한다(legal_web_sync_test.dart 가 앱 본문과 대조).
+              # **이 줄이 없으면 가드가 한쪽으로만 걸린다** — `legal_content.dart` 를 고치면
+              # 잡히지만 `deploy/site/*.html` 만 고치면 잡이 아예 안 돌아 그냥 통과한다.
+              # 하필 Apple 이 읽는 것은 웹 쪽이라 그 방향이 더 위험하다.
+              - 'deploy/site/**'
               - '.github/workflows/ci.yml'
             server:
               - 'server/**'
