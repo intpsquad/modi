@@ -23,7 +23,7 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>com.googleusercontent.apps.144575316035-v0m9a5gfpinhn73fvvb3ufrcgp6lq4po</string>
+					<string>com.googleusercontent.apps.144575316035-bbe0o7edossbpvvtf33ufpjp47rom8l8</string>
 					<string>kakao$(KAKAO_NATIVE_APP_KEY)</string>
 				</array>
 			</dict>
