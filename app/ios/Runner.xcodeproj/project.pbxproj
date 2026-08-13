@@ -72,6 +72,7 @@
 
 /* Begin PBXFileReference section */
 		01181ED82F6CBD6A1FC22B42 /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		0C9F5A21B84D470E9E1A0001 /* ShareExtension.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = ShareExtension.xcconfig; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		2018421FAE8F74B1CEC46AB4 /* ShareContentTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareContentTests.swift; sourceTree = "<group>"; };
@@ -173,6 +174,7 @@
 			children = (
 				CD534499C65369938702D844 /* ShareAPIClient.swift */,
 				01181ED82F6CBD6A1FC22B42 /* ShareViewController.swift */,
+				0C9F5A21B84D470E9E1A0001 /* ShareExtension.xcconfig */,
 			);
 			path = ShareExtension;
 			sourceTree = "<group>";
@@ -659,6 +661,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.intpsquad.modi.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -677,6 +680,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.intpsquad.modi.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -693,6 +697,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.intpsquad.modi.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -703,6 +708,7 @@
 		};
 		39B449B7B35A78588750A9EF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0C9F5A21B84D470E9E1A0001 /* ShareExtension.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -726,6 +732,7 @@
 		};
 		7D112AF8F95FD8FC65AFE890 /* Profile */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0C9F5A21B84D470E9E1A0001 /* ShareExtension.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -917,6 +924,7 @@
 		};
 		CE5140264F92F10B71501FDF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0C9F5A21B84D470E9E1A0001 /* ShareExtension.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;

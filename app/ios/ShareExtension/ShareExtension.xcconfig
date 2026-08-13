@@ -1,0 +1,16 @@
+// ShareExtension 타깃이 Local.xcconfig 를 읽게 하는 유일한 통로.
+//
+// 🔴 **왜 필요한가**: 이 타깃은 CocoaPods 통합 대상이 아니고(Podfile 에 없다) 프로젝트 레벨
+// base config 도 없어서, 메인 앱이 쓰는 Flutter/Debug|Release.xcconfig 가 여기까지 오지 않는다.
+// 그래서 `DEVELOPMENT_TEAM = "$(MODI_DEVELOPMENT_TEAM)"` 가 **빈 문자열로 풀려** 아카이브가
+// `Signing for "ShareExtension" requires a development team` 으로 실패한다.
+// Windows 에서는 아카이브를 못 돌려 이 구멍이 2026-08-13 Mac 인계 때까지 드러나지 않았다.
+//
+// ⚠️ **Flutter/Release.xcconfig 를 그대로 물리면 안 된다** — 거기엔 Pods-Runner 와
+// Generated.xcconfig 가 딸려 와서 앱 타깃용 플러그인 링크 설정이 확장으로 새어 들어간다.
+// 확장에 필요한 것은 Team ID 한 줄뿐이므로 Local.xcconfig 만 직접 include 한다.
+//
+// `#include?` 의 물음표는 "없어도 실패하지 않는다"는 뜻이다 — Local.xcconfig 는 gitignore 라
+// clone 직후엔 없다. 그때는 시뮬레이터 빌드만 되고 아카이브가 실패하는데, 이는 메인 앱과 같은 동작이다.
+
+#include? "../Flutter/Local.xcconfig"
