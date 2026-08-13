@@ -592,6 +592,45 @@ Spring 은 `spring-blue`·`spring-green` **두 벌**로 정의돼 있고, **평�
 ⚠️ **롤백해도 마이그레이션은 되돌아오지 않는다.** DB 는 하나이고 진짜 blue/green(DB 분리)이 아니라
 롤링이다. 옛 색을 되살려도 스키마는 새 것이다 — 그래서 위 규칙이 롤백 가능성의 전제다.
 
+#### 🔴 이미 적용된 마이그레이션 파일은 **주석 한 글자도** 고치지 않는다
+
+Flyway 는 파일 내용의 체크섬을 DB 의 이력 테이블과 비교하고, 다르면 `Validate failed` 로
+**컨텍스트를 못 띄운다** — 기능이 하나 죽는 게 아니라 **부팅 자체가 안 된다.**
+
+**2026-08-13 운영에서 실제로 그렇게 멈췄다.** 조직 흔적 제거 작업이 `V5`·`V6`·`V7`·`V10` 의
+첫 주석 줄에서 **티켓 번호만** 지웠다(파일 크기 16·16·16·15바이트 감소, DDL 은 한 글자도 안 바뀜).
+그런데 배포가 이렇게 죽었다:
+
+```
+Validate failed: Migration checksum mismatch for migration version 5
+-> Applied to database : 1863795280
+-> Resolved locally    : -26747768
+```
+
+**그 시점에 서버 테스트 774개가 전부 통과했다.** 이 계약은 저장소 파일과 **운영 DB** 사이에 있어서
+단위·통합 테스트가 잡을 수 없다 — H2/Testcontainers 는 매번 빈 DB 로 시작하므로 마이그레이션이
+그냥 처음부터 다시 적용되고 통과한다. 그래서 **"과거 파일이 바뀌었다"는 사실 자체**를 잡는
+가드를 뒀다: `FlywayMigrationImmutabilityTest` + 커밋된 지문 목록
+(`server/src/test/resources/db/migration-checksums.txt`).
+
+**바꿔야 할 게 있으면 새 `V<다음번호>` 파일로 만든다.** 새 마이그레이션을 추가했으면:
+
+```sh
+./scripts/regen-migration-checksums.sh
+```
+
+되돌릴 수 없는 이유로 과거 파일을 정말 고쳤다면 **두 가지를 함께** 해야 한다:
+
+1. **모든 환경 DB 에서 repair** — 이력 테이블의 checksum 을 새 값으로 교정. 안 하면 그 DB 는
+   다음 배포에서 부팅이 깨진다. 운영에서 한 방법(Flyway 가 로그에 찍어 준 `Resolved locally` 값을 넣는다):
+   ```sh
+   docker exec maramodi-postgres pg_dump -U modi -d modi -t flyway_schema_history \
+       > ~/maramodi/flyway_schema_history.bak.$(date +%Y%m%d).sql      # 먼저 백업
+   docker exec maramodi-postgres psql -U modi -d modi \
+       -c "UPDATE flyway_schema_history SET checksum = <Resolved locally> WHERE version = '<N>';"
+   ```
+2. `./scripts/regen-migration-checksums.sh` 로 지문 목록 갱신
+
 두 층은 `maramodi-edge` external 네트워크로 연결된다. **층을 나눈 이유**: Caddy 가 발급받은
 TLS 인증서를 볼륨에 들고 있어 앱 배포마다 흔들 이유가 없다.
 (2026-08-13 까지는 인프라 층에 Jenkins 도 있었고, 그때의 이유는 "자기 자신이 든 compose 를

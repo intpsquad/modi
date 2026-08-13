@@ -1,0 +1,42 @@
+# 적용된 Flyway 마이그레이션의 지문. **FlywayMigrationImmutabilityTest 가 읽는다.**
+#
+# 🔴 이 파일이 있는 이유 (2026-08-13 실제 사고):
+# 조직 흔적 제거 작업이 V5·V6·V7·V10 의 **첫 주석 줄에서 티켓 번호만** 지웠다. DDL 은 한 글자도
+# 안 바뀌었지만 파일 내용이 바뀌어 Flyway 체크섬이 달라졌고, 운영 배포가
+#   "Validate failed: Migration checksum mismatch for migration version 5"
+# 로 **부팅 자체가 깨졌다**. 테스트는 전부 통과한 상태였다 — 이 계약은 파일과 **운영 DB** 사이에
+# 있어서 어떤 단위/통합 테스트도 잡을 수 없었다.
+#
+# 규칙: **이미 적용된 마이그레이션 파일은 주석 한 글자도 고치지 않는다.** 바꿔야 하면 새 V번호로.
+# 새 마이그레이션을 추가했으면 아래에 한 줄 추가한다(테스트가 명령어를 알려준다).
+#
+# 지문은 CRLF 를 LF 로 정규화한 내용의 SHA-256 이다(윈도우 체크아웃에서도 같은 값이 나오게).
+V1__init.sql  efc6225c724a858839a2c5bb40a6b6c9f62cf8e62b854a264a4dc7849c6058c9
+V2__drop_invite_codes.sql  6a157173e114ee04d6825eb275002d5b22e52e3c3e17c85e0d01c332b49ac51b
+V3__archive_crawl_status.sql  c83de539a1ace97b0d7bf18817436a28ca8e5632ae6606cfd6ba5cbad101bcd5
+V4__add_fcm_token_to_users.sql  69ba08dd3a0d84ad2f7832625846a6eec06db7d12720d5a24cdcb16eb50c4e2d
+V5__add_summary_to_archive_items.sql  71a809d0ea5f1169221952c919d81a253b498c5a9e3f18168efab81c1c753039
+V6__create_todo_suggestion_exposures.sql  205c5c9aa2919d24c104cbbbaf4f3709fde03186c2a8209273fd2c14817f3f64
+V7__add_embedding_to_archive_items.sql  c12e105bd6d4cf89ab1ddd3cb2071ef41f622f2f9559b70035f4b16cff5a83e3
+V8__add_place_to_schedules.sql  99f298eee9bf00f57f9239e844a7c573ca5fd6e207058f3d7f7f1d08327896f8
+V9__account_deletion_cascades.sql  674b17dc23427e9a7a7ca1081e85bc768895ae42352350974f3ed794941a0031
+V10__add_position_to_categories.sql  02a45da62dbc19c6588f71b54b7de21210442f5b1fd35e53e19c2dcffefa7a42
+V11__add_end_date_and_end_time_to_schedules.sql  8718a7c20026ab6c7a044b945eb0c28e2410b01b120306ddbb481c14281432e5
+V12__add_position_to_todos.sql  8db918a2e3298115eb0477a58eb9fe7b78b5755cf5e5fcb44756cea4baafd227
+V13__add_notification_preferences.sql  853cb17d6fbfb2b45a8531e532b710a2dc5ba9d3796fdd51a14597c5f004509a
+V14__add_url_index_to_archive_items.sql  44c3de81e0d9df2514b1b6f6e0947babd425bccc8bb2f57ed36e6cfc0a1ee32c
+V15__add_crawl_retry_to_archive_items.sql  54ec8be8137d662be2e787a0ae9e82ec93b5e44d9800624655f13c9680839614
+V16__add_reminder_metadata_to_todos.sql  82999e53b1c44edf3e058223957804bc2ee5491a2c9f72bf7e34b0c15b2326b8
+V17__add_archive_analysis_notification_setting.sql  7381deed34d2709ee24dc3c99c3cd18af9044058faf8a3e56c2023631968ece9
+V18__add_memo_to_archive_items.sql  319289da802a583278f03368e9f37daa45275f513f81792d00d33ea69cdb660f
+V19__add_created_by_to_todos_and_schedules.sql  6ba8e13772b65c80f95e663248e5ff5398ccd5892f990a2cbfc2c57042c91ebf
+V20__create_activities.sql  f0224b38866faf761b0271c2236449888d2321e76d8ccab6551b9d9e49363dd1
+V21__create_user_activity.sql  f9517c19bc7128982c18ec62edbb6c38c2b5950703d58bc4d997dc1ac1918a46
+V22__add_login_provider_to_users.sql  154ef5ad5eb325769d165b6c8352001d40d3e3cc551fa38915db2375912f0834
+V23__create_archive_item_comments.sql  190664c961972969b60debfb444249731108943d961a30f85784c93176dec3ac
+V24__create_notifications.sql  4775345022074b99456228605dd2fd98fa57d42d8e2ca1c13714e43c1f1aa48a
+V25__add_image_to_todos.sql  3e6765bf31ae7a60492a81832c22fbe3525b8086f0e387bc4379146560dbc175
+V26__add_important_to_todos.sql  f116b03d9af82336198df22054a817079e336674683deea887d5f0215cb56099
+V27__drop_knock_enabled.sql  b391c0824c39de9678b0bd83d7a9850fd3e71eb490d79c4d0058d712ac3dc9c2
+V28__add_image_url_to_archive_items.sql  c8a9d617b8ea11070fd9686bfe3d5fabef8f1b3bfa90997fdc7c53a6e3de3f01
+V29__add_email_to_users.sql  2efaba8a40f5f2c622f5f91680be54ef22a5b79a93a8b92fc7a7ad0e1d803179
