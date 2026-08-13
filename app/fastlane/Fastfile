@@ -4,8 +4,8 @@ require "base64"
 opt_out_usage
 default_platform(:ios)
 
-IOS_BUNDLE_IDENTIFIER = "com.nomara.modi.app"
-IOS_SHARE_EXTENSION_BUNDLE_IDENTIFIER = "com.nomara.modi.app.ShareExtension"
+IOS_BUNDLE_IDENTIFIER = "com.intpsquad.modi"
+IOS_SHARE_EXTENSION_BUNDLE_IDENTIFIER = "com.intpsquad.modi.ShareExtension"
 # 기본값을 두지 않는다(2026-08-13). 팀 ID 는 계정 식별자라 저장소에 넣지 않으며,
 # 기본값이 있으면 **엉뚱한 팀으로 서명이 나가도 빌드가 성공한다** — 틀린 프로파일로
 # 업로드가 거절되기 전까지 아무도 모른다. 없으면 여기서 즉시 KeyError 로 멈춘다.

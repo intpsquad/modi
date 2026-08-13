@@ -218,9 +218,9 @@ TTL은 "이 주소를 얼마나 캐시해도 되는지"입니다. 기본값(보�
 
 | 식별자 | 무엇 |
 |---|---|
-| `com.nomara.modi.app` | 앱 본체 |
-| `com.nomara.modi.app.ShareExtension` | 공유 확장(다른 앱에서 "공유"로 저장하는 기능) |
-| `group.com.nomara.modi` | App Group (앱과 확장이 로그인 정보를 공유하는 통로) |
+| `com.intpsquad.modi` | 앱 본체 |
+| `com.intpsquad.modi.ShareExtension` | 공유 확장(다른 앱에서 "공유"로 저장하는 기능) |
+| `group.com.intpsquad.modi` | App Group (앱과 확장이 로그인 정보를 공유하는 통로) |
 
 **순서:**
 
@@ -233,7 +233,7 @@ TTL은 "이 주소를 얼마나 캐시해도 되는지"입니다. 기본값(보�
 2. **Developer 포털** — [developer.apple.com/account](https://developer.apple.com/account)
    → **Certificates, Identifiers & Profiles → Identifiers**
    - 드롭다운 **App IDs**: 위 번들 ID 두 개 검색
-   - 드롭다운 **App Groups**: `group.com.nomara.modi` 검색
+   - 드롭다운 **App Groups**: `group.com.intpsquad.modi` 검색
    - 있으면 클릭해서 **켜져 있는 capability를 스크린샷**으로 남겨주세요
      (Push Notifications / Sign in with Apple / App Groups). 새 계정에서 그대로 다시 만듭니다.
 
@@ -278,7 +278,7 @@ Firebase 콘솔 → 프로젝트 `modi-mara` → ⚙️ 프로젝트 설정 → 
 cd app
 dart pub global activate flutterfire_cli      # 1회
 firebase login                                # 초대받은 계정으로
-flutterfire configure -p modi-mara --platforms=ios,android -a com.nomara.modi.app -y
+flutterfire configure -p modi-mara --platforms=ios,android -a com.intpsquad.modi -y
 ```
 
 이 한 줄이 세 파일을 만듭니다 — `lib/firebase_options.dart` · `android/app/google-services.json` ·

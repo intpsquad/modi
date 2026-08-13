@@ -20,14 +20,14 @@ macOS 에이전트 구성의 자연한 연장). 그때 이 문서의 절차를 �
 
 | 항목 | 값 / 확인 방법 |
 |---|---|
-| 번들 ID | `com.nomara.modi.app` · Share Extension `com.nomara.modi.app.ShareExtension` |
+| 번들 ID | `com.intpsquad.modi` · Share Extension `com.intpsquad.modi.ShareExtension` |
 | Firebase iOS 앱 | 위 번들 ID 가 Firebase 프로젝트에 등록돼 있어야 한다 |
 | Mac 에 필요한 것 | Xcode · CocoaPods · **Flutter 3.44.7** · Ruby 3.4+ · Bundler 2.7+ |
 | App Store Connect | 앱 레코드가 있어야 한다 |
 | match 저장소 | 인증서·프로파일을 담는 **private git 저장소** (내용은 암호화돼 저장된다) |
 
 🔴 **번들 ID 를 먼저 확인할 것.** Apple 번들 ID 는 전 세계에서 유일하다. 이전 계정에
-`com.nomara.modi.app` 이 등록된 채로 남아 있으면 새 팀 계정에서 같은 ID 를 못 쓴다 —
+`com.intpsquad.modi` 이 등록된 채로 남아 있으면 새 팀 계정에서 같은 ID 를 못 쓴다 —
 그 경우 ID 를 바꿔야 하고, 바꾸면 Firebase·`Info.plist`·App Group 식별자가 함께 바뀐다.
 
 ## 1. Apple Developer 준비 (1회)
@@ -35,7 +35,7 @@ macOS 에이전트 구성의 자연한 연장). 그때 이 문서의 절차를 �
 1. Apple Developer Program 가입($99/년) → **Team ID**(10자)를 적어둔다.
 2. App ID 등록: 위 번들 ID 두 개. **Sign in with Apple** capability 를 켠다 —
    카카오·구글 로그인이 있는 앱은 App Store 심사에서 이게 필수다(코드는 이미 있다).
-3. **App Groups**(`group.com.nomara.modi`) 와 Keychain Sharing 을 두 타깃에 등록한다 —
+3. **App Groups**(`group.com.intpsquad.modi`) 와 Keychain Sharing 을 두 타깃에 등록한다 —
    Share Extension 이 App Group Keychain 으로 로그인 세션을 공유한다.
 4. App Store Connect → Users and Access → Integrations → **App Store Connect API → Team Keys**
    → Generate API Key → `.p8` 를 **한 번만** 내려받는다.
@@ -80,7 +80,7 @@ export MATCH_GIT_URL="<private 서명 저장소 URL>"
 export MATCH_PASSWORD="<저장소 복호화 암호>"
 export ASC_API_KEY_PATH="/secure/ios-appstore-api-key.json"
 bundle exec fastlane match appstore \
-  --app_identifier "com.nomara.modi.app,com.nomara.modi.app.ShareExtension"
+  --app_identifier "com.intpsquad.modi,com.intpsquad.modi.ShareExtension"
 ```
 
 ## 4. TestFlight 업로드 (매 릴리스)

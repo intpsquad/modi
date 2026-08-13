@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-modi-mara}"
-ANDROID_PACKAGE_NAME="${ANDROID_PACKAGE_NAME:-com.nomara.modi.app}"
-IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-com.nomara.modi.app}"
+ANDROID_PACKAGE_NAME="${ANDROID_PACKAGE_NAME:-com.intpsquad.modi}"
+IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-com.intpsquad.modi}"
 API_BASE_URL=""
 CONFIGURE_FIREBASE=false
 PRINT_FINGERPRINTS=false

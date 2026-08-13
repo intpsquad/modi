@@ -78,8 +78,8 @@ grep -q 'static const FirebaseOptions ios' "$FIREBASE_OPTIONS_PATH" \
 google_app_id="$(/usr/bin/plutil -extract GOOGLE_APP_ID raw -o - "$GOOGLE_SERVICE_INFO_PATH" 2>/dev/null || true)"
 google_bundle_id="$(/usr/bin/plutil -extract BUNDLE_ID raw -o - "$GOOGLE_SERVICE_INFO_PATH" 2>/dev/null || true)"
 [[ -n "$google_app_id" ]] || fail "GoogleService-Info.plist is missing GOOGLE_APP_ID"
-[[ "$google_bundle_id" == "com.nomara.modi.app" ]] \
-  || fail "GoogleService-Info.plist BUNDLE_ID must be com.nomara.modi.app"
+[[ "$google_bundle_id" == "com.intpsquad.modi" ]] \
+  || fail "GoogleService-Info.plist BUNDLE_ID must be com.intpsquad.modi"
 
 grep -qE '^[[:space:]]*KAKAO_NATIVE_APP_KEY[[:space:]]*=[[:space:]]*[^[:space:]]+' "$LOCAL_XCCONFIG_PATH" \
   || fail "Local.xcconfig must define KAKAO_NATIVE_APP_KEY"

@@ -7,7 +7,7 @@ import Security
 /// UserDefaults. The API base URL is not secret, so it is kept in the App Group
 /// defaults suite alongside the extension's other non-sensitive configuration.
 enum ShareSessionStore {
-  static let appGroupIdentifier = "group.com.nomara.modi"
+  static let appGroupIdentifier = "group.com.intpsquad.modi"
 
   private static let keychainService = "com.nomara.modi.share-auth"
   private static let keychainAccount = "firebase-id-token"
@@ -17,7 +17,7 @@ enum ShareSessionStore {
     // Keeping this in the plist lets the same source work with another
     // development team without baking a Team ID into the repository.
     (Bundle.main.object(forInfoDictionaryKey: "ShareKeychainAccessGroup") as? String)
-      ?? "$(AppIdentifierPrefix)group.com.nomara.modi"
+      ?? "$(AppIdentifierPrefix)group.com.intpsquad.modi"
   }
 
   static func save(idToken: String) throws {

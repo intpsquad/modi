@@ -171,7 +171,7 @@ Firebase 설정 파일까지 갱신할 때는 먼저 Firebase 콘솔에 팀원�
 .\scripts\setup-dev.ps1 -ConfigureFirebase
 ```
 
-현재 Firebase 앱 식별자는 Android·iOS 모두 `com.nomara.modi.app`을 사용한다. `--configure-firebase`는 `modi-mara` 프로젝트에서 Android·iOS·Web 설정을 다시 생성한다. `deploy/.env`와 Firebase 서비스 계정 JSON은 운영/권한 파일이므로 개발자 초기화 스크립트가 만들지 않는다.
+현재 Firebase 앱 식별자는 Android·iOS 모두 `com.intpsquad.modi`을 사용한다. `--configure-firebase`는 `modi-mara` 프로젝트에서 Android·iOS·Web 설정을 다시 생성한다. `deploy/.env`와 Firebase 서비스 계정 JSON은 운영/권한 파일이므로 개발자 초기화 스크립트가 만들지 않는다.
 
 ## app/ 실행
 
@@ -215,7 +215,7 @@ flutter run -d <device> \
 
 Apple 로그인은 별도 OAuth 패키지 없이 Firebase Authentication의 네이티브 `AppleAuthProvider`를 사용한다. 저장소에는 Apple credential·private key를 저장하지 않는다.
 
-1. Apple Developer의 App ID `com.nomara.modi.app`에서 **Sign in with Apple** capability를 활성화하고, 변경된 provisioning profile을 Xcode에서 다시 받는다.
+1. Apple Developer의 App ID `com.intpsquad.modi`에서 **Sign in with Apple** capability를 활성화하고, 변경된 provisioning profile을 Xcode에서 다시 받는다.
 2. Firebase Console → Authentication → Sign-in method에서 **Apple** provider를 활성화한다. Firebase가 요구하는 Service ID, Apple Team ID, Key ID, private key는 Firebase Console에만 등록하고 `.p8` private key는 저장소나 채팅에 넣지 않는다.
 3. `app/ios/Runner.xcworkspace`를 열어 Runner target의 Signing & Capabilities에서 Sign in with Apple이 켜져 있는지 확인한다. entitlement와 capability 선언은 저장소에 반영되어 있다.
 4. Apple ID 2단계 인증과 iCloud가 설정된 iOS 실기기에서 로그인한다. 첫 승인 뒤 이름·이메일을 다시 제공하지 않을 수 있고, 이메일 비공개를 선택하면 `privaterelay.appleid.com` 주소가 사용된다.
@@ -261,9 +261,9 @@ docker compose up -d          # 로컬 PostgreSQL(5432, modi/modi/modi) + Redis(
 
 | 파일 | 용도 | 발급 방법 |
 |---|---|---|
-| `app/android/app/google-services.json` | Firebase Android 클라이언트 설정(Google 로그인 OAuth 클라이언트 포함) — **이 파일만 복사해선 Google 로그인이 안 된다. 아래 "Google 로그인 SHA-1 지문 등록" 절을 반드시 함께 볼 것** | `flutterfire configure -p modi-mara --platforms=android -a com.nomara.modi.app -y` (`app/`에서 실행, `firebase login` 먼저 필요) — 아래 `firebase_options.dart`와 함께 자동 생성됨. 수동으로는 Firebase 콘솔 → 프로젝트 설정 → 내 앱(Android) → 다운로드. |
+| `app/android/app/google-services.json` | Firebase Android 클라이언트 설정(Google 로그인 OAuth 클라이언트 포함) — **이 파일만 복사해선 Google 로그인이 안 된다. 아래 "Google 로그인 SHA-1 지문 등록" 절을 반드시 함께 볼 것** | `flutterfire configure -p modi-mara --platforms=android -a com.intpsquad.modi -y` (`app/`에서 실행, `firebase login` 먼저 필요) — 아래 `firebase_options.dart`와 함께 자동 생성됨. 수동으로는 Firebase 콘솔 → 프로젝트 설정 → 내 앱(Android) → 다운로드. |
 | `app/lib/firebase_options.dart` | FlutterFire용 `FirebaseOptions`(apiKey/appId/projectId 등) — `google-services.json`과 같은 값을 Dart 코드로 노출하므로 동일하게 로컬 전용 취급 | 위 `flutterfire configure` 명령 한 번으로 `google-services.json`과 같이 생성됨. **템플릿은 `app/lib/firebase_options.example.dart`(커밋됨)** — 이걸 복사해 쓰면 앱은 빌드되지만 Firebase 초기화가 실패해 로그인이 안 되므로, 개발용은 반드시 위 명령으로 생성할 것 |
-| `app/ios/Runner/GoogleService-Info.plist` | Firebase iOS 클라이언트 설정 — iOS release 빌드와 Firebase 초기화에 필요 | Firebase 콘솔 → 프로젝트 설정 → 내 앱(iOS, `com.nomara.modi.app`) → `GoogleService-Info.plist` 다운로드. iOS 릴리스는 Mac 에서 수동으로 돌리므로 CI 주입이 없다 — 로컬에 두면 된다(`docs/ios-release.md`) |
+| `app/ios/Runner/GoogleService-Info.plist` | Firebase iOS 클라이언트 설정 — iOS release 빌드와 Firebase 초기화에 필요 | Firebase 콘솔 → 프로젝트 설정 → 내 앱(iOS, `com.intpsquad.modi`) → `GoogleService-Info.plist` 다운로드. iOS 릴리스는 Mac 에서 수동으로 돌리므로 CI 주입이 없다 — 로컬에 두면 된다(`docs/ios-release.md`) |
 | `app/ios/Flutter/Local.xcconfig` | iOS Kakao URL scheme에 쓰는 `KAKAO_NATIVE_APP_KEY` — 로컬 전용, 커밋 금지 | `cp ios/Flutter/Local.xcconfig.example ios/Flutter/Local.xcconfig` 후 실제 native app key 입력 |
 | `app/android/key.properties` | Android **release** 서명 자격증명. ⚠️ **출시 대상이 iOS 뿐이라 지금은 아무도 필요하지 않다** — 안드로이드는 코드만 남아 있고 CI·릴리스 경로가 없다(2026-08-13). 없으면 `build.gradle.kts`가 debug 키로 폴백하므로 `flutter run`은 그대로 된다 | 안드로이드 출시를 되살릴 때 `keytool -genkey`로 키스토어를 만들고 `app/android/key.properties.example`을 복사해 값 채우기 |
 | `server/src/main/resources/firebase-service-account.json` | Firebase Admin SDK 서비스 계정 키 — 서버가 이걸로 클라이언트가 보낸 Firebase ID 토큰의 서명을 검증한다 | Firebase 콘솔 → 프로젝트 설정 → 서비스 계정 → "새 비공개 키 생성" |
@@ -365,12 +365,12 @@ VS Code는 `app (real device)` / `(profile)` / `(release)` 구성이 이 파일�
    cd app/android && ./gradlew signingReport     # Windows: .\gradlew.bat signingReport
    ```
 
-2. Firebase 콘솔 → 프로젝트 설정 → 내 앱 → Android(`com.nomara.modi.app`) → **디지털 지문 추가**에 붙여넣는다. **기존 지문은 지우지 않는다** — 팀원 수만큼 누적 등록하는 게 정상이다.
+2. Firebase 콘솔 → 프로젝트 설정 → 내 앱 → Android(`com.intpsquad.modi`) → **디지털 지문 추가**에 붙여넣는다. **기존 지문은 지우지 않는다** — 팀원 수만큼 누적 등록하는 게 정상이다.
 
 3. `google-services.json`을 **다시 생성**한다. 2단계만 하면 로컬 파일에는 옛 지문이 그대로라 계속 실패한다:
 
    ```bash
-   cd app && flutterfire configure -p modi-mara --platforms=android -a com.nomara.modi.app -y
+   cd app && flutterfire configure -p modi-mara --platforms=android -a com.intpsquad.modi -y
    ```
 
 4. 완전 재빌드. `google-services.json`은 빌드 타임에 APK로 구워지므로 핫 리로드로는 반영되지 않는다:

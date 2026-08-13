@@ -4,11 +4,11 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.nomara.modi</string>
+		<string>group.com.intpsquad.modi</string>
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)group.com.nomara.modi</string>
+		<string>$(AppIdentifierPrefix)group.com.intpsquad.modi</string>
 	</array>
 </dict>
 </plist>

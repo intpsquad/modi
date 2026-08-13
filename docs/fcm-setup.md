@@ -6,7 +6,7 @@
 
 ## Firebase 콘솔
 
-1. Firebase 프로젝트에 iOS 앱 `com.nomara.modi.app`을 등록합니다.
+1. Firebase 프로젝트에 iOS 앱 `com.intpsquad.modi`을 등록합니다.
 2. Firebase 콘솔의 프로젝트 설정에서 iOS 앱에 APNs 인증 키를 업로드합니다.
 3. CI가 주입하는 `GoogleService-Info.plist`와 `firebase_options.dart`가 같은 Firebase
    프로젝트를 가리키는지 확인합니다.
@@ -25,7 +25,7 @@
 
 - Android 13 이상에서는 앱 첫 실행 시 알림 권한 요청이 표시됩니다.
 - Firebase Android 앱의 패키지와 CI가 주입하는 `google-services.json`의 패키지가
-  `com.nomara.modi.app`과 일치해야 합니다.
+  `com.intpsquad.modi`과 일치해야 합니다.
 
 ## 동작 범위
 

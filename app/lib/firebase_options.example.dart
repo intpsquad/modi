@@ -3,7 +3,7 @@
 //
 // 로컬 개발: 아래 명령으로 실제 파일을 생성한다(이 템플릿을 복사해 쓰면 앱은 빌드되지만
 //   Firebase 초기화가 실패해 로그인이 동작하지 않는다).
-//     cd app && flutterfire configure -p modi-mara --platforms=android -a com.nomara.modi.app -y
+//     cd app && flutterfire configure -p modi-mara --platforms=android -a com.intpsquad.modi -y
 //
 // CI: .github/workflows/ci.yml 의 app 잡이 실제 파일이 없을 때 이 파일을
 //   firebase_options.dart 로 복사한다. flutter analyze / dart format / flutter test 는

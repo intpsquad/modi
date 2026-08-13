@@ -20,8 +20,8 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = Split-Path -Parent $PSScriptRoot
 $FirebaseProjectId = if ($env:FIREBASE_PROJECT_ID) { $env:FIREBASE_PROJECT_ID } else { "modi-mara" }
-$AndroidPackageName = if ($env:ANDROID_PACKAGE_NAME) { $env:ANDROID_PACKAGE_NAME } else { "com.nomara.modi.app" }
-$IosBundleId = if ($env:IOS_BUNDLE_ID) { $env:IOS_BUNDLE_ID } else { "com.nomara.modi.app" }
+$AndroidPackageName = if ($env:ANDROID_PACKAGE_NAME) { $env:ANDROID_PACKAGE_NAME } else { "com.intpsquad.modi" }
+$IosBundleId = if ($env:IOS_BUNDLE_ID) { $env:IOS_BUNDLE_ID } else { "com.intpsquad.modi" }
 
 function Write-SetupLog([string]$Message) {
   Write-Host "[setup] $Message"

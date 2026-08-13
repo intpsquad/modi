@@ -56,7 +56,7 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>ShareKeychainAccessGroup</key>
-		<string>$(AppIdentifierPrefix)group.com.nomara.modi</string>
+		<string>$(AppIdentifierPrefix)group.com.intpsquad.modi</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

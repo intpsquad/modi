@@ -38,6 +38,6 @@
 		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
 	</dict>
 	<key>ShareKeychainAccessGroup</key>
-	<string>$(AppIdentifierPrefix)group.com.nomara.modi</string>
+	<string>$(AppIdentifierPrefix)group.com.intpsquad.modi</string>
 </dict>
 </plist>

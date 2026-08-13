@@ -63,7 +63,7 @@
 ## 공유 익스텐션 (네이티브, S-25-D)
 - iOS Share Extension(Swift/SwiftUI) + Android `ACTION_SEND` intent-filter를 처리하는 네이티브 Activity(Kotlin) — 둘 다 Flutter 엔진을 띄우지 않는다. iOS는 익스텐션 메모리 제한(약 120MB) 때문에 네이티브가 필수이고, Android도 플랫폼 일관성을 위해 동일하게 네이티브로 구현한다(2026-07-27 확정). iOS 구현은 `app/ios/ShareExtension` 별도 타깃에서 URL/텍스트만 받고, 서버 등록 응답 후 확장을 닫는다.
 - **인증(Android)**: Firebase Auth Android SDK가 로그인 세션을 앱 프로세스 전역(네이티브 SharedPreferences)에 영속화하므로, 같은 앱 모듈의 순수 네이티브 `ShareActivity`가 `FirebaseAuth.getInstance().currentUser.getIdToken(false)`로 최신 ID 토큰을 얻는다(만료 시 SDK가 내부적으로 자동 갱신).
-- **인증(iOS)**: Share Extension은 별도 프로세스라 Firebase Auth의 Dart 세션을 직접 읽지 않는다. Flutter `ShareAuthSync`가 `idTokenChanges()`의 최신 ID 토큰과 API 주소를 MethodChannel로 `AppDelegate`에 전달하고, 메인 앱과 확장이 공유하는 `$(AppIdentifierPrefix)group.com.nomara.modi` Keychain access group에 토큰을 저장한다. API 주소만 App Group UserDefaults에 두며, 확장은 Flutter 엔진·Firebase SDK 없이 이를 읽어 보호 API를 호출한다. 토큰 저장 실패·부재·401은 등록하지 않고 앱 로그인 안내로 종료한다.
+- **인증(iOS)**: Share Extension은 별도 프로세스라 Firebase Auth의 Dart 세션을 직접 읽지 않는다. Flutter `ShareAuthSync`가 `idTokenChanges()`의 최신 ID 토큰과 API 주소를 MethodChannel로 `AppDelegate`에 전달하고, 메인 앱과 확장이 공유하는 `$(AppIdentifierPrefix)group.com.intpsquad.modi` Keychain access group에 토큰을 저장한다. API 주소만 App Group UserDefaults에 두며, 확장은 Flutter 엔진·Firebase SDK 없이 이를 읽어 보호 API를 호출한다. 토큰 저장 실패·부재·401은 등록하지 않고 앱 로그인 안내로 종료한다.
 - 화면 흐름·데이터·엣지케이스 상세: `specs/0014-외부-공유-등록.md`.
 
 ## 나중 네이티브 확장 경계 (지금은 구조만)
