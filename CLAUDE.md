@@ -40,7 +40,9 @@
 - UI는 반드시 `specs/design.md`의 토큰만 사용(하드코딩 색/크기 금지).
 - 화면/이동은 `specs/0003-navigation.md`를 따른다. 임의로 라우트를 만들지 않는다.
 - 서버 인가: **방장 개념 없음** — 방 멤버는 동일 권한. 파괴적 액션(방 삭제·나가기·자료 삭제)은 앱에서 확인 모달.
-- **기능/수정 브랜치를 push하기 전엔 반드시 최신 `dev`를 그 브랜치에 병합(`git fetch origin` → `git merge origin/dev`)한 뒤 push한다.** 단순히 같은 이름의 원격 브랜치가 앞서갔는지만 확인하는 걸로는 부족하다 — 브랜치가 `dev`보다 여러 커밋 뒤처진 채 push되면, 다른 세션이 이미 `dev`에 올린 변경(예: 예외 타입 마이그레이션)을 놓치거나 나중에 MR 병합 시 충돌이 커진다. `dev`/`master` 자체에 push할 때도 fetch/pull은 동일하게 선행한다. 여러 세션/작업자가 같은 브랜치를 동시에 건드릴 수 있어, stale 상태로 push하면 원격 변경을 덮어쓰거나 의도치 않은 되돌림(revert)이 섞여 들어갈 수 있다(2026-07-30 실제 사고: `dev` merge 커밋을 revert한 게 대상 브랜치가 아니라 `dev` 자체에 병합되면서 배포 설정이 통째로 사라짐).
+- **git 협업 규칙(브랜치·커밋·이슈·PR·테스트·버저닝)의 단일 진실은 `CONTRIBUTING.md`다.** 여기에 복붙하지 말고 그 파일을 연다. 반드시 지킬 두 가지만 적는다:
+  - **push 전엔 반드시 최신 `dev`를 병합한다** (`git fetch origin` → `git merge origin/dev`). 원격 브랜치가 앞서갔는지만 확인하는 걸로는 부족하다. `dev`/`main` 자체에 push할 때도 동일하게 선행한다. (2026-07-30 실제 사고: `dev` merge 커밋을 revert한 게 대상 브랜치가 아니라 `dev` 자체에 병합되면서 배포 설정이 통째로 사라짐 — 경위는 `CONTRIBUTING.md`.)
+  - **커밋 타입은 소문자다** — `feat:` `fix:` `docs:` `refactor:` `test:` `chore:` `revert:` `design:` (2026-08-15 통일. 그 이전 커밋은 `Feat(ai):` 처럼 대문자+스코프였고 그대로 둔다). **`Co-Authored-By` 트레일러는 붙이지 않는다.**
 - **추측 금지**: 명세에 없거나 모순되는 결정은 임의로 굳히지 말 것. `specs/OPEN.md`에 기록하고, 그 항목에 의존하는 구현 전에 **AskUserQuestion으로 사용자에게 물어** 확정한다.
 
 ## 건드리지 말 것
@@ -63,12 +65,13 @@
 - 목록의 단일 진실은 README.md — 여기(CLAUDE.md)에는 중복 기재하지 않는다.
 
 ## 인프라 / CI·CD  *(2026-08-13 전면 교체 — 아래가 현재다)*
-- **저장소**: **GitHub** (`intpsquad/modi`, **프라이빗**). MR 대신 **PR** 용어를 쓴다.
+- **저장소**: **GitHub** (`intpsquad/modi`, **공개** — 2026-08-15 전환. 브랜치 보호가 무료 플랜에서는 공개 저장소에만 열려서다). MR 대신 **PR** 용어를 쓴다.
   - ⚠️ **2026-08-14에 오가니제이션을 `modintps` → `intpsquad` 로 개명했다**(번들 ID `com.intpsquad.modi` 와 맞춤). GitHub 이 옛 주소를 리다이렉트해 주지만 그 리다이렉트는 언제든 끊길 수 있으므로, 각자 로컬에서 `git remote set-url origin https://github.com/intpsquad/modi.git` 을 한 번 돌린다.
-- **CI/CD**: **GitHub Actions** — `.github/workflows/ci.yml` **한 파일**. 잡 5개(`changes`→`app`/`server`/`ai`→`deploy`)를 `needs`로 묶어 "테스트 통과해야 배포"를 유지한다. Jenkins·`Jenkinsfile`은 제거했다.
+- **브랜치 3계층**: `main`(운영 — **머지하면 배포된다**) / `dev`(통합·테스트 — 배포 안 함) / `feat/<이슈번호>-<내용>`. 단일 진실은 `CONTRIBUTING.md`. 기본 브랜치는 `dev`다(PR 대부분이 `feat/*`→`dev`라, 기본이 `main`이면 base를 잘못 잡아 테스트를 건너뛴 채 운영에 머지될 수 있다).
+- **CI/CD**: **GitHub Actions** — `.github/workflows/ci.yml` **한 파일**. 잡 6개(`changes`→`app`/`server`/`ai`→`gate`/`deploy`)를 `needs`로 묶어 "테스트 통과해야 배포"를 유지한다. 브랜치 보호의 필수 상태 체크는 **`gate` 하나만** 건다(경로 필터로 스킵된 잡을 필수로 걸면 PR이 영구 대기한다). Jenkins·`Jenkinsfile`은 제거했다.
 - **배포 인프라**: **단일 오라클 클라우드 Ampere A1**(ARM aarch64, 4 OCPU/24GB, ap-tokyo-1)에 서버·PostgreSQL·Redis·MinIO·Caddy를 Docker로 운영. 접속은 `ssh modi` 별칭. 상세는 `README.md` "배포" 절.
   - ⚠️ **빌드는 러너가 아니라 서버에서 한다** — 러너는 x86_64, 서버는 ARM이라 러너에서 만든 이미지는 뜨지 않는다.
-- **출시 대상**: **iOS 전용**. `app/android/`는 코드만 남아 있고 **CI·릴리스 경로가 없다**. iOS 릴리스는 Mac에서 수동(`docs/ios-release.md`) — 프라이빗 저장소의 macOS 러너가 분수를 10배로 소모해서다.
+- **출시 대상**: **iOS 전용**. `app/android/`는 코드만 남아 있고 **CI·릴리스 경로가 없다**. iOS 릴리스는 Mac에서 수동(`docs/ios-release.md`) — 프라이빗 저장소의 macOS 러너가 분수를 10배로 소모해서였다. ⚠️ **2026-08-15 공개 전환으로 그 이유는 사라졌다**(공개 저장소는 Actions 무료). 아직 자동화하지 않았을 뿐이다.
 - **팀·권한 소유 현황**: `docs/TEAM.md`.
 
 ## 문서 자동화 (하네스)

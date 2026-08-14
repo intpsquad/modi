@@ -2,7 +2,7 @@
 #
 # **왜 워크플로를 여러 파일로 쪼개지 않았나**: Jenkins 는 한 파이프라인의 스테이지라서
 # "테스트가 통과해야 배포가 돈다"가 공짜였다. 워크플로를 파일로 쪼개면 그 게이팅이
-# 사라진다 — deploy 워크플로가 테스트 결과를 모른 채 dev push 만 보고 배포한다.
+# 사라진다 — deploy 워크플로가 테스트 결과를 모른 채 main push 만 보고 배포한다.
 # `workflow_run` 으로 묶는 방법도 있지만, 경로 필터로 스킵된 워크플로는 애초에
 # 실행되지 않아 트리거가 오지 않는다. 그래서 잡을 한 파일에 두고 `needs` 로 묶는다.
 #
@@ -15,13 +15,18 @@
 #   app: shorebird patch      → **제거**(2026-08-13, iOS 전용화로 안드로이드 릴리스 경로 없음)
 #   iOS: TestFlight           → **옮기지 않음**. Mac 에서 사람이 돌린다(docs/ios-release.md).
 #                                프라이빗 저장소의 macOS 러너는 분수를 10배로 소모한다.
+#                                ⚠️ 2026-08-15 에 저장소를 공개로 돌리면서 **이 이유는 사라졌다**
+#                                (공개 저장소는 Actions 가 무료). 아직 옮기지 않았을 뿐이다.
 name: CI
 
+# 🔴 **배포를 태우는 브랜치는 `main` 이다**(2026-08-15 변경, 그전에는 `dev`).
+# `dev` push 는 테스트만 돌고 배포하지 않는다. 브랜치별 역할은 CONTRIBUTING.md.
+# (`master` 를 트리거에서 뺐다 — 이 저장소에 존재한 적이 없는 브랜치였다.)
 on:
   push:
-    branches: [dev, master]
+    branches: [dev, main]
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
   workflow_dispatch:
     inputs:
       force_all:
@@ -30,10 +35,10 @@ on:
         default: false
 
 # 같은 브랜치에 연속 push 가 오면 앞의 실행을 취소한다. 단 배포가 섞이면 위험하므로
-# dev 는 취소하지 않는다 — 배포 도중 취소되면 컨테이너가 중간 상태로 남는다.
+# main 은 취소하지 않는다 — 배포 도중 취소되면 컨테이너가 중간 상태로 남는다.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -148,8 +153,8 @@ jobs:
   # 걸릴 위험이 있다(문서만 고친 PR 은 세 잡이 다 스킵된다). 아래 조건은 `deploy` 잡이 이미
   # 쓰는 것과 같다: 스킵은 통과로 보고 **실패만** 막는다.
   #
-  # 설정: GitHub → Settings → Rules/Branches → `dev` → Require status checks → **`gate` 만** 선택.
-  # ⚠️ 체크 목록에는 **한 번 돌아본 뒤에야** 나타난다. 첫 push 뒤에 설정할 것.
+  # 설정: GitHub → Settings → Rules/Branches → **`main` 과 `dev` 둘 다** → Require status checks
+  # → **`gate` 만** 선택. ⚠️ 체크 목록에는 **한 번 돌아본 뒤에야** 나타난다. 첫 push 뒤에 설정할 것.
   gate:
     needs: [app, server, ai]
     if: always() && !failure() && !cancelled()
@@ -168,9 +173,14 @@ jobs:
     # ② push 없이 SSH 배선을 시험할 수 있다. 수동 실행에서는 경로 필터가 변화를 못 잡아
     # 테스트 잡이 스킵될 수 있는데, 그건 이미 통과한 코드를 다시 배포하는 것이라 괜찮다
     # (전부 다시 돌리려면 실행 시 `force_all` 을 켠다).
+    #
+    # 🔴 **`main` 이다**(2026-08-15, 그전에는 `dev`). `dev` 에 머지해도 서버는 바뀌지 않는다.
+    # 수동 재배포·롤백도 `main` 을 골라 Run workflow 해야 이 조건을 통과한다.
+    # 이 게이트가 **포크 PR 이 배포를 태우지 못하게** 하는 장치이기도 하다(저장소가 공개다) —
+    # `push`/`workflow_dispatch` 만 허용하므로 `pull_request` 이벤트로는 절대 실행되지 않는다.
     if: |
       always() && !failure() && !cancelled()
-      && github.ref == 'refs/heads/dev'
+      && github.ref == 'refs/heads/main'
       && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
