@@ -1,0 +1,47 @@
+name: 작업 (문서 · 리팩터링 · 테스트 · 설정 · 디자인)
+description: 기능도 버그도 아닌 작업
+title: "[chore] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🔴 **타입을 고른 뒤 제목의 `[chore]` 와 라벨을 그 타입으로 바꿔 주세요.**
+        GitHub 이슈 폼은 드롭다운 값으로 라벨을 자동으로 달지 못합니다.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 타입
+      options:
+        - docs — 문서 수정
+        - refactor — 기능 변화 없는 코드 구조 개선
+        - test — 테스트 코드 추가/수정
+        - chore — 빌드, 설정, 패키지 등 자잘한 작업
+        - revert — 이전 커밋 되돌리기
+        - design — UI/디자인 변경
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 📝 작업 내용
+      description: 구체적으로 뭘 할 건지 항목별로.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📣 참고사항
+      description: 관련 링크, 의존 이슈, 주의할 점.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ☑️ 체크리스트
+      options:
+        - label: 제목과 라벨을 위에서 고른 타입으로 바꿨나요?
+        - label: 담당자를 설정했나요?
+        - label: 브랜치명이 규칙(`feat/이슈번호-내용`)에 맞는지 확인했나요?
