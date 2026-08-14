@@ -272,8 +272,10 @@ class TestTheCeiling:
         assert len(llm.prompts) == 2, f"생성이 {len(llm.prompts)}번 돌았다 — 상한 2를 넘었다"
 
     def test_one_attempt_never_regenerates(self, settings):
-        """`critique_max_attempts=1`(현재 dev 기본)이면 스위치가 켜져도 안 돈다 —
-        시도가 이미 소진되기 때문이다."""
+        """`critique_max_attempts=1`이면 스위치가 켜져도 안 돈다 — 시도가 이미 소진되기 때문이다.
+
+        ⚠️ 2026-08-14 부터 **dev 기본값은 `0`(검수 없음)** 이다. 이 테스트는 값을 직접
+        주입하므로 기본값과 무관하게 `1` 의 동작을 고정한다 — 검수를 다시 켤 때 쓴다."""
         settings(1, True)
         llm = ScriptedLlm(
             [_titles("승자", "탈락"), _titles("나오면 안 되는 후보")],
