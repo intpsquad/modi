@@ -151,9 +151,25 @@ GET_TASK_ALLOW="$(plutil -extract Entitlements.get-task-allow raw -o - - <<<"${P
 [[ "${GET_TASK_ALLOW}" == "false" ]] \
   || fail "get-task-allow 가 '${GET_TASK_ALLOW:-없음}' 이다 — 개발용 프로파일이 들어갔다(업로드가 거절된다)"
 
+# 🔴 **확장의 버전이 본체와 다르면 Apple 이 업로드를 거부한다**(오류 90473).
+# 여기서 잡지 않으면 빌드·서명·전송을 다 끝낸 뒤 Transporter 에서야 알게 된다
+# (2026-08-14 실제로 그랬다 — 확장 Info.plist 에 버전이 하드코딩돼 있었고, 첫 업로드가
+#  마침 `1.0.0 (1)` 이라 우연히 일치해 드러나지 않다가 `+2` 로 올리는 순간 터졌다).
+# 두 파일 사이의 약속이라 Swift 테스트·flutter analyze·Xcode Validate 어느 것도 못 잡는다.
+APP_SHORT="$(plutil -extract CFBundleShortVersionString raw -o - "${APP_BUNDLE}/Info.plist")"
+APP_BUILD="$(plutil -extract CFBundleVersion raw -o - "${APP_BUNDLE}/Info.plist")"
+
+while IFS= read -r EXT_BUNDLE; do
+  [ -n "${EXT_BUNDLE}" ] || continue
+  EXT_NAME="$(basename "${EXT_BUNDLE}")"
+  EXT_SHORT="$(plutil -extract CFBundleShortVersionString raw -o - "${EXT_BUNDLE}/Info.plist" 2>/dev/null || true)"
+  EXT_BUILD="$(plutil -extract CFBundleVersion raw -o - "${EXT_BUNDLE}/Info.plist" 2>/dev/null || true)"
+  [[ "${EXT_BUILD}" == "${APP_BUILD}" && "${EXT_SHORT}" == "${APP_SHORT}" ]] \
+    || fail "$(printf '%s 의 버전이 본체와 다르다 — 업로드가 거절된다(오류 90473).\n       본체 %s (%s) / %s %s (%s)\n       확장 Info.plist 가 $(FLUTTER_BUILD_NAME)/$(FLUTTER_BUILD_NUMBER) 를 쓰는지,\n       그 타깃의 xcconfig 가 Flutter/Generated.xcconfig 를 include 하는지 확인할 것.' \
+        "${EXT_NAME}" "${APP_SHORT}" "${APP_BUILD}" "${EXT_NAME}" "${EXT_SHORT:-없음}" "${EXT_BUILD:-없음}")"
+done < <(find "${APP_BUNDLE}/PlugIns" -maxdepth 1 -name '*.appex' 2>/dev/null)
+
 printf '\n✅ %s\n' "${IPA}"
 codesign -dv --verbose=2 "${APP_BUNDLE}" 2>&1 | grep -E '^(Identifier|Authority=Apple Distribution|TeamIdentifier)'
-printf '   버전 %s (%s)\n' \
-  "$(plutil -extract CFBundleShortVersionString raw -o - "${APP_BUNDLE}/Info.plist")" \
-  "$(plutil -extract CFBundleVersion raw -o - "${APP_BUNDLE}/Info.plist")"
-printf '\n다음: Xcode Organizer 또는 Transporter 로 App Store Connect 에 업로드한다.\n'
+printf '   버전 %s (%s)  — 확장도 동일함을 확인\n' "${APP_SHORT}" "${APP_BUILD}"
+printf '\n다음: **Transporter** 로 업로드한다(이 스크립트가 만든 아카이브는 Xcode Organizer 가\n      "No Team Found in Archive" 로 거부한다 — docs/ios-release.md 4절).\n      open -R %s\n' "${IPA}"

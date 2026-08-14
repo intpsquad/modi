@@ -14,10 +14,13 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
+	<!-- 앱 본체와 같은 값이어야 한다. 하드코딩하면 pubspec 의 version 을 올릴 때 어긋나고,
+	     Apple 이 업로드를 거부한다(오류 90473). 변수는 ShareExtension.xcconfig 가
+	     Generated.xcconfig 를 include 해서 들어온다. -->
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSExtension</key>

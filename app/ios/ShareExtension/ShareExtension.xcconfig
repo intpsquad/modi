@@ -14,3 +14,16 @@
 // clone 직후엔 없다. 그때는 시뮬레이터 빌드만 되고 아카이브가 실패하는데, 이는 메인 앱과 같은 동작이다.
 
 #include? "../Flutter/Local.xcconfig"
+
+// 🔴 **버전은 앱과 반드시 같아야 한다.** Apple 은 확장의 CFBundleVersion 이 본체와 다르면
+// 업로드를 거부한다(2026-08-14 실측: Transporter 오류 90473 —
+// `CFBundleVersion value '1' of extension ... does not match ... '2' of its containing
+// iOS application`). 그전까지 확장 Info.plist 에 1.0.0/1 이 **하드코딩**돼 있었는데,
+// 첫 업로드가 마침 `1.0.0 (1)` 이라 우연히 일치해 드러나지 않았다 —
+// **빌드 번호를 올리는 순간 터지게 돼 있었다.**
+//
+// Generated.xcconfig 는 Flutter 가 pubspec 의 version 을 FLUTTER_BUILD_NAME/NUMBER 로
+// 풀어놓는 파일이다. 위 경고("Release.xcconfig 를 그대로 물리면 안 된다")는 그쪽이
+// Pods-Runner.release.xcconfig 를 딸고 오기 때문이고, **Generated.xcconfig 자체에는
+// Pods 설정이 없다**(실측: Pods-Runner 언급 0건). 그래서 이것만 따로 물리는 건 안전하다.
+#include "../Flutter/Generated.xcconfig"
