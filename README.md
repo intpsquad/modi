@@ -437,7 +437,8 @@ cd <repo>/deploy && ./deploy.sh    # 컨테이너 재기동
 
 - 저장소는 **GitHub**, CI/CD 는 **GitHub Actions** — 워크플로 한 파일이다: `.github/workflows/ci.yml`.
 - `app/**`·`server/**`·`ai/**` 중 **바뀐 쪽만** 해당 잡이 돈다(`dorny/paths-filter`).
-- **`dev` 에 push 되면 자동으로 `api.maramodi.cloud` 에 배포된다.** `master` 는 배포하지 않는다.
+- 🔴 **`main` 에 머지되면 자동으로 `api.maramodi.cloud` 에 배포된다.** `dev` 는 테스트만 돌고 **배포하지 않는다**(2026-08-15 변경 — 그전에는 `dev` 가 배포 브랜치였다).
+- 브랜치 3계층(`main` 운영 / `dev` 통합 / `feat/*`)과 커밋·이슈·PR 규칙은 **`CONTRIBUTING.md`** 가 단일 진실이다.
 
 ### 왜 워크플로를 파일 하나로 뒀나
 
@@ -452,12 +453,13 @@ Jenkins 는 한 파이프라인의 스테이지라서 "테스트가 통과해야
 | `app` | Flutter **3.44.8** · `firebase_options` 템플릿 복사 · `dart format --set-exit-if-changed` · `analyze` · `test` |
 | `server` | JDK 21 · `./gradlew build`(Testcontainers 로 Postgres·Redis 를 띄운다) · **OpenAPI 드리프트 검사** |
 | `ai` | uv **0.11.26** · `uv sync --frozen` · `ruff format --check` · `ruff check` · `pytest` |
-| `deploy` | `dev` push 일 때만. 러너가 소스를 **rsync** 로 서버에 밀어 넣고 SSH 로 `./deploy/deploy.sh` 실행 (서버는 GitHub 을 읽지 않는다 — 아래 "소스는 러너가 서버로 rsync 한다") |
+| `gate` | 위 세 잡 중 **실패한 것이 없다**를 한 줄로 모은다. 브랜치 보호의 필수 상태 체크는 이것 **하나만** 건다 |
+| `deploy` | **`main` push 일 때만.** 러너가 소스를 **rsync** 로 서버에 밀어 넣고 SSH 로 `./deploy/deploy.sh` 실행 (서버는 GitHub 을 읽지 않는다 — 아래 "소스는 러너가 서버로 rsync 한다") |
 
 ### deploy 잡의 `if` 를 건드리지 말 것
 
 ```yaml
-if: always() && !failure() && !cancelled() && github.ref == 'refs/heads/dev' && github.event_name == 'push'
+if: always() && !failure() && !cancelled() && github.ref == 'refs/heads/main' && github.event_name == 'push'
 ```
 
 `always()` 가 필요한 이유: 경로 필터로 **스킵된 잡의 결과는 `skipped`** 인데, `needs` 의 기본
@@ -494,8 +496,9 @@ ssh ubuntu@<IP> 'cd ~/maramodi/repo && ./deploy/deploy.sh'
   서버에서 1회: `sudo apt-get install -y rsync`. 워크플로가 배포 전에 이걸 확인해 준다.
 
 🔴 **대가: 서버에서 `git pull` 로 최신 코드를 받을 수 없다.** 사람이 최신 코드로 배포하려면
-**Actions → CI → Run workflow**(`workflow_dispatch`)를 쓴다. 서버에 이미 있는 코드로 다시
-배포하는 것은 `./deploy/deploy.sh` 만 돌리면 된다.
+**Actions → CI → Run workflow**(`workflow_dispatch`)를 쓴다 — ⚠️ **브랜치를 `main` 으로 골라야 한다.**
+`deploy` 잡이 `github.ref == 'refs/heads/main'` 을 요구하므로 `dev` 로 돌리면 테스트만 돌고 조용히
+배포를 건너뛴다. 서버에 이미 있는 코드로 다시 배포하는 것은 `./deploy/deploy.sh` 만 돌리면 된다.
 
 ### 필요한 GitHub Secrets
 
@@ -567,7 +570,7 @@ spring-blue:8080  ┊  spring-green:8080  minio:9000    (완전 내부)
 | | 파일 | 재시작 시점 |
 |---|---|---|
 | 인프라 층 | `deploy/docker-compose.infra.yml` (Caddy 하나) | **사람이 수동으로만** |
-| 앱 층 | `deploy/docker-compose.app.yml` (spring **두 색**, ai, minio, postgres, redis) | `dev` push 마다 `deploy.sh` 가 |
+| 앱 층 | `deploy/docker-compose.app.yml` (spring **두 색**, ai, minio, postgres, redis) | `main` push 마다 `deploy.sh` 가 |
 
 ### 무중단 배포 (blue/green) — 2026-08-13
 
@@ -592,9 +595,10 @@ Spring 은 `spring-blue`·`spring-green` **두 벌**로 정의돼 있고, **평�
 | `stop_grace_period` > `timeout-per-shutdown-phase` | compose vs `application.yml` | Docker 가 **SIGKILL 을 먼저** 보내 graceful 설정이 있는데도 효과가 없다 |
 | 색 이름이 compose·활성 파일·`deploy.sh` 셋에서 같음 | 세 파일 | Caddy 가 upstream 을 못 찾아 **전부 502** |
 
-🔴 **활성 파일은 저장소 밖(`~/maramodi/`)에 있다.** 저장소 안에 두면 배포 잡의
-`git reset --hard origin/dev` 가 **매 배포마다 활성 색을 커밋된 값으로 되돌려**, 배포는 성공했다고
-보고하면서 트래픽은 방금 세운 옛 색으로 간다.
+🔴 **활성 파일은 저장소 밖(`~/maramodi/`)에 있다.** 배포가 서버의 작업 트리를 커밋된 내용으로
+덮어쓰기 때문이다(2026-08-13 이전엔 서버에서 `git reset --hard`, 지금은 러너에서 rsync). 저장소
+안에 두면 **매 배포마다 활성 색이 커밋된 값으로 되돌아가**, 배포는 성공했다고 보고하면서
+트래픽은 방금 세운 옛 색으로 간다.
 
 🔴 **활성 파일은 `printf ... > 파일` 로 제자리 truncate 한다 — `sed -i`·`mv` 를 쓰지 않는다.**
 리눅스에서 단일 파일 bind-mount 는 **inode 를 묶는** 것이라, 새 파일을 만들어 갈아치우는 도구를
@@ -892,7 +896,9 @@ cd ~/maramodi/repo && ./deploy/deploy.sh
 
 ### 일상 운영
 
-PR을 `dev`에 머지하면 끝이다. GitHub Actions 가 테스트 → SSH → 서버에서 이미지 빌드 → 컨테이너 교체 → 헬스체크까지 하고, 헬스체크가 240초 안에 통과하지 않으면 컨테이너 로그를 찍고 실패시킨다.
+기능 PR 을 `dev` 에 머지한 뒤, **`dev` → `main` PR 을 머지하면 배포된다.** GitHub Actions 가 테스트 → SSH → 서버에서 이미지 빌드 → 컨테이너 교체 → 헬스체크까지 하고, 헬스체크가 240초 안에 통과하지 않으면 컨테이너 로그를 찍고 실패시킨다.
+
+> ⚠️ **`dev` 머지만으로는 서버가 바뀌지 않는다**(2026-08-15 변경). 배포 트리거는 `main` 이다 — `CONTRIBUTING.md` "브랜치".
 
 > 🔴 **새 환경변수를 추가한 PR은 머지 전에 서버 `.env`를 먼저 채운다.** `deploy/.env.example`을 고쳐도 서버의 `/home/ubuntu/maramodi/.env`는 **이미 존재하는 파일이라 덮이지 않고**, `deploy.sh`도 파일 존재만 확인할 뿐 필수 변수를 검증하지 않는다. 즉 머지하고 배포해도 **그 기능만 조용히 죽은 채로 뜬다**. 순서: ① 서버 `.env`에 값 추가(`nano ~/maramodi/.env` — `echo`로 붙이면 셸 히스토리에 값이 남는다) ② `docker-compose.app.yml`에 해당 서비스로 통과시키는 줄이 있는지 확인 ③ 머지. 배포 후 살아있는 색의 로그로 해당 기능의 경고가 없는지 본다: `docker logs "$(docker ps --filter name=maramodi-spring- --format '{{.Names}}')"`. ⚠️ **두 색 모두에 통과 줄이 있어야 한다** — `docker-compose.app.yml` 은 `x-spring` 앵커 하나로 정의하므로 거기에 넣으면 두 색이 함께 받는다. 색 블록에 직접 넣으면 다음 배포에서 색이 바뀔 때 그 기능이 조용히 꺼진다.
 
@@ -945,11 +951,13 @@ docker compose -f deploy/docker-compose.app.yml --env-file ~/maramodi/.env up -d
 - **A1 인스턴스를 지우지 않는다.** Ampere A1 용량은 리전에 따라 오래 잡히지 않는다 — 한 번 놓으면 며칠씩 `Out of capacity` 가 날 수 있다.
 - **두 번째 A1 인스턴스를 만들면 즉시 과금된다.** 무료 한도는 인스턴스 수가 아니라 **월 시간 쿼터**(3,000 OCPU-h / 18,000 GB-h)이고, 지금 구성(4 OCPU/24GB) 한 대가 24시간 돌면 그 쿼터를 거의 다 쓴다.
 - **`MINIO_ROOT_PASSWORD`를 나중에 바꾸면 기존 데이터에 접근할 수 없다.** MinIO 루트 계정은 데이터 디렉토리에 묶여 있다. 처음에 제대로 정하고 `.env`를 잃어버리지 말 것.
-- 🔴 **`dev` 에 push 할 수 있는 사람 = 서버에서 임의 코드를 돌릴 수 있는 사람이다.** 배포 잡이
+- 🔴 **`main` 에 머지할 수 있는 사람 = 서버에서 임의 코드를 돌릴 수 있는 사람이다.** 배포 잡이
   SSH 로 들어와 저장소의 `deploy/deploy.sh` 를 그대로 실행하므로, 그 파일(과 compose)을 바꿀 수
   있으면 서버에서 무엇이든 돌릴 수 있다. 그래서:
-  - `dev` 브랜치 보호를 켜 두고 직접 push 대신 PR 로 받는다.
-  - 저장소에 외부인을 초대하지 않는다. 저장소는 **프라이빗**으로 둔다.
+  - `main`·`dev` 브랜치 보호를 켜 두고 직접 push 대신 PR 로 받는다. **`main` 은 승인 1명을 요구한다.**
+  - **저장소에 쓰기 권한을 가진 사람을 늘리지 않는다.** 저장소는 2026-08-15 부터 **공개**지만,
+    공개는 읽기일 뿐 머지 권한과 무관하다. 포크에서 온 PR 은 `deploy` 잡의
+    `github.event_name == 'push'` 게이트에 걸려 **배포를 태울 수 없고 시크릿도 받지 못한다.**
   - **CI 를 서버 밖으로 뺀 것 자체가 보안 개선이다** — 예전에는 Jenkins 컨테이너가 호스트
     `docker.sock` 을 들고 있어 잡 하나로 호스트 파일시스템 전체(`.env`·Firebase 키·SSH 키)에
     닿을 수 있었다. 이제 서버에는 그 소켓을 가진 컨테이너가 없다.

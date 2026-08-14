@@ -1,0 +1,9 @@
+# 빈 이슈를 막아 세 템플릿 중 하나를 반드시 고르게 한다.
+blank_issues_enabled: false
+contact_links:
+  - name: 협업 규칙 (브랜치 · 커밋 · PR)
+    url: https://github.com/intpsquad/modi/blob/dev/CONTRIBUTING.md
+    about: 이슈를 열기 전에 브랜치 이름과 커밋 타입 규칙을 확인하세요.
+  - name: 미결 결정 트래커
+    url: https://github.com/intpsquad/modi/blob/dev/specs/OPEN.md
+    about: 스펙에 없거나 모순되는 결정은 이슈 대신 여기에 기록합니다.
