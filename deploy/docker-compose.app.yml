@@ -186,18 +186,20 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-nano}
       # Spring 과 **같은 값**이어야 한다. 비면 양쪽 다 검증을 건너뛴다.
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
-      # 후보 검수 노드. 0 = 검수 안 함. **기본 1(켬)이 운영값이다.**
+      # 후보 검수 노드. 0 = 검수 안 함. **기본 0(끔)이 운영값이다**(2026-08-14 전환).
       #
       # 🔴 이 줄이 없으면 서버 .env 에 넣어도 컨테이너 안에 안 들어간다 — 위 YOUTUBE_API_KEY 가
       # 겪은 것과 정확히 같은 함정이라 미리 통과시켜 둔다.
       #
-      # 시연에는 0 으로 내려서 쓴다. 검수를 끄면 후보가 1~3개 → 7~8개가 되고 응답이 12초 →
-      # 7초로 떨어진다(운영 춘천여행 방 실측). 대가는 '일정 짜기' 같은 바로 실행 못 하는 후보가
-      # 섞이는 것이라 **시연이 끝나면 반드시 되돌린다.**
+      # 원래 1(켬)이 운영값이고 0 은 시연용 임시였는데 **뒤집혔다.** 검수가 한 배치를 전멸시키면
+      # 재시도가 없어 사용자가 빈 화면을 본다 — 심사 제출 직전 데모에서 두 번 연속 그랬다.
+      # 대가는 '일정 짜기' 같은 바로 실행 못 하는 후보가 섞이는 것이고, 근거·측정은
+      # ai/docs/DECISIONS.md 의 검수 항목과 README "AI 투두 추천 — 검수 노드" 절에 있다.
       #
-      # ⚠️ 기본값 1 은 ai/src/modi_ai/config.py 의 critique_max_attempts 와 **같은 값**이어야 한다.
-      # 두 곳에 적힌 값이라 한쪽만 바꾸면 조용히 갈라진다.
-      CRITIQUE_MAX_ATTEMPTS: ${CRITIQUE_MAX_ATTEMPTS:-1}
+      # ⚠️ 기본값 0 은 ai/src/modi_ai/config.py 의 critique_max_attempts 와 **같은 값**이어야 한다.
+      # 두 곳에 적힌 값이라 한쪽만 바꾸면 조용히 갈라진다 — 2026-08-14 에 실제로 그렇게 갈라졌다.
+      # 코드만 0 으로 바꿨는데 이 줄이 1 을 주입해서 **배포는 됐는데 동작은 그대로**였다.
+      CRITIQUE_MAX_ATTEMPTS: ${CRITIQUE_MAX_ATTEMPTS:-0}
       # 운영에서 켜면 사용자 자료 본문이 외부 SaaS 로 전송된다(ai/.env.example). 하드코딩으로 막는다.
       LANGSMITH_TRACING: "false"
     healthcheck:
