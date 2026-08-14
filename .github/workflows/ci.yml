@@ -40,8 +40,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# 🔴 `pull-requests: read` 가 있어야 PR 에서 CI 가 돈다. `dorny/paths-filter` 는 이벤트에 따라
+# 바뀐 파일을 찾는 방법이 다르다 — push 는 git diff, **PR 은 GitHub API(`listFiles`)** 다.
+# 권한이 없으면 `changes` 잡이 `Resource not accessible by integration` 으로 죽고, 뒤따르는
+# 잡이 전부 스킵돼 **PR 이 통째로 실패한다.**
+# 2026-08-15 이 저장소의 **첫 PR(#2)** 에서 드러났다. 그전 실행은 전부 `dev` push 라
+# API 경로를 한 번도 타지 않았다.
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   changes:
