@@ -112,7 +112,23 @@ iOS App Development provisioning profiles matching 'com.intpsquad.modi'.
 
 ## 4. TestFlight 업로드 (매 릴리스)
 
-Xcode Organizer 또는 **Transporter** 앱으로 3절의 `.ipa` 를 올린다.
+🔴 **`scripts/build-ios-ipa.sh` 로 만든 산출물은 Xcode Organizer 로 못 올린다.** 열면
+`No Team Found in Archive` 가 뜬다(2026-08-14 실측) — 스크립트는 `xcodebuild archive` 를
+직접 부르는데 Organizer 가 기대하는 형태로 팀 정보가 남지 않아서다.
+
+**대신 [Transporter](https://apps.apple.com/app/id1450874784)(Mac App Store, 무료)로 `.ipa` 를 끌어다 놓는다.**
+스크립트가 이미 배포용 서명과 App Store 프로파일까지 끝낸 파일이라 그대로 올라간다.
+
+```sh
+open -R app/build/ios/ipa/MODI.ipa   # Finder 에서 위치 열기 → Transporter 창에 드래그
+```
+
+⚠️ **아카이브가 두 군데 생긴다.** 스크립트는 `app/build/ios/ipa/Runner.xcarchive` 에 만들고,
+Xcode 의 Product → Archive 는 `app/build/ios/archive/` 에 만든다. **옛 빌드가 남아 있으면
+Organizer 목록에서 같은 버전이 둘로 보여 헷갈린다** — 업로드 전에 버전·빌드 번호를 확인할 것.
+
+> Organizer 를 꼭 쓰고 싶으면 스크립트 대신 Xcode 에서 **Product → Archive** 로 만든다.
+> 그 경로는 팀이 기록돼 Organizer 의 Distribute App 이 동작한다(2026-08-14 `1.0.0 (1)` 이 그 방식이었다).
 
 - 업로드 후 Apple 의 processing(5~15분)이 끝나야 테스터에게 보인다.
 - 내부 테스트는 심사가 없다. **기기 UDID 등록도 필요 없다** — TestFlight 앱으로 설치한다.

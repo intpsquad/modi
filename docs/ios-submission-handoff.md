@@ -106,9 +106,19 @@ xcrun simctl io      <UDID> screenshot out.png
 
 ## §E. 빌드 업로드
 
-`.p8` APNs 키·App Store Connect API 키 **둘 다 없다.** **Xcode Organizer** 가 가장 간단하다
-(이미 로그인돼 있다) — 단 `flutter build ipa` 로 만든 아카이브여야 한다.
-`.ipa` 를 직접 올리려면 **Transporter**(Mac App Store). 자세한 건 아래 4·5절.
+`.p8` APNs 키·App Store Connect API 키 **둘 다 없다.**
+
+🔴 **`scripts/build-ios-ipa.sh` 산출물은 Xcode Organizer 로 못 올린다** — `No Team Found in
+Archive` 가 뜬다(2026-08-14 실측). **[Transporter](https://apps.apple.com/app/id1450874784)**
+(Mac App Store, 무료)에 `.ipa` 를 끌어다 놓는다. 스크립트가 배포용 서명·App Store 프로파일까지
+끝낸 파일이라 그대로 올라간다.
+
+```sh
+open -R app/build/ios/ipa/MODI.ipa
+```
+
+Organizer 를 쓰려면 스크립트 대신 Xcode 의 **Product → Archive** 로 만들어야 한다
+(`1.0.0 (1)` 이 그 방식이었다). 자세한 건 `ios-release.md` 4절.
 
 ⚠️ §F 에서 **새 카카오 앱을 만들기로 하면 IPA 를 다시 빌드해야 한다**(키가 빌드에 박힌다).
 **§F 를 먼저 정하고 업로드하는 것이 순서다.**
