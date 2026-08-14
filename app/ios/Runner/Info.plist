@@ -49,6 +49,18 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<!-- 수출 규정: 이 앱은 **면제 대상 암호화만** 쓴다 — 서버 통신은 운영체제가 주는
+		     HTTPS/TLS 이고 인증은 Firebase 표준 방식이라, 앱이 암호화 알고리즘을 직접
+		     구현하지 않는다(2026-08-14 확인: pubspec 직접 의존성에 암호화 라이브러리 0건,
+		     lib/ 에서 crypto 계열 import 0건, AES/RSA/cipher 사용 0건).
+		     `pointycastle` 이 의존성 트리에 보이지만 Firebase 가 토큰 서명 검증에 쓰는
+		     전이 의존성이고 우리 코드가 부르는 곳은 없다.
+
+		     이 키가 없으면 **업로드할 때마다** App Store Connect 가 "앱 암호화 문서"를
+		     물어보고, 답하기 전까지 빌드가 테스터에게 안 보인다. 🔴 TestFlight 업로드를
+		     자동화하면 그 대화상자를 클릭할 사람이 없어 파이프라인이 거기서 멈춘다. -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>
