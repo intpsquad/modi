@@ -464,7 +464,8 @@ if: always() && !failure() && !cancelled() && github.ref == 'refs/heads/dev' && 
 
 **서버에 GitHub 자격증명이 하나도 없다.** 예전에는 서버가 GitHub 에서 직접 `git fetch` 했고
 그러려면 읽기 전용 **deploy key** 가 필요했는데, 이 오가니제이션은 **정책으로 deploy key 를
-금지**한다("Disabled by modintps", 2026-08-13 확인). 정책을 풀 수도 있었지만 방향을 뒤집는 쪽을
+금지**한다(GitHub 화면 문구 `Disabled by <org>`, 2026-08-13 확인 — 당시 org 이름은 `modintps`,
+2026-08-14에 `intpsquad` 로 개명했다). 정책을 풀 수도 있었지만 방향을 뒤집는 쪽을
 골랐다 — 러너는 이미 소스를 체크아웃했고 이미 서버 SSH 접근이 있으므로, 러너가 밀어 넣으면
 자격증명이 **하나 줄어든다**("서버가 이 저장소를 상시 읽을 수 있는 상태"가 사라진다).
 

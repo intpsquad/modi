@@ -338,8 +338,9 @@ flutter run
 
 ## 7. 브랜치 보호 — 🔴 **지금 플랜에서는 불가능하다** (2026-08-14 확인)
 
-> **먼저 읽을 것.** 아래 설정은 **현재 켤 수 없다.** 오가니제이션 `modintps` 가 **Free 플랜**이고,
-> GitHub 은 **프라이빗 저장소의 브랜치 보호·Ruleset 을 유료 플랜에서만** 허용한다. API 로 확인:
+> **먼저 읽을 것.** 아래 설정은 **현재 켤 수 없다.** 오가니제이션(`intpsquad`, 개명 전 `modintps`)이
+> **Free 플랜**이고, GitHub 은 **프라이빗 저장소의 브랜치 보호·Ruleset 을 유료 플랜에서만** 허용한다.
+> API 로 확인(2026-08-13, 개명 전 주소):
 >
 > ```
 > GET /repos/modintps/modi/branches/dev/protection  → 403

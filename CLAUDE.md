@@ -63,7 +63,8 @@
 - 목록의 단일 진실은 README.md — 여기(CLAUDE.md)에는 중복 기재하지 않는다.
 
 ## 인프라 / CI·CD  *(2026-08-13 전면 교체 — 아래가 현재다)*
-- **저장소**: **GitHub** (`modintps/modi`, **프라이빗**). MR 대신 **PR** 용어를 쓴다.
+- **저장소**: **GitHub** (`intpsquad/modi`, **프라이빗**). MR 대신 **PR** 용어를 쓴다.
+  - ⚠️ **2026-08-14에 오가니제이션을 `modintps` → `intpsquad` 로 개명했다**(번들 ID `com.intpsquad.modi` 와 맞춤). GitHub 이 옛 주소를 리다이렉트해 주지만 그 리다이렉트는 언제든 끊길 수 있으므로, 각자 로컬에서 `git remote set-url origin https://github.com/intpsquad/modi.git` 을 한 번 돌린다.
 - **CI/CD**: **GitHub Actions** — `.github/workflows/ci.yml` **한 파일**. 잡 5개(`changes`→`app`/`server`/`ai`→`deploy`)를 `needs`로 묶어 "테스트 통과해야 배포"를 유지한다. Jenkins·`Jenkinsfile`은 제거했다.
 - **배포 인프라**: **단일 오라클 클라우드 Ampere A1**(ARM aarch64, 4 OCPU/24GB, ap-tokyo-1)에 서버·PostgreSQL·Redis·MinIO·Caddy를 Docker로 운영. 접속은 `ssh modi` 별칭. 상세는 `README.md` "배포" 절.
   - ⚠️ **빌드는 러너가 아니라 서버에서 한다** — 러너는 x86_64, 서버는 ARM이라 러너에서 만든 이미지는 뜨지 않는다.

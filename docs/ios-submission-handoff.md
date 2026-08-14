@@ -323,7 +323,7 @@ storage/          403   MinIO 접두사 정책
 ## 1. Mac 준비
 
 ```bash
-git clone git@github.com:modintps/modi.git      # 또는 HTTPS
+git clone git@github.com:intpsquad/modi.git     # 또는 HTTPS
 cd modi
 ```
 
