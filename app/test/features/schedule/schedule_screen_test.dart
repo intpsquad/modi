@@ -264,6 +264,11 @@ void main() {
           api: fakeApi,
           authService: _FakeAuthService(),
           roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          // 🔴 `today` 를 안 넘기면 `DateTime.now()` 를 쓰는데, **오늘이 공휴일이면
+          // 목록 맨 위에 공휴일 항목이 렌더돼 빈 상태가 아니게 되어 이 테스트가 깨진다.**
+          // 2026-08-15(광복절)에 실제로 깨졌다. CI 는 UTC 라 KST 와 하루가 어긋날 뿐
+          // 똑같이 깨진다 — 그날은 UTC 기준으로도 광복절이었다.
+          today: DateTime(2026, 12, 24), // 평일(목), 공휴일 아님
         ),
       ),
     );
