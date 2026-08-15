@@ -38,10 +38,44 @@ feat/이슈번호-hotfix-내용     예) feat/20-hotfix-null-response
 2. dev 에서 feat/<이슈번호>-<내용> 을 딴다          ← main 아님
 3. 개발한다. 단위 테스트로 직접 확인한다
 4. dev 로 PR 을 연다 → CI 통과 → 작성자 본인이 머지
-5. 운영에 내보낼 때가 되면 dev → main PR 을 연다   ← 다 같이 확인
+5. 운영에 내보낼 때가 되면 dev → main PR 을 연다   ← 다 같이 확인 (§8 릴리스 절차)
 6. main 머지 → 서버 배포
 7. feat 브랜치는 머지와 함께 자동 삭제된다
 ```
+
+### 매일 치는 명령 — 이슈 12번 "로그인 API" 예시
+
+```bash
+# ① 최신 dev 를 받는다. 항상 여기서 시작한다
+git switch dev && git pull
+
+# ② 이슈 번호로 브랜치를 판다
+git switch -c feat/12-login
+
+# ③ 작업하고 커밋한다 (타입은 소문자, §2)
+git add -A && git commit -m "feat: 로그인 API 구현"
+
+# ④ 🔴 push 전에 최신 dev 를 병합한다. 건너뛰지 말 것 (아래 사고 기록)
+git fetch origin && git merge origin/dev
+
+# ⑤ push
+git push -u origin feat/12-login
+
+# ⑥ PR 을 연다. base 는 안 적어도 dev 다 (기본 브랜치)
+gh pr create --base dev
+
+# ⑦ CI 가 초록이면 본인이 머지한다. 브랜치는 자동 삭제된다
+gh pr merge --merge
+
+# ⑧ 로컬 정리
+git switch dev && git pull && git branch -d feat/12-login
+```
+
+> ⑥ 대신 **GitHub 저장소 첫 화면의 노란 배너**(`Compare & pull request`)를 눌러도 된다.
+> base 가 기본 브랜치인 `dev` 로 알아서 잡힌다.
+>
+> ⚠️ 단 **`main` 브랜치에 뜬 배너는 누르지 않는다.** 릴리스 직후에 뜨는데, 그걸 누르면
+> `main` → `dev` 방향 PR 이 열려 머지 커밋을 거꾸로 밀어 넣게 된다. 그냥 두면 사라진다.
 
 ### 핫픽스
 
@@ -139,6 +173,9 @@ CI 는 `.github/workflows/ci.yml` 한 파일이다. 경로 필터로 바뀐 영�
 
 릴리스 노트는 GitHub Releases 에 남긴다.
 
+> **언제 · 누가 올리는가는 §8 릴리스 절차**가 단일 진실이다. 요약하면 — 다 같이 모여서
+> `dev` → `main` 을 올리기로 정한 자리에서, **`main` PR 을 열기 전에 `dev` 에 먼저** 넣는다.
+
 ### iOS 빌드 번호는 별개다
 
 `app/pubspec.yaml` 의 `version: 1.0.0+4` 에서 **`+` 뒤가 빌드 번호**다.
@@ -172,3 +209,81 @@ CI 는 `.github/workflows/ci.yml` 한 파일이다. 경로 필터로 바뀐 영�
 > 배포 잡이 SSH 로 들어가 `deploy/deploy.sh` 를 그대로 실행한다. 쓰기 권한을 줄 때 이 점을 기억한다.
 > 저장소가 공개인 것은 **읽기**일 뿐이라 머지 권한과 무관하고, 포크에서 온 PR 은 `deploy` 잡의
 > `github.event_name == 'push'` 게이트에 걸려 배포를 태울 수 없다.
+
+---
+
+## 8. 릴리스 절차 (`dev` → `main`)
+
+**다 같이 모였을 때만 한다.** "여기까지 됐으니 내보내자"를 합의하는 자리다.
+
+### 🔴 서버와 앱은 따로 나간다
+
+| | 언제 | 무엇이 나가나 |
+|---|---|---|
+| `main` 머지 | 머지하면 **자동** (10분쯤) | **서버**가 배포된다 (`api.maramodi.cloud`) |
+| 앱 릴리스 | Mac 에서 **사람이 수동** | IPA → App Store → **심사 며칠** (`docs/ios-release.md`) |
+
+`main` 에 머지해도 **사용자 손의 앱은 그대로다.** 서버만 바뀐다. 그래서 **옛 앱이 새 서버와
+말이 통해야 한다** — 응답에서 필드를 빼거나 이름을 바꾸는 변경은 앱이 다 갈아탈 때까지 미룬다.
+
+### 순서
+
+**① 모이기 전에 확인한다**
+
+```bash
+git switch dev && git pull
+gh pr list                 # 안 끝난 PR 이 없어야 한다
+gh run list --branch dev --limit 1   # 마지막 CI 가 초록이어야 한다
+```
+
+**② 버전을 정한다** — `app/pubspec.yaml` 의 `version: 1.0.0+4`
+
+| 무엇이 바뀌었나 | 어떻게 | 예 |
+|---|---|---|
+| 기능이 추가됐다 | 마이너 | `1.0.0` → `1.1.0` |
+| 버그 수정·다듬기만 | 패치 | `1.0.0` → `1.0.1` |
+| 기존 동작이 깨진다 | 메이저 | `1.0.0` → `2.0.0` |
+
+> 🔴 **`+` 뒤 빌드 번호는 무조건 올린다** — `1.0.0+4` → `1.1.0+5`. 같은 번호는 App Store 가
+> 거절하고, **거절당한 업로드도 번호를 소모한다**(2026-08-14 `-19232` 실측).
+
+**③ 버전 올리는 PR 을 `dev` 에 먼저 넣는다** — `main` PR 을 연 뒤에 올리면 PR 을 다시 만들어야 한다
+
+```bash
+git switch -c feat/<이슈번호>-release-1-1-0
+# app/pubspec.yaml 의 version 을 고친다
+git commit -am "chore: 버전 1.1.0+5"
+git push -u origin feat/<이슈번호>-release-1-1-0
+gh pr create --base dev && gh pr merge --merge
+```
+
+**④ `dev` → `main` PR** — 여기서만 base 를 명시한다
+
+```bash
+git switch dev && git pull
+gh pr create --base main --head dev --title "release: 1.1.0"
+```
+
+PR 본문에 **이번에 들어가는 기능 목록**과 **서버·DB 주의사항**(새 환경변수, Flyway 마이그레이션)을 적는다.
+
+**⑤ 머지 → 배포 확인**
+
+```bash
+gh pr merge --merge
+gh run list --branch main --limit 1          # deploy 가 success 여야 한다
+curl -s -o /dev/null -w '%{http_code}\n' https://api.maramodi.cloud/rooms   # 401 이면 정상
+```
+
+> `/actuator/health` 는 Caddy 가 **일부러 404** 로 막는다(내부 전용). 살아있는지는 실제 API 로 본다.
+
+**⑥ 태그와 릴리스 노트**
+
+```bash
+gh release create v1.1.0 --target main --title "v1.1.0" --generate-notes
+```
+
+`--generate-notes` 가 지난 릴리스 이후 PR 목록을 자동으로 채운다. 거기에 **사용자가 체감하는
+변화**를 한국어로 두세 줄 얹는다.
+
+**⑦ 앱은 여기서부터 따로** — Mac 에서 `docs/ios-release.md` 를 따라 IPA 빌드 → Transporter 업로드
+→ App Store Connect 에서 심사 제출. **며칠 걸린다.**
