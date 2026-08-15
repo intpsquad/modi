@@ -80,8 +80,11 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await _authService.signInWithApple();
       await appSession.refreshMembership();
-    } catch (_) {
-      debugPrint('Apple 로그인 실패');
+    } catch (e) {
+      // 🔴 예외를 삼키지 않는다. 여기가 `catch (_)` 였던 탓에 배포 빌드의 Apple 로그인이
+      // 왜 죽는지 알 수 없었고(2026-08-15), 서버 로그와 IPA 서명까지 해부하고서야
+      // entitlements 누락이라는 것을 찾았다. 구글·카카오와 같은 모양으로 맞춘다.
+      debugPrint('Apple 로그인 실패: $e');
       if (mounted) {
         setState(() => _errorText = 'Apple 로그인에 실패했어요. 다시 시도해 주세요');
       }
