@@ -72,16 +72,22 @@ MODI_DEVELOPMENT_TEAM = <Apple Team ID>
 ./scripts/build-ios-ipa.sh          # 산출물: app/build/ios/ipa/MODI.ipa
 ```
 
-> ✅ **2026-08-14 오후 정정 — 기기를 하나 등록한 뒤로는 `flutter build ipa` 도 정상 동작한다.**
-> 아래 실패는 **팀에 등록된 기기가 0대일 때** 일어난다. 기기가 있으면 개발용 프로파일이 만들어져
-> 아카이브가 통과하고, 나온 IPA 도 배포 서명이 제대로 붙는다(실측). 그러니 평소에는
-> `flutter build ipa --release --dart-define-from-file=env/prod.json` 을 써도 된다.
-> **이 스크립트는 등록된 기기가 없을 때(계정을 새로 팠거나 기기가 빠졌을 때)를 위한 보험**이고,
-> 검증 게이트가 붙어 있다는 이점도 있다. 아래 설명은 그 상황의 기록이다.
+> 🔴 **제출용 빌드는 이 스크립트로만 만든다.** `flutter build ipa` 는 쓰지 않는다.
 >
-> ⚠️ **Organizer 로 배포하려면 `flutter build ipa` 쪽 아카이브를 써야 한다.** 이 스크립트의
-> 아카이브는 일부러 서명이 없어 Organizer 가 `No Team Found in Archive` 로 거부한다
-> (스크립트가 내놓는 `.ipa` 자체는 정상이므로 **Transporter 로는 그대로 올릴 수 있다**).
+> 2026-08-14 에는 *"기기를 하나 등록한 뒤로는 `flutter build ipa` 도 정상 동작하니 평소엔 그걸
+> 써도 된다"* 고 적혀 있었다. **그 판단이 이번 사고를 키웠다** — `flutter build ipa` 든 이
+> 스크립트든 **검증이 없으면 권한이 빠진 IPA 가 그대로 나간다.** 지금 이 스크립트에만
+> **entitlements 검증 게이트**가 있다(아래 "스크립트의 검증 게이트").
+>
+> 굳이 `flutter build ipa` 를 써야 한다면, 나온 IPA 를 **직접 열어** 권한을 확인할 것:
+> ```sh
+> unzip -q -o build/ios/ipa/MODI.ipa -d /tmp/ipa && \
+>   codesign -d --entitlements - --xml /tmp/ipa/Payload/Runner.app
+> ```
+>
+> ⚠️ **업로드는 Transporter 로 한다.** 2026-08-14 에는 이 스크립트의 아카이브에 서명이 없어
+> Organizer 가 `No Team Found in Archive` 로 거부했다. 지금은 아카이브 단계에서 서명하므로 그
+> 제약이 사라졌을 수 있으나 **다시 확인하지 않았다.** Transporter 경로는 검증돼 있다(4절).
 
 ### 🔴 등록된 기기가 0대면 `flutter build ipa` 가 실패한다 *(2026-08-14 실측)*
 
@@ -92,23 +98,62 @@ No profiles for 'com.intpsquad.modi' were found: Xcode couldn't find any
 iOS App Development provisioning profiles matching 'com.intpsquad.modi'.
 ```
 
-**자동 서명이 아카이브 단계에서 "개발용"(iOS App Development) 프로파일을 먼저 찾기 때문**이고,
+자동 서명이 아카이브 단계에서 **"개발용"(iOS App Development) 프로파일**을 찾았기 때문이고,
 개발용 프로파일은 팀에 등록된 기기가 최소 하나 있어야 만들어진다. 반면 우리가 실제로 필요한
-**App Store 배포용 프로파일은 기기 등록이 전혀 필요 없다** — 정작 만들 수 있는 프로파일 앞에서
-막혀 있었던 것이다. `-allowProvisioningUpdates` 를 줘도 같은 자리에서 실패한다.
+**App Store 배포용 프로파일은 기기 등록이 전혀 필요 없다.**
 
-그래서 스크립트는 한 덩어리인 `flutter build ipa` 를 **두 단계로 쪼갠다**:
+### 🔴 그때의 처방이 틀렸다 — 배포 빌드가 4번까지 망가진 채 나갔다 *(2026-08-15)*
+
+**왜 개발용을 찾았느냐**가 진짜 질문이었다. 답은 `project.pbxproj` 의 **Release 설정이 개발용
+인증서를 지정하고 있었다**는 것이다(`CODE_SIGN_IDENTITY = "Apple Development"`, 프로젝트 전역은
+`"iPhone Developer"`). 그런데 당시 처방은 원인이 아니라 **증상을 껐다** — 아카이브에서 서명
+자체를 끈 것이다(`CODE_SIGNING_ALLOWED=NO`).
+
+**서명을 안 하면 entitlements 도 안 붙는다.** 아카이브에 권한이 없으니 `-exportArchive` 가
+배포 인증서로 다시 서명해도 붙일 것이 없어, 프로파일에서 유도되는 기본 4개만 남았다:
+
+```
+$ codesign -d --entitlements - --xml Payload/Runner.app      # 빌드 1.0.0 (4)
+  application-identifier / beta-reports-active / team-identifier / get-task-allow
+  ← Runner.entitlements 의 네 개가 전부 없다
+```
+
+| 기능 | 디버그 빌드 | **배포 빌드 1~4** |
+|---|---|---|
+| Apple 로그인 | ✅ | ❌ `applesignin` 없음 → UI 뜨기 전 즉시 실패 |
+| 푸시 알림 | ✅ | ❌ `aps-environment` 없음 |
+| 공유 확장 | ✅ | ❌ App Group 없어 세션을 못 읽음 |
+
+⚠️ **디버그 빌드에서는 멀쩡했다.** 자동 서명이 개발용 프로파일로 권한을 다 붙여주기 때문이다.
+그래서 "실기기에서 확인했다"는 기록이 여러 건 있었는데도 배포 빌드는 죽어 있었다 —
+**아무도 배포 바이너리의 entitlements 를 열어보지 않았다.** TestFlight `1.0.0 (4)` 를 받은
+사용자가 Apple 로그인을 눌러보고서야 드러났고, 첫 심사 제출을 내려야 했다.
+
+지금 스크립트는 이렇게 돈다:
 
 | 단계 | 하는 일 | 왜 |
 |---|---|---|
-| ① archive | `CODE_SIGNING_ALLOWED=NO` 로 서명 없이 아카이브 | 개발용 프로파일을 아예 안 찾는다 |
-| ② export | `app-store-connect` 방식으로 내보내며 서명 | 여기서 배포용 프로파일을 Apple 에서 만들어 온다 |
+| ① archive | **배포용 인증서로 서명해서** 아카이브 | Release 가 `Apple Distribution` 을 가리키므로 개발용을 안 찾는다. **entitlements 가 여기서 붙는다** |
+| ② export | `app-store-connect` 방식으로 내보낸다 | |
+| ③ 검증 | **entitlements 가 실제로 들어갔는지 확인** | 이 사고의 재발 방지책 |
 
-⚠️ **기기를 등록했더라도 이 스크립트를 계속 쓴다.** 기기 등록은 개발용 프로파일을 되살릴 뿐이고,
-릴리스 빌드가 개발용 프로파일에 의존할 이유가 없다. 등록된 기기가 빠지면 또 같은 자리에서 멈춘다.
+⚠️ **`CODE_SIGNING_ALLOWED=NO` 를 다시 넣지 말 것.** 빌드는 통과하고 기능만 조용히 죽는다.
 
-스크립트는 빌드 뒤 **검증까지 한다** — 배포용 인증서 서명 여부와 `get-task-allow == false`.
-후자가 중요한 이유는 개발용 프로파일이 섞여도 **빌드는 성공하고 업로드에서야 거절되기** 때문이다.
+### 스크립트의 검증 게이트
+
+빌드 뒤 세 가지를 본다. **하나라도 어긋나면 IPA 를 내주지 않는다.**
+
+| 보는 것 | 놓치면 |
+|---|---|
+| 배포용 인증서로 서명됐나 | 업로드가 거절된다 |
+| `get-task-allow == false` | 개발용 프로파일이 섞여도 **빌드는 성공하고** 업로드에서야 거절된다 |
+| 🔴 **서명된 entitlements 에 필요한 키가 다 있나** | 위 사고. 빌드·업로드·심사까지 다 통과하고 **기능만 죽는다** |
+
+세 번째는 `Runner.app` 에서 `applesignin`·`aps-environment`·`application-groups`·
+`keychain-access-groups` 를, `ShareExtension.appex` 에서 뒤의 둘을 확인한다.
+
+⚠️ **프로파일이 아니라 "서명된 결과물"을 본다.** 사고 당시 프로파일은 네 권한을 다 허용하고
+있었다 — 문제는 빌드가 그걸 안 붙인 것이었다. 프로파일만 보면 똑같이 놓친다.
 
 ## 4. TestFlight 업로드 (매 릴리스)
 
@@ -195,6 +240,12 @@ chmod 600 "/secure/ios-appstore-api-key.json"
   서명해도 빌드가 성공해서, 업로드가 거절될 때까지 아무도 모른다.
 
 ## 6. 출시 전에 반드시 남아 있는 검증
+
+- 🔴 **실기기 확인은 반드시 TestFlight 빌드로 한다.** 디버그 빌드는 자동 서명이 권한을 다
+  붙여주기 때문에 **배포 빌드에서만 죽는 문제를 통과시킨다.** 2026-08-15 사고가 정확히
+  이것이었다 — Apple 로그인·푸시·공유 확장이 배포 빌드에서 전부 죽어 있었는데 "실기기 확인
+  완료" 기록이 여러 건 있었다(전부 디버그 빌드였다). 위 3절 참고.
+  확인할 것: **Apple 로그인 · 푸시 수신 · 공유 확장** 셋.
 
 - ✅ ~~**Swift 테스트**(`ShareContentTests` 10건)~~ — **2026-08-14 처음으로 실행, 13건 전부 통과.**
   그전까지 한 번도 안 돌았던 이유는 로직이 아니라 **컴파일 실패**였다: `RunnerTests` 타깃에

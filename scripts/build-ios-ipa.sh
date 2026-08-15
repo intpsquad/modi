@@ -4,27 +4,45 @@
 #
 # 🔴 **왜 `flutter build ipa` 를 쓰지 않는가** (2026-08-14 실측, 첫 제출 준비 중 발견)
 #
-# `flutter build ipa` 는 이 프로젝트에서 **서명 단계에서 실패한다**:
+# `flutter build ipa` 는 이 프로젝트에서 **서명 단계에서 실패했다**:
 #
 #     Communication with Apple failed: Your team has no devices from which to
 #     generate a provisioning profile.
 #     No profiles for 'com.intpsquad.modi' were found: Xcode couldn't find any
 #     iOS App Development provisioning profiles matching 'com.intpsquad.modi'.
 #
-# 자동 서명이 **아카이브 단계에서 "개발용"(iOS App Development) 프로파일을 먼저 찾기** 때문이다.
-# 개발용 프로파일은 팀에 등록된 기기가 최소 하나 있어야 만들어진다. 반면 **App Store 배포용
-# 프로파일은 기기 등록이 전혀 필요 없다** — 즉 우리가 실제로 필요한 프로파일은 만들 수 있는데,
-# 그 앞의 개발용 프로파일에서 막혀 거기까지 못 갔던 것이다.
-# `-allowProvisioningUpdates` 를 줘도 같은 자리에서 실패한다(실측).
+# 자동 서명이 아카이브 단계에서 **"개발용"(iOS App Development) 프로파일**을 찾았기 때문이다.
+# 개발용 프로파일은 팀에 등록된 기기가 최소 하나 있어야 만들어진다. 반면 App Store 배포용
+# 프로파일은 기기 등록이 필요 없다.
 #
-# 그래서 한 덩어리인 `flutter build ipa` 를 **두 단계로 쪼갠다**:
+# 🔴 **2026-08-15 — 위 진단은 맞았지만 그때의 처방이 틀렸다. 반드시 읽을 것.**
 #
-#   ① archive : 서명을 아예 끄고(CODE_SIGNING_ALLOWED=NO) 아카이브만 만든다 → 개발용 프로파일 불필요
-#   ② export  : app-store-connect 방식으로 내보내며 **여기서** 배포용 인증서로 서명한다
+# 왜 개발용을 찾았느냐면 **`project.pbxproj` 의 Release 설정이 개발용 인증서를 지정하고
+# 있었기 때문**이다(`CODE_SIGN_IDENTITY = "Apple Development"`, 프로젝트 전역은
+# `"iPhone Developer"`). 원인은 거기였는데, 당시 처방은 원인이 아니라 **증상을 껐다** —
+# 아카이브에서 서명 자체를 끈 것이다(`CODE_SIGNING_ALLOWED=NO`).
 #
-# ⚠️ **기기를 등록해도 이 스크립트를 계속 쓰는 편이 낫다.** 기기 등록은 개발용 프로파일을
-# 되살릴 뿐이고, 릴리스 빌드가 개발용 프로파일에 의존할 이유가 없다. 등록된 기기가 만료되거나
-# 팀에서 빠지면 `flutter build ipa` 는 또 같은 자리에서 멈춘다.
+# 그 대가가 조용히 나갔다. **서명을 안 하면 entitlements 도 안 붙는다.** 아카이브에 권한이
+# 없으니 `-exportArchive` 가 배포 인증서로 다시 서명해도 **붙일 것이 없어**, 프로파일에서
+# 유도되는 기본 4개(`application-identifier`·`team-identifier`·`get-task-allow`·
+# `beta-reports-active`)만 남았다. 그래서 빌드 1~4 는 전부 이 상태로 나갔다:
+#
+#     Apple 로그인  — `com.apple.developer.applesignin` 없음 → UI 뜨기 전 즉시 실패
+#     푸시 알림     — `aps-environment` 없음
+#     공유 확장     — App Group 없음 → 확장이 세션을 못 읽음
+#
+# **디버그 빌드에서는 멀쩡했다.** 자동 서명이 개발용 프로파일로 권한을 다 붙여주기 때문이다.
+# 그래서 "실기기에서 확인했다"는 기록이 여러 건 있었는데도 배포 빌드가 죽어 있었다 —
+# 아무도 배포 바이너리의 entitlements 를 열어보지 않았다. TestFlight `1.0.0 (4)` 에서
+# 사용자가 Apple 로그인을 눌러보고서야 드러났고, 첫 심사 제출을 내려야 했다.
+#
+# 지금 구조는:
+#
+#   ① archive : **배포용 인증서로 서명해서** 아카이브한다 → entitlements 가 여기서 붙는다
+#   ② export  : app-store-connect 방식으로 내보낸다
+#   ③ 검증    : **entitlements 가 실제로 들어갔는지 확인한다** ← 이 사고의 재발 방지책
+#
+# ⚠️ **`CODE_SIGNING_ALLOWED=NO` 를 다시 넣지 말 것.** 빌드는 통과하고 기능만 조용히 죽는다.
 #
 # ⚠️ **`--dart-define-from-file` 은 필수다.** 빠지면 앱이 에뮬레이터 기본 주소(10.0.2.2)를
 # 들고 나간다. 안드로이드는 Gradle 이 빌드를 실패시키지만 **iOS 에는 그 안전장치가 없어
@@ -84,8 +102,23 @@ printf '── ① Flutter 빌드 (서명 없음)\n'
 grep -q '^DART_DEFINES=' "${IOS}/Flutter/Generated.xcconfig" \
   || fail "Generated.xcconfig 에 DART_DEFINES 가 없다 — --dart-define-from-file 이 안 먹었다"
 
-# ── STEP 1 ── 서명 없이 아카이브.
-printf '\n── ② 아카이브 (서명 끔)\n'
+# ── STEP 1 ── **서명해서** 아카이브. (2026-08-15: 예전엔 여기서 서명을 껐다)
+#
+# 🔴 **여기서 서명해야 `*.entitlements` 가 붙는다.** 그게 이 줄의 존재 이유다.
+# 자동 서명이 아카이브에서는 개발용 프로파일을 쓰고, 다음 단계 `-exportArchive` 가 배포용으로
+# 다시 서명하면서 권한을 그대로 옮긴다. **아카이브에 권한이 있어야** 옮길 것이 있다.
+#
+# ⚠️ 그래서 **팀에 기기가 최소 한 대 등록돼 있어야 한다**(개발용 프로파일 생성 조건).
+# 없으면 여기서 "Your team has no devices…" 로 **크게 실패한다** — 조용히 잘못된 물건이
+# 나오던 예전보다 낫다. 기기를 등록하거나 Xcode 에서 한 번 아카이브해 프로파일을 받아둘 것.
+#
+# 시도했다가 접은 것 둘(2026-08-15):
+#   · Release 를 `Apple Distribution` 으로 지정 → 자동 서명과 충돌한다
+#     "automatically signed for development, but a conflicting code signing identity … specified"
+#   · 수동 서명 + 배포용 프로파일 지정 → 그 프로파일이 Xcode 관리형이라 거부된다
+#     "is Xcode managed, but signing settings require a manually managed profile"
+#   둘 다 하려면 개발자 포털에서 **수동 관리 프로파일**을 새로 발급해야 한다. 지금은 과하다.
+printf '\n── ② 아카이브 (서명 포함)\n'
 xcodebuild \
   -workspace "${IOS}/Runner.xcworkspace" \
   -scheme Runner \
@@ -94,7 +127,7 @@ xcodebuild \
   -destination 'generic/platform=iOS' \
   -archivePath "${ARCHIVE}" \
   archive \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+  -allowProvisioningUpdates
 
 # ── STEP 2 ── 배포용으로 서명해 내보낸다. 프로파일이 없으면 Apple 에서 만들어 온다
 # (-allowProvisioningUpdates). App Store 프로파일이라 기기 등록은 필요 없다.
@@ -151,6 +184,43 @@ GET_TASK_ALLOW="$(plutil -extract Entitlements.get-task-allow raw -o - - <<<"${P
 [[ "${GET_TASK_ALLOW}" == "false" ]] \
   || fail "get-task-allow 가 '${GET_TASK_ALLOW:-없음}' 이다 — 개발용 프로파일이 들어갔다(업로드가 거절된다)"
 
+# 🔴 **서명된 entitlements 검증** (2026-08-15 신설). 이 스크립트가 지금까지 본 것은
+# "누가 서명했나"(Apple Distribution)와 "개발용 프로파일이 아닌가"뿐이었다. **무엇을 서명했나**는
+# 안 봤다. 그래서 권한이 통째로 빠진 IPA 가 이 검증을 통과해 TestFlight 까지 나갔고,
+# Apple 로그인·푸시 알림·공유 확장이 전부 죽은 채 심사에 제출됐다.
+#
+# ⚠️ **프로파일이 아니라 "서명된 결과물"을 본다.** 프로파일은 그때도 네 권한을 다 허용하고
+# 있었다 — 문제는 빌드가 그걸 안 붙인 것이었다. 프로파일만 확인하면 똑같이 놓친다.
+#
+# ⚠️ 결과를 **변수에 먼저 담고** grep 한다 — 위에 적은 SIGPIPE 함정과 같은 이유.
+require_entitlements() {
+  local target="$1" label="$2"; shift 2
+  local ents key missing=""
+  ents="$(codesign -d --entitlements - --xml "${target}" 2>/dev/null || true)"
+  # macOS 12 이하는 `--xml` 을 모른다 — 그때는 `:-` 로 같은 것을 얻는다.
+  [[ "${ents}" == *"<plist"* ]] || ents="$(codesign -d --entitlements :- "${target}" 2>/dev/null || true)"
+  [[ "${ents}" == *"<plist"* ]] || fail "${label} 의 entitlements 를 읽지 못했다 — 서명이 없는 것 아닌가"
+  for key in "$@"; do
+    grep -q "<key>${key}</key>" <<<"${ents}" || missing="${missing} ${key}"
+  done
+  [[ -z "${missing}" ]] || fail "$(printf '%s 에 entitlements 가 빠졌다:%s\n       빌드는 성공했지만 그 기능들은 앱에서 조용히 죽는다.\n       CODE_SIGNING_ALLOWED=NO 로 아카이브했거나, Release 의 CODE_SIGN_IDENTITY 가\n       개발용(Apple Development / iPhone Developer)으로 되돌아갔는지 확인할 것.' \
+      "${label}" "${missing}")"
+  printf '   %s entitlements OK (%s)\n' "${label}" "$(echo "$@" | tr ' ' ',')"
+}
+
+require_entitlements "${APP_BUNDLE}" "Runner.app" \
+  com.apple.developer.applesignin \
+  aps-environment \
+  com.apple.security.application-groups \
+  keychain-access-groups
+
+while IFS= read -r EXT; do
+  [ -n "${EXT}" ] || continue
+  require_entitlements "${EXT}" "$(basename "${EXT}")" \
+    com.apple.security.application-groups \
+    keychain-access-groups
+done < <(find "${APP_BUNDLE}/PlugIns" -maxdepth 1 -name '*.appex' 2>/dev/null)
+
 # 🔴 **확장의 버전이 본체와 다르면 Apple 이 업로드를 거부한다**(오류 90473).
 # 여기서 잡지 않으면 빌드·서명·전송을 다 끝낸 뒤 Transporter 에서야 알게 된다
 # (2026-08-14 실제로 그랬다 — 확장 Info.plist 에 버전이 하드코딩돼 있었고, 첫 업로드가
@@ -172,4 +242,4 @@ done < <(find "${APP_BUNDLE}/PlugIns" -maxdepth 1 -name '*.appex' 2>/dev/null)
 printf '\n✅ %s\n' "${IPA}"
 codesign -dv --verbose=2 "${APP_BUNDLE}" 2>&1 | grep -E '^(Identifier|Authority=Apple Distribution|TeamIdentifier)'
 printf '   버전 %s (%s)  — 확장도 동일함을 확인\n' "${APP_SHORT}" "${APP_BUILD}"
-printf '\n다음: **Transporter** 로 업로드한다(이 스크립트가 만든 아카이브는 Xcode Organizer 가\n      "No Team Found in Archive" 로 거부한다 — docs/ios-release.md 4절).\n      open -R %s\n' "${IPA}"
+printf '\n다음: **Transporter** 로 업로드한다 — docs/ios-release.md 4절.\n      (2026-08-14 에는 아카이브에 서명이 없어 Xcode Organizer 가 "No Team Found in Archive" 로\n       거부했다. 2026-08-15 부터 아카이브 단계에서 서명하므로 그 제약은 사라졌을 수 있으나\n       다시 확인하지 않았다. Transporter 경로는 검증돼 있다.)\n      open -R %s\n' "${IPA}"
