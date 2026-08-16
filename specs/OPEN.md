@@ -2,6 +2,11 @@
 > 규칙: 명세에 없거나 모순되는 결정이 새로 생기면 여기에 적고, 구현 전에 AskUserQuestion으로 확정한 뒤 해당 spec에 반영한다.
 
 ## 남은 항목
+- [ ] **Sign in with Apple 토큰 폐기(revoke)를 구현할 것인가 — 로그인 경로를 갈아야 한다** *(2026-08-16 신규, 심사 리스크 점검 중 조사)* — Apple Guideline 5.1.1(v)는 계정 삭제 시 애플에 **토큰 폐기**를 알리라고 요구한다. 계정 삭제 자체는 있다(`DELETE /me` → `UserService.withdraw`). 저장소에 `revoke` 문자열은 **0건**이다.
+  → 🔴 **"서버만 고치면 되는 작은 일"이 아니다.** 지금은 `FirebaseAuth.signInWithProvider(AppleAuthProvider())`(`app/lib/features/auth/auth_service.dart`)로 로그인하고, Firebase 가 애플과의 토큰 교환을 대신하므로 **앱이 애플 authorization code 를 받지 못한다.** 폐기 호출에 필요한 refresh token 을 얻을 길이 없다.
+  → 하려면 네 가지가 한 묶음이다: ⓐ 로그인 경로를 `sign_in_with_apple` 패키지로 교체(현재 `pubspec.yaml` 에 없음)해 `authorizationCode` 확보 ⓑ 서버가 그것을 `appleid.apple.com/auth/token` 으로 교환해 refresh token 저장(신규 컬럼 + 마이그레이션) ⓒ 탈퇴 시 `auth/revoke` 호출 ⓓ **애플 개발자 포털에서 `.p8` 키 신규 발급** + Team ID·Key ID 를 서버 시크릿에 추가(로컬 전용 파일이므로 `README.md` 갱신 대상).
+  → **심사 중에는 착수하지 않는다**(2026-08-16 판단): 2026-08-15에 빌드 1~4를 죽였던 것이 정확히 이 Apple 로그인 경로다(`docs/ios-release.md` 3절). 지금 건드리면 검증된 build 5 경로가 다시 흔들린다. **심사 결과가 나온 뒤**, 특히 이 사유로 거부되면 그때 착수한다.
+  → 착수 전 사용자 확정 필요: `.p8` 키 발급은 애플 계정 소유자만 할 수 있다.
 - [ ] **S-06(방없음) 상태에서 투두·일정·아카이브 탭이 빈 화면이다** *(2026-08-16 신규, S-06 구현 중 발견)* — 홈은 이번에 히어로가 생겼지만(`no_room_hero.dart`), 나머지 세 탭은 `roomId == null`이면 **로딩만 끄고 아무 안내가 없다**(`todos_screen.dart`·`schedule_screen.dart`·`archive_screen.dart`의 `roomId == null` 분기). 하단 네비는 그대로 눌리므로 사용자가 빈 화면 세 개를 만날 수 있다.
   → **이번 작업 범위 밖으로 확정**(2026-08-16 사용자, AskUserQuestion): 스펙(`0004`)이 정의한 것은 `/home` 뿐이라 **홈만 고쳤다.** 나머지 세 탭에 같은 히어로를 넣는 것은 근거가 없고, 하단 네비 자체를 잠그는 안은 `AppShell`까지 건드려야 해서 별도 결정이 필요하다.
   → 고칠 때 후보 셋: ⓐ 세 탭도 `NoRoomHero` 재사용 ⓑ 각 탭 맥락에 맞는 `EmptyState`(문구-only) ⓒ S-06 동안 네비 비활성. **`full_spec.md`에 근거가 없으므로 확정 전 IA 원본부터 손봐야 한다.**
