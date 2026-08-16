@@ -15,8 +15,9 @@ const double _kSheetHeightFactor = 0.62;
 /// S-25-B 자료 댓글 바텀시트(2026-08-09) — 딤 + 드래그 핸들 + "댓글" 제목 + 목록(오래된순)
 /// + 하단 입력바(내 아바타 + pill 입력). specs/0010-아카이브-탭.md.
 ///
-/// 서버는 조회·작성만 지원한다(append-only) — 수정·삭제 UI는 백엔드 API가 생기면 후속
-/// (`docs/backend/archive-comments-handoff.md`에 요청함).
+/// ~~서버는 조회·작성만 지원한다(append-only) — 수정·삭제 UI는 백엔드 API가 생기면 후속.~~
+/// → **2026-08-09에 백엔드가 들어왔고 UI도 붙었다**(`docs/backend/archive-comments-handoff.md`).
+/// 내 댓글에만 `⋯`(수정/삭제)가 붙는다 — 서버도 작성자 본인이 아니면 403이다.
 Future<void> showArchiveCommentsSheet(
   BuildContext context, {
   required ArchiveApi api,
@@ -284,31 +285,10 @@ class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
   }
 
   Future<void> _editComment(ArchiveComment comment) async {
-    final controller = TextEditingController(text: comment.body);
     final newBody = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('댓글 수정'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 500,
-          maxLines: null,
-          decoration: const InputDecoration(counterText: ''),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('저장'),
-          ),
-        ],
-      ),
+      builder: (context) => _CommentEditDialog(initialBody: comment.body),
     );
-    controller.dispose();
     if (newBody == null ||
         newBody.isEmpty ||
         newBody == comment.body ||
@@ -453,6 +433,62 @@ class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
 }
 
 /// 댓글 한 행 — 아바타 + [닉네임 / 본문]. 본문은 전체 표시(시트 안이라 말줄임 없음).
+/// 댓글 수정 다이얼로그.
+///
+/// 🔴 **컨트롤러를 다이얼로그 자신이 소유해야 한다**(2026-08-16). 예전에는 `_editComment`가
+/// 컨트롤러를 만들고 `showDialog` 가 반환하자마자 `dispose()` 했는데, 그 시점에 다이얼로그의
+/// **닫힘 애니메이션이 아직 돌고 있어** 안의 `TextField` 가 죽은 컨트롤러로 다시 그려졌다:
+///
+///     A TextEditingController was used after being disposed.
+///
+/// 릴리스 빌드는 assert 가 빠져 조용히 넘어가고, 이 시트에 테스트가 없어서 아무도 못 봤다
+/// (테스트를 처음 붙이면서 드러났다). `State.dispose()` 에 맡기면 위젯이 트리에서 완전히
+/// 빠진 뒤에 정리되므로 이 창이 닫힌다.
+class _CommentEditDialog extends StatefulWidget {
+  const _CommentEditDialog({required this.initialBody});
+
+  final String initialBody;
+
+  @override
+  State<_CommentEditDialog> createState() => _CommentEditDialogState();
+}
+
+class _CommentEditDialogState extends State<_CommentEditDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialBody,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('댓글 수정'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 500,
+        maxLines: null,
+        decoration: const InputDecoration(counterText: ''),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: const Text('저장'),
+        ),
+      ],
+    );
+  }
+}
+
 class _CommentRow extends StatelessWidget {
   const _CommentRow({required this.comment, this.menuAnchorKey, this.onMenu});
 
