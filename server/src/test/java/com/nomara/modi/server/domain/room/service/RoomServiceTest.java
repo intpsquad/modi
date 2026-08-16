@@ -786,6 +786,47 @@ class RoomServiceTest {
         .isEqualTo(RoomStatus.ENDED);
   }
 
+  /**
+   * 자동 종료의 "오늘"은 <b>한국 시간</b>이어야 한다(2026-08-16).
+   *
+   * <p>🔴 <b>{@code LocalDate.now()} 를 쓰지 말 것</b> — 그건 JVM 기본 시간대이고, CI 러너도 운영 컨테이너도 <b>UTC</b> 다.
+   * 픽스처를 {@code RoomService.KST} 로 만들어야 서비스와 같은 기준이 된다.
+   *
+   * <p>②가 이 회귀를 잡는 쪽이다: 무인자 {@code LocalDate.now()} 로 돌아가면 UTC JVM 의 KST 00:00~09:00 구간에서 "어제 끝난
+   * 방"이 아직 ACTIVE 로 남아 실패한다. ①은 그 반대 경계(마지막 날은 아직 진행 중)를 고정한다.
+   */
+  @Test
+  void autoEndBoundaryFollowsKoreanTimeNotJvmDefault() {
+    LocalDate todayKst = LocalDate.now(RoomService.KST);
+
+    // ① 마지막 날(end_date == 오늘)은 아직 진행 중이다.
+    RoomResponse lastDay =
+        roomService.createRoom(
+            "uid-tz-lastday",
+            "생성자",
+            new CreateRoomRequest("오늘 끝나는 방", "목표", null, todayKst.minusDays(10), todayKst, null));
+
+    assertThat(
+            roomService
+                .refreshStatus(roomRepository.findById(lastDay.id()).orElseThrow())
+                .getStatus())
+        .isEqualTo(RoomStatus.ACTIVE);
+
+    // ② 어제 끝난 방은 읽는 순간 ENDED 로 넘어간다.
+    RoomResponse yesterday =
+        roomService.createRoom(
+            "uid-tz-yesterday",
+            "생성자",
+            new CreateRoomRequest(
+                "어제 끝난 방", "목표", null, todayKst.minusDays(10), todayKst.minusDays(1), null));
+
+    assertThat(
+            roomService
+                .refreshStatus(roomRepository.findById(yesterday.id()).orElseThrow())
+                .getStatus())
+        .isEqualTo(RoomStatus.ENDED);
+  }
+
   @Test
   void previewInviteWithPastEndDateReflectsAutoEndedStatus() {
     CreateRoomRequest request =
