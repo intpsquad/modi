@@ -50,5 +50,14 @@ void main() async {
   appFcmService.registerBackgroundMessageHandler();
   runApp(const ProviderScope(child: App()));
   // 권한 팝업/토큰 등록이 첫 화면 진입을 막지 않도록 UI가 올라온 뒤 시작한다.
-  unawaited(appFcmService.initialize());
+  //
+  // 🔴 **맨 `unawaited` 로 두지 말 것**(2026-08-16). 그러면 이 안에서 던진 예외가
+  // 어디에도 안 남아 **알림 권한 팝업이 안 뜨는데 이유를 알 수 없는** 상태가 된다
+  // (TestFlight 빌드 5 실측). 부팅을 막지 않되 흔적은 남긴다.
+  unawaited(
+    appFcmService.initialize().catchError((Object error, StackTrace stack) {
+      debugPrint('FCM 초기화 실패 — 알림이 오지 않는다: $error');
+      debugPrintStack(stackTrace: stack);
+    }),
+  );
 }

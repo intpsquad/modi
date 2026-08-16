@@ -152,4 +152,30 @@ void main() {
       (idToken: 'id-token', fcmToken: 'new-fcm-token'),
     ]);
   });
+
+  /// 🔴 **권한 요청은 앞 단계가 어떻게 되든 반드시 나가야 한다**(2026-08-16).
+  ///
+  /// 2026-08-15 TestFlight 빌드 5 에서 **알림 권한 팝업이 아예 뜨지 않았고**, iOS 설정에
+  /// 「알림」 항목조차 안 생겼다. `initialize()` 가 권한 요청 **앞의** 메시지 수신 배선에서
+  /// 멈추면 그렇게 되는데, main.dart 가 `unawaited(...)` 로 부르는 탓에 **에러가 통째로
+  /// 사라져** 원인을 알 수 없었다.
+  ///
+  /// 이 테스트는 `listenToMessages: true` 로 두어 그 배선이 실제로 실패하게 만든다
+  /// (테스트 환경에는 Firebase 가 없다). 그래도 권한 요청은 나가야 한다.
+  test('메시지 수신 배선이 실패해도 권한 요청은 나간다', () async {
+    final wired = FcmService(
+      messaging: messaging,
+      authSession: authSession,
+      tokenRegistrar: registrar,
+      supportedPlatform: true,
+      registerBackgroundHandler: false,
+      listenToMessages: true,
+    );
+    addTearDown(wired.dispose);
+
+    await wired.initialize();
+    await _settle();
+
+    expect(messaging.permissionRequests, 1);
+  });
 }
