@@ -6,6 +6,7 @@ import '../../design/todo_checkbox.dart';
 import '../../design/tokens.dart';
 import '../auth/auth_service.dart';
 import '../notifications/notifications_api.dart';
+import '../room/no_room_hero.dart';
 import '../room/room_session.dart';
 import '../room/room_switcher_sheet.dart';
 import '../shell/app_shell.dart';
@@ -59,6 +60,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _todoErrorText;
   DashboardData? _data;
   int? _roomId;
+
+  /// S-06 방없음 상태인가 — **방 목록을 실제로 읽어서 ACTIVE가 하나도 없었을 때만** true다.
+  ///
+  /// 🔴 `_roomId == null` 로 판단하면 안 된다. 조회가 실패해도 `_roomId` 는 null 로 남는데,
+  /// 조용한 새로고침(`silent: true`)의 실패는 `_errorText` 를 채우지 않아
+  /// **네트워크 오류가 "방이 없어요" 로 둔갑한다.** 조회 성공 여부를 따로 들고 있어야 갈린다.
+  bool _noActiveRoom = false;
 
   /// 방 전환 시트가 열려 있는지 — 히어로 토글 회전에만 쓴다(2026-08-05 요청).
   bool _roomSwitcherOpen = false;
@@ -177,6 +185,8 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _data = null;
           _roomId = null;
+          // 목록을 읽어서 ACTIVE가 없다고 **확인한** 자리 — 여기서만 S-06을 켠다.
+          _noActiveRoom = true;
           _loading = false;
           _loadedOnce = true;
         });
@@ -208,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _roomId = roomId;
+        _noActiveRoom = false;
         _weekStart = weekStart;
         _data = data;
         _loading = false;
@@ -356,9 +367,28 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    // S-06 방없음 상태(specs/0004-방-생성-참여.md, specs/0003-navigation.md).
+    //
+    // 🔴 판단 근거는 `_data == null` 도 `_roomId == null` 도 아닌 `_noActiveRoom` 이다
+    // (그 필드 주석 참고). 앞의 둘은 **조회에 실패했을 때도 참**이라 네트워크 오류를
+    // "방이 없어요" 로 둔갑시킨다.
+    //
+    // 타이틀이 고정인 이유: 라우터가 방 0개(`membership == none`)를 S-03 으로 보내므로
+    // (app_router.dart), 여기까지 왔다는 건 방을 가지고 있다는 뜻이다. S-03 이 쓰는
+    // `hasEverEnteredRoom()` 은 SharedPreferences 기반이라 기기를 갈아타면 false 가 나와
+    // "첫 번째 방을 만들어볼까요?" 가 잘못 뜬다.
+    //
+    // 상단 바(방이름▾)보다 먼저 return 하는 자리다 — S-06 에는 방 전환 트리거가 없다
+    // (specs/0008-방-전환.md).
+    if (_noActiveRoom) {
+      return const NoRoomHero(title: '현재 진행 중인 방이 없어요!');
+    }
+
     final data = _data;
     final weekStart = _weekStart;
     if (data == null || weekStart == null) {
+      // 방은 있는데 대시보드를 못 채운 예기치 못한 상태. 에러 문구는 위 `_errorText` 분기가
+      // 이미 잡으므로 여기까지 오면 재시도만 제공한다.
       return SafeArea(
         child: Center(
           child: Padding(
@@ -366,17 +396,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('진행 중인 방이 없어요', style: AppTypography.title),
+                const Text('홈 정보를 불러오지 못했어요', style: AppTypography.bodySmall),
                 const SizedBox(height: AppSpacing.cardGap),
-                ElevatedButton(
-                  onPressed: () => context.push('/room/create'),
-                  child: const Text('방 만들기'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: () => context.push('/room/join'),
-                  child: const Text('코드 입력'),
-                ),
+                OutlinedButton(onPressed: _load, child: const Text('다시 시도')),
               ],
             ),
           ),

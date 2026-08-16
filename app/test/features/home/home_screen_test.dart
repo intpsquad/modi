@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:app/features/auth/auth_service.dart';
 import 'package:app/features/home/home_api.dart';
+import 'package:app/features/home/home_hero.dart';
 import 'package:app/features/home/home_screen.dart';
+import 'package:app/features/room/no_room_hero.dart';
 import 'package:app/features/room/room_api.dart';
 import 'package:app/features/room/room_session.dart';
 import 'package:app/features/todos/todo_sync.dart';
@@ -449,7 +451,11 @@ void main() {
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('진행 중인 방이 없으면 안내와 CTA가 보인다', (tester) async {
+  /// S-06 방없음 상태 — 종료된 방만 가진 사용자가 홈에 오면 S-03 과 **같은 히어로**가 뜬다
+  /// (specs/0004-방-생성-참여.md). 2026-08-16 이전에는 맨 텍스트 + OutlinedButton "코드 입력"
+  /// 이라는 임시 화면이었다.
+  testWidgets('진행 중인 방이 없으면 S-06 히어로와 CTA 2종이 보인다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       MaterialApp(
         home: HomeScreen(
@@ -461,9 +467,65 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('진행 중인 방이 없어요'), findsOneWidget);
-    expect(find.text('방 만들기'), findsOneWidget);
-    expect(find.text('코드 입력'), findsOneWidget);
+    expect(find.byType(NoRoomHero), findsOneWidget);
+    expect(find.byIcon(Icons.card_giftcard), findsOneWidget);
+    expect(find.text('팀과 함께할 방을 만들거나, 초대코드로 참여하세요'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, '방 만들기'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '초대코드로 참여하기'), findsOneWidget);
+
+    // 🔴 S-03 과 갈리는 지점 — 홈에 도달했다는 건 방을 가졌다는 뜻이라 타이틀이 고정이다.
+    // SharedPreferences 가 비어 있어도(기기 교체 등) "첫 번째 방을…" 이 뜨면 안 된다.
+    expect(find.text('현재 진행 중인 방이 없어요!'), findsOneWidget);
+    expect(find.text('첫 번째 방을 만들어볼까요?'), findsNothing);
+
+    // S-06 에는 방 전환 트리거(방이름▾)가 없다 — specs/0008-방-전환.md.
+    expect(find.byType(HomeHero), findsNothing);
+  });
+
+  /// 🔴 조용한 새로고침(silent)의 실패는 `_errorText` 를 채우지 않는다. 그 상태를
+  /// `_roomId == null` 로 판단하면 **네트워크 오류가 "방이 없어요" 로 둔갑한다.**
+  /// 방 목록을 실제로 읽어서 ACTIVE가 없다고 확인했을 때만 S-06 이어야 한다.
+  testWidgets('조용한 새로고침이 실패한 것을 S-06 방없음으로 오인하지 않는다', (tester) async {
+    final sync = TodoSync();
+    final fakeApi = _FakeHomeApi(throwOnFetch: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: fakeApi,
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          todoSync: sync,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // 여기까지는 첫 로드(비-silent) 실패라 _errorText 분기가 잡는다.
+
+    // 🔴 이 신호가 silent 재조회를 돌린다. _load()가 시작하며 _errorText 를 비우는데
+    // silent 라 다시 채우지 않는다 → _errorText·_roomId·_data 가 전부 null 인 구간.
+    // `_roomId == null` 로 S-06 을 판단하면 여기서 "방이 없어요" 가 뜬다.
+    sync.markChanged();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NoRoomHero), findsNothing);
+    expect(find.text('현재 진행 중인 방이 없어요!'), findsNothing);
+    expect(find.text('홈 정보를 불러오지 못했어요'), findsOneWidget);
+  });
+
+  testWidgets('진행 중인 방이 있으면 S-06 히어로가 뜨지 않는다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: _FakeHomeApi(dashboard: _dashboard()),
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NoRoomHero), findsNothing);
   });
 
   testWidgets('로드 실패 시 에러 안내와 재시도 버튼이 보이고, 재시도하면 다시 호출한다', (tester) async {

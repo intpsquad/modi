@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../design/tokens.dart';
+import 'no_room_hero.dart';
 import 'room_session.dart';
 
 /// S-03 방 만들기/참여 허브 — 온보딩 게이트(스킵 불가, specs/0004-방-생성-참여.md).
@@ -41,65 +41,11 @@ class _RoomSetupScreenState extends State<RoomSetupScreen> {
       // returning(방을 가졌던 사용자)만 시스템 back 허용(안드로이드 앱 최소화).
       // 신규(첫 가입)는 온보딩 게이트 유지 — back 완전 차단.
       canPop: _hadRoomBefore,
+      // 히어로 본문은 S-06(홈 방없음)과 공유한다 — no_room_hero.dart.
+      // 여기서만 다른 것은 바깥의 PopScope(게이트)와 조건부 타이틀이다.
       child: Scaffold(
         backgroundColor: AppColors.canvas,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.content),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceStrong,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.card_giftcard,
-                    color: AppColors.primary,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  title,
-                  style: AppTypography.display,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  '팀과 함께할 방을 만들거나, 초대코드로 참여하세요',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.mutedSoft,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => context.push('/room/create'),
-                    child: const Text('방 만들기'),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextButton(
-                  onPressed: () => context.push('/room/join'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.foreground,
-                    textStyle: AppTypography.bodySmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  child: const Text('초대코드로 참여하기'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        body: NoRoomHero(title: title),
       ),
     );
   }
