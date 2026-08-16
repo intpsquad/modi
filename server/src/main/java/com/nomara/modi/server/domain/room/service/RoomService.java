@@ -31,6 +31,7 @@ import com.nomara.modi.server.global.exception.BadRequestException;
 import com.nomara.modi.server.global.notification.PushNotifier;
 import com.nomara.modi.server.global.notification.PushType;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -41,6 +42,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoomService {
+
+  /**
+   * 방의 "오늘"은 <b>한국 시간</b> 기준이다.
+   *
+   * <p>🔴 <b>{@code private} 이 아닌 이유: 테스트가 같은 기준을 써야 하기 때문</b> — {@code
+   * ScheduleReminderService.KST} 와 같은 이유다(그쪽 주석 참고). 값을 복사해 쓰면 어긋남이 다시 난다.
+   *
+   * <p>2026-08-16 추가. 그전에는 무인자 {@code LocalDate.now()} 였고, 운영 컨테이너에 {@code TZ} 가 없어 JVM 이
+   * <b>UTC</b> 로 돌았다 — KST 00:00~09:00 구간에서 서버의 "오늘"이 사용자보다 하루 뒤처져 방 자동 종료가 최대 9시간 늦었다. 컨테이너에도
+   * {@code TZ=Asia/Seoul} 을 넣었지만(deploy/docker-compose.app.yml) <b>환경변수에 기대지 않도록</b> 코드에서도 명시한다.
+   */
+  static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
   private final RoomRepository roomRepository;
   private final RoomMemberRepository roomMemberRepository;
@@ -174,7 +187,7 @@ public class RoomService {
    * {@code endDate}가 지나지 않았으면 아무 것도 하지 않는다.
    */
   public Room refreshStatus(Room room) {
-    if (room.getStatus() == RoomStatus.ACTIVE && LocalDate.now().isAfter(room.getEndDate())) {
+    if (room.getStatus() == RoomStatus.ACTIVE && LocalDate.now(KST).isAfter(room.getEndDate())) {
       room.end();
       roomRepository.save(room);
     }
