@@ -175,20 +175,38 @@ class FcmService {
     _initialized = true;
 
     registerBackgroundMessageHandler();
+
+    // 🔴 **이 블록이 실패해도 아래 권한 요청까지 막으면 안 된다**(2026-08-16).
+    //
+    // 예전에는 이 안의 `await` 가 던지거나 영영 안 끝나면 `initialize()` 전체가 거기서
+    // 끝났고, main.dart 가 `unawaited(...)` 로 부르는 탓에 **에러가 통째로 사라졌다.**
+    // 그러면 `requestPermission()` 이 영영 안 불려 **알림 권한 팝업이 뜨지 않고**,
+    // iOS 설정에 「알림」 항목조차 안 생긴다 — 로그에 아무 흔적이 없어 원인을 못 찾는다.
+    // (2026-08-15 Apple 로그인의 `catch (_)` 와 같은 계열이다.)
+    //
+    // 메시지 수신 배선은 "있으면 좋은 것"이고 권한 요청은 "없으면 기능이 죽는 것"이라,
+    // 실패해도 삼키지 말고 **남기고 계속 간다.**
     if (listenToMessages) {
-      await _initLocalNotifications();
-      _messageSubscription = FirebaseMessaging.onMessage.listen(
-        _onForegroundMessage,
-      );
-      // 백그라운드에서 알림을 탭해 앱을 열었을 때.
-      FirebaseMessaging.onMessageOpenedApp.listen(
-        (message) => unawaited(handleNotificationData(message.data)),
-      );
-      // 종료 상태에서 알림 탭으로 앱을 시작했을 때.
-      final initialMessage = await FirebaseMessaging.instance
-          .getInitialMessage();
-      if (initialMessage != null) {
-        unawaited(handleNotificationData(initialMessage.data));
+      try {
+        await _initLocalNotifications();
+        _messageSubscription = FirebaseMessaging.onMessage.listen(
+          _onForegroundMessage,
+        );
+        // 백그라운드에서 알림을 탭해 앱을 열었을 때.
+        FirebaseMessaging.onMessageOpenedApp.listen(
+          (message) => unawaited(handleNotificationData(message.data)),
+        );
+        // 종료 상태에서 알림 탭으로 앱을 시작했을 때.
+        // ⚠️ 타임아웃을 건다 — 이 호출이 안 끝나면 그 뒤 권한 요청도 영영 안 나간다.
+        final initialMessage = await FirebaseMessaging.instance
+            .getInitialMessage()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null);
+        if (initialMessage != null) {
+          unawaited(handleNotificationData(initialMessage.data));
+        }
+      } catch (error, stackTrace) {
+        debugPrint('FCM 메시지 수신 배선 실패(권한 요청은 계속한다): $error');
+        debugPrintStack(stackTrace: stackTrace);
       }
     }
 
@@ -210,11 +228,15 @@ class FcmService {
       debugPrintStack(stackTrace: stackTrace);
     }
 
+    // 🔴 결과를 **성공·실패 양쪽 다** 남긴다. 예전에는 실패만, 그것도 `runtimeType` 만
+    // 찍어서 "팝업이 안 뜬다"를 신고받았을 때 **요청이 나갔는지조차 알 수 없었다**
+    // (2026-08-16, TestFlight 빌드 5). 권한 상태 한 줄이면 진단이 몇 분으로 끝난다.
     try {
       _authorizationStatus = await _messaging.requestPermission();
+      debugPrint('FCM 알림 권한: $_authorizationStatus');
       await _syncToken();
     } catch (error, stackTrace) {
-      debugPrint('FCM 권한 확인 실패: ${error.runtimeType}');
+      debugPrint('FCM 권한 요청 실패: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
   }
