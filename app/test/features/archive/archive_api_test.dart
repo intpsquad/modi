@@ -95,6 +95,47 @@ void main() {
     expect(detail.title, '여행 사진');
     expect(detail.imageUrl, 'https://storage.test/archive-images/7/abc.jpg');
   });
+
+  // 🔴 회귀 테스트 — 서버는 삭제 성공을 204(본문 없음)로 응답하는데
+  // `deleteComment`가 한동안 `_checkOk`(200 전용)를 써서 서버는 지웠는데도
+  // 앱은 항상 실패로 처리했다("됐다가 안됐다가" 증상의 원인).
+  test('댓글 삭제는 204를 성공으로 받는다', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'DELETE');
+      expect(
+        request.url.path,
+        '/rooms/7/archive/items/2/comments/5',
+      );
+      return http.Response('', 204);
+    });
+    final api = ArchiveApi(
+      baseUrl: 'https://api.test',
+      client: AuthenticatedHttpClient(
+        client: client,
+        tokenProvider: _FakeTokenProvider(),
+      ),
+    );
+
+    await expectLater(api.deleteComment('token', 7, 2, 5), completes);
+  });
+
+  test('댓글 삭제가 실패 응답이면 예외를 던진다', () async {
+    final client = MockClient(
+      (request) async => http.Response('본인이 작성한 댓글만 수정할 수 있어요', 403),
+    );
+    final api = ArchiveApi(
+      baseUrl: 'https://api.test',
+      client: AuthenticatedHttpClient(
+        client: client,
+        tokenProvider: _FakeTokenProvider(),
+      ),
+    );
+
+    await expectLater(
+      api.deleteComment('token', 7, 2, 5),
+      throwsA(isA<StateError>()),
+    );
+  });
 }
 
 class _FakeTokenProvider implements AuthTokenProvider {
