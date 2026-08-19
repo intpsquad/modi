@@ -2,12 +2,17 @@ name: 버그
 description: 동작이 잘못됐다
 title: "[fix] "
 labels: ["fix"]
+projects: ["intpsquad/1"]
 body:
   - type: markdown
     attributes:
       value: |
         운영에 급한 버그여도 **순서를 건너뛰지 않는다** — `dev` 에서 브랜치를 따고
         `dev` PR → `main` PR 로 간다. `main` 에 직접 push 하지 않는다.
+
+        🔴 **이슈를 만든 뒤 오른쪽 `Projects` 에 「MODI 운영」이 붙었는지 확인하세요.**
+        자동으로 붙지만, 프로젝트 권한이 없으면 조용히 안 붙습니다 —
+        그때는 오른쪽에서 직접 고르세요. https://github.com/orgs/intpsquad/projects/1
 
   - type: textarea
     id: repro
@@ -52,3 +57,4 @@ body:
       options:
         - label: 담당자, 라벨 설정했나요?
         - label: 브랜치명이 규칙(`feat/이슈번호-내용`)에 맞는지 확인했나요?
+        - label: 오른쪽 `Projects` 에 「MODI 운영」이 연결됐나요?

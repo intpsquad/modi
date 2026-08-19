@@ -2,12 +2,17 @@ name: 기능
 description: 새 기능을 추가한다
 title: "[feat] "
 labels: ["feat"]
+projects: ["intpsquad/1"]
 body:
   - type: markdown
     attributes:
       value: |
         브랜치는 이슈 번호를 앞에 붙여 판다 — `feat/<이슈번호>-<내용>`.
         규칙 전문은 [CONTRIBUTING.md](../blob/dev/CONTRIBUTING.md).
+
+        🔴 **이슈를 만든 뒤 오른쪽 `Projects` 에 「MODI 운영」이 붙었는지 확인하세요.**
+        자동으로 붙지만, 프로젝트 권한이 없으면 조용히 안 붙습니다 —
+        그때는 오른쪽에서 직접 고르세요. https://github.com/orgs/intpsquad/projects/1
 
   - type: textarea
     id: what
@@ -37,3 +42,4 @@ body:
       options:
         - label: 담당자, 라벨 설정했나요?
         - label: 브랜치명이 규칙(`feat/이슈번호-내용`)에 맞는지 확인했나요?
+        - label: 오른쪽 `Projects` 에 「MODI 운영」이 연결됐나요?
