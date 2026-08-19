@@ -1,4 +1,5 @@
-# 빈 이슈를 막아 세 템플릿 중 하나를 반드시 고르게 한다.
+# 빈 이슈를 막아 「이슈」 템플릿을 반드시 거치게 한다.
+# (2026-08-19: 기능·버그·작업 3종을 하나로 합쳤다 — CONTRIBUTING.md §3)
 blank_issues_enabled: false
 contact_links:
   - name: 협업 규칙 (브랜치 · 커밋 · PR)
