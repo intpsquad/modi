@@ -16,12 +16,16 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-# 🔴 **버전 이름(`1.0.0`)은 심사 결과가 나온 뒤에 정한다**(2026-08-16).
-#   빌드 5 가 거부되면  → 재제출이므로 `1.0.0+6` 그대로 (1.0.0 은 아직 출시된 적이 없다)
-#   빌드 5 가 승인되면  → 그게 1.0.0 으로 나가므로 다음 업데이트는 `1.1.0+6` 으로 올린다
-#                         (S-06 이 `feat` 이라 CONTRIBUTING.md §8 표상 마이너)
-# 빌드 번호만 먼저 6 으로 올려 둔다 — 업로드하기 전까지는 아무 번호도 소모되지 않는다.
-version: 1.0.0+6
+# `1.0.0` 은 2026-08-19 App Store 에 출시됐다(빌드 5). 다음 릴리스는 **`1.0.1`** 이다.
+#
+# 마이너(`1.1.0`)가 아니라 패치인 이유: 다음 릴리스에 실릴 것이 거의 다 버그 수정이다
+# (댓글 다이얼로그·알림 권한·댓글 삭제 204·Keychain 재설치). S-06 방없음 화면은 커밋 타입이
+# `feat` 이지만 **있던 임시 화면을 스펙대로 다듬은 것**이라 사용자에게는 새 기능이 아니다.
+# 판단 기준은 CONTRIBUTING.md §8 표.
+#
+# ⚠️ 빌드 번호(`+6`)는 **App Store Connect 에 올린 순간** 소모된다 — 거절당한 업로드도
+# 소모한다(2026-08-14 `-19232` 실측). 여기서 올려 두는 것만으로는 아무것도 소모되지 않는다.
+version: 1.0.1+6
 
 environment:
   sdk: ^3.12.2
