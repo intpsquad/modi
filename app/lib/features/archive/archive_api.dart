@@ -353,7 +353,8 @@ class ArchiveApi {
     );
   }
 
-  /// 댓글 삭제 — 작성자 본인만(서버가 403).
+  /// 댓글 삭제 — 작성자 본인만(서버가 403). 성공 응답은 204(본문 없음)라
+  /// `deleteFolder`/`deleteItem`과 같은 방식으로 직접 검사한다(`_checkOk`은 200 전용).
   Future<void> deleteComment(
     String idToken,
     int roomId,
@@ -366,7 +367,9 @@ class ArchiveApi {
       ),
       idToken: idToken,
     );
-    _checkOk(response, '댓글 삭제 실패');
+    if (response.statusCode != 204) {
+      throw StateError('댓글 삭제 실패: ${response.statusCode} ${response.body}');
+    }
   }
 
   /// 내 프로필(닉네임·사진) — 댓글 입력바의 내 아바타용. `GET /me/profile`을 아바타에 필요한
