@@ -1,4 +1,4 @@
-name: 이슈
+name: 이슈 등록
 description: 기능 · 버그 · 문서 · 그 밖의 모든 작업
 projects: ["intpsquad/1"]
 body:
