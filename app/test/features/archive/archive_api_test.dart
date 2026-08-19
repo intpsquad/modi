@@ -102,10 +102,7 @@ void main() {
   test('댓글 삭제는 204를 성공으로 받는다', () async {
     final client = MockClient((request) async {
       expect(request.method, 'DELETE');
-      expect(
-        request.url.path,
-        '/rooms/7/archive/items/2/comments/5',
-      );
+      expect(request.url.path, '/rooms/7/archive/items/2/comments/5');
       return http.Response('', 204);
     });
     final api = ArchiveApi(
@@ -121,7 +118,7 @@ void main() {
 
   test('댓글 삭제가 실패 응답이면 예외를 던진다', () async {
     final client = MockClient(
-      (request) async => http.Response('본인이 작성한 댓글만 수정할 수 있어요', 403),
+      (request) async => http.Response('forbidden', 403),
     );
     final api = ArchiveApi(
       baseUrl: 'https://api.test',
