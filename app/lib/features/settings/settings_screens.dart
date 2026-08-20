@@ -620,9 +620,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showContactFallback() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text(
-          '메일 앱을 열 수 없어요. $_supportEmailAddress으로 직접 문의해 주세요.',
-        ),
+        content: Text('메일 앱을 열 수 없어요. $_supportEmailAddress으로 직접 문의해 주세요.'),
       ),
     );
   }

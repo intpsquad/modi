@@ -176,10 +176,7 @@ void main() {
     await _tapSettingsTile(tester, '문의하기');
     await tester.pumpAndSettle();
 
-    expect(
-      launchedUri,
-      Uri(scheme: 'mailto', path: 'modi.app.team@gmail.com'),
-    );
+    expect(launchedUri, Uri(scheme: 'mailto', path: 'modi.app.team@gmail.com'));
   });
 
   testWidgets('메일 앱을 열 수 없으면 지원 메일 주소를 안내한다', (tester) async {
