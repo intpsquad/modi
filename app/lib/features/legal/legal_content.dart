@@ -10,7 +10,7 @@ library;
 const String kLegalOperator = '모디(MODI) 팀';
 
 /// 약관/정책 관련 문의처 — 설정 '문의하기'와 동일 주소.
-const String kLegalContactEmail = 'myeonglyeonghajim@gmail.com';
+const String kLegalContactEmail = 'modi.app.team@gmail.com';
 
 /// 약관/정책 시행일.
 const String kLegalEffectiveDate = '2026년 8월 4일';

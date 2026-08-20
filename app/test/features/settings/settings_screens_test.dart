@@ -178,7 +178,7 @@ void main() {
 
     expect(
       launchedUri,
-      Uri(scheme: 'mailto', path: 'myeonglyeonghajim@gmail.com'),
+      Uri(scheme: 'mailto', path: 'modi.app.team@gmail.com'),
     );
   });
 
@@ -198,7 +198,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('메일 앱을 열 수 없어요'), findsOneWidget);
-    expect(find.textContaining('myeonglyeonghajim@gmail.com'), findsOneWidget);
+    expect(find.textContaining('modi.app.team@gmail.com'), findsOneWidget);
   });
 
   testWidgets('마지막 멤버의 방 나가기 확인창은 방 삭제를 함께 경고한다', (tester) async {
