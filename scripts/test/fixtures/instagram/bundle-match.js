@@ -1,0 +1,3 @@
+__d("PolarisPostRoot.react",["PolarisPostRootQuery_instagramRelayOperation","react"],(function(a,b,c,d,e,f,g){"use strict";e.exports={}}),null);
+__d("PolarisPostRootQuery_instagramRelayOperation",[],(function(a,b,c,d,e,f){"use strict";e.exports="11111111111111111"}),null);
+__d("PolarisPostRootQuery.graphql",["PolarisPostRootQuery_instagramRelayOperation"],(function(a,b,c,d,e,f,g){"use strict";var h={kind:"Request",params:{id:g("PolarisPostRootQuery_instagramRelayOperation"),metadata:{},name:"PolarisPostRootQuery",operationKind:"query",text:null,providedVariables:{__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider:g("PolarisAIGMMediaWebLabelEnabledrelayprovider")}}};e.exports=h}),null);
