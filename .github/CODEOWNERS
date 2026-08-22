@@ -1,8 +1,11 @@
 # 자동 리뷰어 지정. 경로가 바뀌면 GitHub 이 해당 소유자를 PR 리뷰어로 자동 요청한다.
 #
-# 🔴 **아래 핸들은 아직 채워지지 않았다.** GitHub 사용자명(@표시)을 알게 되는 즉시 교체할 것 —
-# 존재하지 않는 핸들은 GitHub 가 조용히 무시하므로 **틀린 채로 두면 리뷰어가 아무도 안 붙는다**
-# (파일이 있으니 동작하는 줄로 착각하기 쉽다).
+# 핸들 ↔ 이름 (2026-08-22 확정 — 본인 확인 완료):
+#   @kimzoo5676-del = 김주우 / @ijooha16 = 윤주하 / @hiky2002 = 김예원 / @minyeongg = 박민영
+#
+# ⚠️ 존재하지 않는 핸들을 적으면 GitHub 는 **오류를 표시하지 않고 그 줄을 무시한다** —
+# 리뷰어가 아무도 지정되지 않는데 경고도 없다. 핸들을 바꿀 땐 머지 후 다음 PR 에서
+# 리뷰어가 실제로 자동 지정되는지 확인한다.
 #
 # 역할은 docs/TEAM.md 가 단일 진실이다:
 #   윤주하·김예원 = 프론트(Flutter) / 박민영 = 백엔드(Spring) / 김주우 = 인프라·배포·AI
@@ -10,23 +13,23 @@
 # 규칙: 나중에 나오는 줄이 이긴다(마지막 매칭 하나만 적용된다).
 
 # 기본 — 아무 규칙에도 안 걸리는 파일
-*                       @TODO-김주우
+*                       @kimzoo5676-del
 
 # 앱 (프론트 두 명이 나눠 갖는다 — 화면 단위 분담은 PR 에 적는다)
-/app/                   @TODO-윤주하 @TODO-김예원
+/app/                   @ijooha16 @hiky2002
 
 # 서버
-/server/                @TODO-박민영
+/server/                @minyeongg
 
 # AI 서버
-/ai/                    @TODO-김주우
+/ai/                    @kimzoo5676-del
 
 # 🔴 인프라·CI·배포 — 여기를 바꿀 수 있는 사람은 서버에서 임의 코드를 돌릴 수 있다
 # (배포 잡이 SSH 로 들어와 deploy/deploy.sh 를 그대로 실행한다). 반드시 리뷰를 받는다.
-/deploy/                @TODO-김주우
-/.github/               @TODO-김주우
+/deploy/                @kimzoo5676-del
+/.github/               @kimzoo5676-del
 
 # 스펙·문서는 바꾸는 사람이 그 영역의 담당이므로 소유자를 따로 두지 않는다.
 # 단 아키텍처·데이터모델·디자인은 전원에게 영향이 있어 인프라 담당이 함께 본다.
-/specs/0001-architecture.md   @TODO-김주우
-/specs/0002-data-model.md     @TODO-김주우 @TODO-박민영
+/specs/0001-architecture.md   @kimzoo5676-del
+/specs/0002-data-model.md     @kimzoo5676-del @minyeongg
