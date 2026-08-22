@@ -887,9 +887,11 @@ class RoomServiceTest {
 
   @Test
   void roomEndingTodayStaysActiveUntilDayAfter() {
+    // "오늘"은 서비스와 같은 KST 여야 한다. JVM 기본(UTC 러너)으로 만들면 KST 00~09시에
+    // 종료일이 KST 오늘보다 하루 앞이 되어 방이 자동 종료되고 이 테스트가 실패한다(#59, 2026-08-23 05:24 실제 발생).
+    LocalDate today = LocalDate.now(RoomService.KST);
     CreateRoomRequest request =
-        new CreateRoomRequest(
-            "오늘 종료 방", "목표", null, LocalDate.now().minusDays(10), LocalDate.now(), null);
+        new CreateRoomRequest("오늘 종료 방", "목표", null, today.minusDays(10), today, null);
     RoomResponse created = roomService.createRoom("uid-autoend-today", "생성자", request);
 
     var summaries = roomService.listMyRooms("uid-autoend-today");
