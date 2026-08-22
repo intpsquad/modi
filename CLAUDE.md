@@ -68,7 +68,7 @@
 - **저장소**: **GitHub** (`intpsquad/modi`, **공개** — 2026-08-15 전환. 브랜치 보호가 무료 플랜에서는 공개 저장소에만 열려서다). MR 대신 **PR** 용어를 쓴다.
   - ⚠️ **2026-08-14에 오가니제이션을 `modintps` → `intpsquad` 로 개명했다**(번들 ID `com.intpsquad.modi` 와 맞춤). GitHub 이 옛 주소를 리다이렉트해 주지만 그 리다이렉트는 언제든 끊길 수 있으므로, 각자 로컬에서 `git remote set-url origin https://github.com/intpsquad/modi.git` 을 한 번 돌린다.
 - **브랜치 3계층**: `main`(운영 — **머지하면 배포된다**) / `dev`(통합·테스트 — 배포 안 함) / `feat/<이슈번호>-<내용>`. 단일 진실은 `CONTRIBUTING.md`. 기본 브랜치는 `dev`다(PR 대부분이 `feat/*`→`dev`라, 기본이 `main`이면 base를 잘못 잡아 테스트를 건너뛴 채 운영에 머지될 수 있다).
-- **CI/CD**: **GitHub Actions** — `.github/workflows/ci.yml` **한 파일**. 잡 6개(`changes`→`app`/`server`/`ai`→`gate`/`deploy`)를 `needs`로 묶어 "테스트 통과해야 배포"를 유지한다. 브랜치 보호의 필수 상태 체크는 **`gate` 하나만** 건다(경로 필터로 스킵된 잡을 필수로 걸면 PR이 영구 대기한다). Jenkins·`Jenkinsfile`은 제거했다.
+- **CI/CD**: **GitHub Actions** — `.github/workflows/ci.yml` **한 파일**(예외: 배포와 무관한 예약 감시 `instagram-doc-id.yml`, 2026-08-22. "한 파일" 은 테스트→배포 사슬에 대한 규칙이다). 잡 6개(`changes`→`app`/`server`/`ai`→`gate`/`deploy`)를 `needs`로 묶어 "테스트 통과해야 배포"를 유지한다. 브랜치 보호의 필수 상태 체크는 **`gate` 하나만** 건다(경로 필터로 스킵된 잡을 필수로 걸면 PR이 영구 대기한다). Jenkins·`Jenkinsfile`은 제거했다.
 - **배포 인프라**: **단일 오라클 클라우드 Ampere A1**(ARM aarch64, 4 OCPU/24GB, ap-tokyo-1)에 서버·PostgreSQL·Redis·MinIO·Caddy를 Docker로 운영. 접속은 `ssh modi` 별칭. 상세는 `README.md` "배포" 절.
   - ⚠️ **빌드는 러너가 아니라 서버에서 한다** — 러너는 x86_64, 서버는 ARM이라 러너에서 만든 이미지는 뜨지 않는다.
 - **출시 대상**: **iOS 전용**. `app/android/`는 코드만 남아 있고 **CI·릴리스 경로가 없다**. iOS 릴리스는 Mac에서 수동(`docs/ios-release.md`) — 프라이빗 저장소의 macOS 러너가 분수를 10배로 소모해서였다. ⚠️ **2026-08-15 공개 전환으로 그 이유는 사라졌다**(공개 저장소는 Actions 무료). 아직 자동화하지 않았을 뿐이다.

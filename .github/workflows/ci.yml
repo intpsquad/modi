@@ -5,6 +5,8 @@
 # 사라진다 — deploy 워크플로가 테스트 결과를 모른 채 main push 만 보고 배포한다.
 # `workflow_run` 으로 묶는 방법도 있지만, 경로 필터로 스킵된 워크플로는 애초에
 # 실행되지 않아 트리거가 오지 않는다. 그래서 잡을 한 파일에 두고 `needs` 로 묶는다.
+# (예외: 배포와 무관한 예약 감시 instagram-doc-id.yml 은 별도 파일이다 — 이 사슬에 끼지 않고,
+#  여기에 schedule 을 얹으면 paths-filter 가 schedule 이벤트에서 base 를 못 잡는다. 2026-08-22)
 #
 # 옛 Jenkinsfile 의 스테이지 대응:
 #   detect changed paths      → changes 잡 (dorny/paths-filter)
