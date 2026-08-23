@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nomara.modi.server.domain.archive.exception.CrawlException;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.OutputStream;
@@ -74,6 +75,19 @@ class InstagramUrlCrawlerResponseTest {
 
   private String bootstrapBody = BOOTSTRAP_HTML;
 
+  /** 부트스트랩 응답이 헤더를 보낸 뒤 본문을 붙잡고 있을 시간. 0 이면 바로 보낸다. */
+  private long bootstrapStallMillis;
+
+  /**
+   * 붙잡고 있던 본문을 풀어 주는 끈. {@code @AfterEach} 가 당긴다 — 안 당기면 {@code server.stop(0)} 이 핸들러 스레드를 기다려 테스트가
+   * 클라이언트 타임아웃(5초)이 아니라 붙잡은 시간(8초)만큼 걸린다(리뷰 2026-08-23 P3-2).
+   */
+  private final java.util.concurrent.CountDownLatch releaseStall =
+      new java.util.concurrent.CountDownLatch(1);
+
+  /** 루프백 서버가 받은 요청 헤더 — 경로별 마지막 것. "어느 스택으로 보냈는가"를 여기서 본다. */
+  private final java.util.Map<String, Headers> seenRequestHeaders = new java.util.HashMap<>();
+
   /**
    * 차단됐을 때 {@code /p/} 가 주는 것 — 게시물 페이지가 아니라 challenge 다(운영 실측 610KB, {@code og:} 태그 0개). 요점은
    * <b>lsd 니들이 없다</b>는 것이다.
@@ -90,29 +104,49 @@ class InstagramUrlCrawlerResponseTest {
         "/p/",
         exchange -> {
           bootstrapHits.incrementAndGet();
-          respond(exchange, bootstrapStatus, bootstrapBody);
+          seenRequestHeaders.put("/p/", copyOf(exchange.getRequestHeaders()));
+          respond(exchange, bootstrapStatus, bootstrapBody, bootstrapStallMillis);
         });
 
     server.createContext(
         "/graphql/query/",
         exchange -> {
           int n = graphqlHits.incrementAndGet();
+          seenRequestHeaders.put("/graphql/query/", copyOf(exchange.getRequestHeaders()));
           if (n <= loginWallsBeforeSuccess) {
-            respond(exchange, loginWallStatus, LOGIN_HTML);
+            respond(exchange, loginWallStatus, LOGIN_HTML, 0);
           } else {
-            respond(exchange, 200, GRAPHQL_JSON);
+            respond(exchange, 200, GRAPHQL_JSON, 0);
           }
         });
 
     server.start();
   }
 
-  private static void respond(HttpExchange exchange, int status, String body)
+  private static Headers copyOf(Headers headers) {
+    Headers copy = new Headers();
+    copy.putAll(headers);
+    return copy;
+  }
+
+  private void respond(HttpExchange exchange, int status, String body) throws java.io.IOException {
+    respond(exchange, status, body, 0);
+  }
+
+  private void respond(HttpExchange exchange, int status, String body, long stallMillis)
       throws java.io.IOException {
     byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
     exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
     exchange.getResponseHeaders().add("Set-Cookie", "csrftoken=nb_0uqBX03AqH8WjKII5ZR; Path=/");
     exchange.sendResponseHeaders(status, bytes.length);
+    if (stallMillis > 0) {
+      // 헤더는 보냈고 본문만 안 준다 — "헤더까지만 재는 타임아웃" 으로는 못 잡는 모양이다.
+      try {
+        releaseStall.await(stallMillis, java.util.concurrent.TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(bytes);
     }
@@ -120,6 +154,7 @@ class InstagramUrlCrawlerResponseTest {
 
   @AfterEach
   void stopServer() {
+    releaseStall.countDown();
     server.stop(0);
   }
 
@@ -163,6 +198,54 @@ class InstagramUrlCrawlerResponseTest {
     assertThat(result.source()).isEqualTo("instagram.com");
     assertThat(bootstrapHits.get()).isOne();
     assertThat(graphqlHits.get()).isOne();
+  }
+
+  /**
+   * 🔴 <b>www 요청 두 개는 {@code java.net.http.HttpClient}(HTTP/2) 로 나가야 한다 — jsoup 의 {@code
+   * HttpURLConnection} 이 아니다</b>(2026-08-23 실측, #62).
+   *
+   * <p>운영 서버(데이터센터 IP)에서 같은 헤더·쿠키·본문을 보내도 {@code HttpURLConnection} 은 로그인 HTML 을 받고 {@code
+   * HttpClient}/HTTP2 는 JSON 을 받았다. 인스타가 접속 지문으로 가른다.
+   *
+   * <p><b>구분자는 {@code Upgrade: h2c} 다.</b> JDK {@code HttpClient} 는 {@code HTTP_2} 로 평문 {@code
+   * http://} 에 붙을 때 이 헤더를 얹어 시작하고, 서버가 무시하면 HTTP/1.1 로 계속한다. {@code HttpURLConnection} 은 절대 보내지 않는다
+   * — 그래서 루프백(평문)에서도 "어느 스택으로 보냈는가"가 헤더 하나로 드러난다.
+   */
+  @Test
+  void wwwRequestsAreSentWithJavaHttpClientNotHttpUrlConnection() {
+    crawl();
+
+    Headers page = seenRequestHeaders.get("/p/");
+    Headers graphql = seenRequestHeaders.get("/graphql/query/");
+    assertThat(page.getFirst("Upgrade")).as("페이지 GET 의 Upgrade").isEqualTo("h2c");
+    assertThat(graphql.getFirst("Upgrade")).as("GraphQL POST 의 Upgrade").isEqualTo("h2c");
+
+    // 실측으로 통과한 요청의 모양을 그대로 고정한다 — `; charset=UTF-8` 꼬리 없음.
+    assertThat(graphql.getFirst("Content-Type")).isEqualTo("application/x-www-form-urlencoded");
+    assertThat(graphql.getFirst("Cookie")).contains("csrftoken=nb_0uqBX03AqH8WjKII5ZR");
+    assertThat(graphql.getFirst("X-FB-LSD")).isEqualTo("AdQCd4WbYxi5oHKQvofPlXtQGvo");
+    assertThat(graphql.getFirst("X-CSRFToken")).isEqualTo("nb_0uqBX03AqH8WjKII5ZR");
+    assertThat(graphql.getFirst("User-Agent")).contains("Chrome/");
+    assertThat(page.getFirst("User-Agent")).isEqualTo(graphql.getFirst("User-Agent"));
+  }
+
+  /**
+   * 🔴 <b>타임아웃은 연결·헤더·본문을 합친 총 시간이어야 한다.</b> jsoup 의 {@code timeout()} 이 그랬다. {@code HttpClient} 의
+   * {@code request.timeout()} 은 <b>헤더가 올 때까지만</b> 재서, 그것만 믿으면 헤더를 주고 본문을 붙잡는 상대에게 무한정 잡힌다 — {@code
+   * specs/OPEN.md} 의 RestTemplate 항목(읽기 1회당 타임아웃으로 30초 붙잡힌 실측)과 같은 함정이다.
+   */
+  @Test
+  void aStallingPageTimesOutAsRetryable() {
+    bootstrapStallMillis = 8_000;
+
+    long started = System.nanoTime();
+    assertThatThrownBy(this::crawl)
+        .isInstanceOf(CrawlException.class)
+        .matches(e -> ((CrawlException) e).isRetryable(), "다시 해볼 만한 실패여야 한다");
+    long elapsedMillis = (System.nanoTime() - started) / 1_000_000;
+
+    assertThat(elapsedMillis).as("총 타임아웃(5초) 안에 끝나야 한다").isLessThan(7_000);
+    assertThat(graphqlHits.get()).isZero();
   }
 
   @Test

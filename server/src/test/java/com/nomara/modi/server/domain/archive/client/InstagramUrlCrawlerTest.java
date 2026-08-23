@@ -502,6 +502,73 @@ class InstagramUrlCrawlerTest {
     }
   }
 
+  /**
+   * {@code Set-Cookie} 파서 — jsoup 의 {@code response.cookies()} 를 대신하는 새 이음매(#62). 위 {@code
+   * GraphqlCookies} 의 "빈 {@code csrftoken=} 을 덮는다" 경로가 이제 이 파서가 <b>빈 값을 버리지 않는 것</b>에 기댄다.
+   */
+  @Nested
+  class SetCookies {
+
+    private static java.net.http.HttpHeaders headersOf(String... setCookies) {
+      Map<String, List<String>> map = new LinkedHashMap<>();
+      map.put("Set-Cookie", List.of(setCookies));
+      return java.net.http.HttpHeaders.of(map, (a, b) -> true);
+    }
+
+    @Test
+    void attributesAreStrippedAndOnlyNameValueRemains() {
+      assertThat(
+              InstagramUrlCrawler.setCookies(
+                  headersOf(
+                      "csrftoken=nb_0uqBX; Domain=.instagram.com; Path=/; Secure",
+                      "mid=ABC; Max-Age=34560000; HttpOnly")))
+          .containsExactly(entry("csrftoken", "nb_0uqBX"), entry("mid", "ABC"));
+    }
+
+    @Test
+    void anEmptyValueIsKeptSoThatGraphqlCookiesCanOverwriteIt() {
+      // `Set-Cookie: csrftoken=` (서버가 쿠키를 지울 때의 모양). jsoup 도 빈 문자열로 넣었다 — 여기서
+      // 버리면 `graphqlCookies` 의 `put` 논의가 무의미해진다.
+      assertThat(InstagramUrlCrawler.setCookies(headersOf("csrftoken=; Path=/")))
+          .containsEntry("csrftoken", "");
+    }
+
+    @Test
+    void anEqualsSignInsideTheValueIsKept() {
+      assertThat(InstagramUrlCrawler.setCookies(headersOf("datr=a=b=c; Path=/")))
+          .containsEntry("datr", "a=b=c");
+    }
+
+    @Test
+    void theLastDuplicateWins() {
+      // jsoup `CookieUtil.storeCookies` 와 같은 규칙 — "if duplicate names, last set will win".
+      assertThat(InstagramUrlCrawler.setCookies(headersOf("mid=OLD", "mid=NEW")))
+          .containsExactly(entry("mid", "NEW"));
+    }
+
+    @Test
+    void aSetCookieWithoutAnEqualsSignIsSkipped() {
+      assertThat(InstagramUrlCrawler.setCookies(headersOf("garbage", "mid=ABC")))
+          .containsExactly(entry("mid", "ABC"));
+    }
+
+    @Test
+    void theHeaderNameIsMatchedCaseInsensitively() {
+      Map<String, List<String>> map = new LinkedHashMap<>();
+      map.put("set-cookie", List.of("mid=ABC"));
+      assertThat(InstagramUrlCrawler.setCookies(java.net.http.HttpHeaders.of(map, (a, b) -> true)))
+          .containsEntry("mid", "ABC");
+    }
+
+    @Test
+    void noSetCookieGivesAnEmptyMap() {
+      assertThat(
+              InstagramUrlCrawler.setCookies(
+                  java.net.http.HttpHeaders.of(Map.of(), (a, b) -> true)))
+          .isEmpty();
+    }
+  }
+
   @Nested
   class GraphqlHeaders {
 
@@ -510,9 +577,10 @@ class InstagramUrlCrawlerTest {
 
     @Test
     void 헤더_순서가_고정이다() {
-      // 🔴 이 테스트의 존재 이유는 `Map.of` 로 되돌아가는 것을 막는 것이다. `Map.of` 는 반복 순서가
-      // **JVM 기동마다 달라져서**, 같은 요청이 기동마다 다른 헤더 순서로 나갔다(2026-08-05 실측).
-      // 외부 안티봇 엔드포인트로 나가는 요청이 비결정적인 것 자체가 결함이다.
+      // 원래는 `Map.of` 로 되돌아가는 것을 막는 테스트였다(jsoup 시절 반복 순서가 JVM 기동마다 달라져
+      // 같은 요청이 기동마다 다른 헤더 순서로 나갔다 — 2026-08-05 실측). #62 로 `HttpClient` 가 되면서
+      // 전선의 순서는 알파벳순으로 고정돼 그 문제 자체가 사라졌다. 지금 이 테스트가 지키는 것은
+      // **헤더 집합과 값**이 실측 통과본에서 바뀌지 않았다는 것이다 — 순서는 덤이다.
       assertThat(InstagramUrlCrawler.graphqlHeaders(bootstrap, "https://www.instagram.com/p/AB/"))
           .containsExactly(
               entry("X-IG-App-ID", "936619743392459"),

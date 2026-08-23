@@ -812,7 +812,13 @@ exit `0` 변화 없음 · `10` 갱신 필요 · `30` 판정 불가. **그 외 �
 
 ⚠️ **공개 저장소라도 60일 동안 커밋이 없으면 GitHub 이 `schedule` 을 자동으로 끈다.** Actions 탭에서 워크플로가 "disabled" 로 보이면 Enable 을 누른다.
 
-⚠️ 감시가 **못 잡는 것**: 러너 IP 가 막힌 날(판정 불가로 셈), 정의부가 초기 HTML 이 참조하지 않는 번들에만 있는 경우(`bundle_not_found`), 그리고 **curl 과 JVM(jsoup) 의 차이** — 헤더·UA·폼은 글자 단위로 맞췄지만 HTTP 버전(curl 은 HTTP/2)과 `Accept-Encoding` 은 다르다. 이 감시는 "curl 이 겪는 것" 을 재므로, 인스타가 그 차이로 서버만 막는 날은 못 본다(`specs/OPEN.md` 의 "curl 은 200, 서버만 HTML" 미결과 같은 틈). 이 둘이 실제로 얼마나 나는지는 첫 몇 주의 실행 요약(Actions → 해당 실행 → Summary)으로 본다 — `specs/OPEN.md` "인스타그램 크롤링의 doc_id" 항목의 관측란에 적는다.
+⚠️ 감시가 **못 잡는 것**: 러너 IP 가 막힌 날(판정 불가로 셈), 정의부가 초기 HTML 이 참조하지 않는 번들에만 있는 경우(`bundle_not_found`), 그리고 **curl 과 서버 Java 의 차이**. 이 감시는 "curl 이 겪는 것" 을 재므로, 인스타가 접속 방식으로 서버만 막는 날은 못 본다 — **실제로 그런 날이었다**(2026-08-23, 아래). 이 둘이 실제로 얼마나 나는지는 첫 몇 주의 실행 요약(Actions → 해당 실행 → Summary)으로 본다 — `specs/OPEN.md` "인스타그램 크롤링의 doc_id" 항목의 관측란에 적는다.
+
+**서버의 Java 로 직접 재기** (2026-08-23, #62) — 운영 서버에서 curl 은 JSON 을 받는데 서버만 로그인 HTML 을 받으면, 차이는 IP 가 아니라 **접속 지문**이다. 인스타는 데이터센터 IP 에서 `HttpURLConnection`(jsoup 이 쓰는 스택)을 봇으로 분류하고 `java.net.http.HttpClient`(HTTP/2)는 통과시켰다 — 그래서 서버의 www 요청은 `HttpClient` 로 나간다. 다시 의심될 때 재는 순서:
+
+1. 서버에서 curl: `scp scripts/instagram-doc-id.sh modi:/tmp/ig.sh` → `ssh modi 'bash /tmp/ig.sh verify <doc_id> <shortcode> <pv이름>'` — `ok` 면 IP 는 안 막힌 것.
+2. 같은 서버에서 Java: [`scripts/IgProbe.java`](./scripts/IgProbe.java)(부트스트랩 + GraphQL 을 `HttpURLConnection` 과 `HttpClient` 로 각각 보내는 단일 파일 프로그램)를 `scp scripts/IgProbe.java modi:/tmp/` 로 올리고 `ssh modi 'docker run --rm -v /tmp/IgProbe.java:/IgProbe.java eclipse-temurin:21-jdk java /IgProbe.java <shortcode>'` 로 돌린다(빌드용 JDK 이미지라 서버에 이미 있다). 토큰·쿠키 **값은 찍지 않는다**. 결과가 `HttpURLConnection=HTML, HttpClient=JSON` 이면 지문 문제, 둘 다 HTML 이면 IP 차단이다.
+3. 그래도 갈리면 브라우저 devtools 네트워크 탭의 `graphql/query` 요청과 헤더 단위로 비교한다(`specs/OPEN.md` doc_id 항목).
 
 ### 로그 회전
 

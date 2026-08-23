@@ -4,7 +4,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nomara.modi.server.domain.archive.exception.CrawlException;
 import com.nomara.modi.server.global.storage.ObjectStorage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -12,6 +21,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -48,6 +63,12 @@ import org.springframework.stereotype.Component;
  * <p>⚠️ <b>이 크롤러는 깨지기 쉽다.</b> {@code doc_id}는 몇 주~몇 달마다 바뀌고, 데이터센터 IP 의 비인증 트래픽은 soft-block 된다. 깨지면
  * {@code CrawlException} → 기존 {@code FAILED} 경로다(2026-08-03 사용자 확정 — 자료·링크는 남고 AI 입력으로만 안 쓰인다). 갱신
  * 절차는 {@code specs/OPEN.md}.
+ *
+ * <p>🔴 <b>{@code www.instagram.com} 요청 두 개는 {@code java.net.http.HttpClient}(HTTP/2)로 보낸다 — jsoup
+ * 이 아니다</b> (2026-08-23, #62). 운영 서버(오라클 데이터센터 IP)에서 같은 헤더·쿠키·본문을 보내도 jsoup 이 쓰는 {@code
+ * HttpURLConnection} 은 GraphQL 에서 <b>200 + 로그인 HTML</b> 을 받았고, {@code HttpClient}/HTTP2 는 <b>JSON +
+ * items</b> 를 받았다(curl 도 JSON). 즉 인스타는 데이터센터 IP 에서 <b>접속 지문</b>까지 본다. 집 IP 에서는 그 검사가 없어 개발 중엔 재현되지
+ * 않았다. 썸네일(CDN)은 jsoup 그대로다 — 그쪽 실패는 "썸네일 없이 등록"으로 삼켜진다({@link #storeThumbnail}).
  */
 @Component
 public class InstagramUrlCrawler implements SiteUrlCrawler {
@@ -104,6 +125,26 @@ public class InstagramUrlCrawler implements SiteUrlCrawler {
   private final CrawlBlockCooldown cooldown;
   private final String docId;
   private final String baseUrl;
+
+  /**
+   * www 요청 전용. 빈 하나에 하나 — 커넥션을 재사용한다.
+   *
+   * <p>{@code HTTP_2} 는 운영 서버에서 <b>실측으로 통과한 조합</b>이다(클래스 주석). {@code Redirect.NEVER} 는 지금까지와 같다 —
+   * 3xx 는 차단으로 판정한다({@link #bootstrap}). 연결 타임아웃만 여기 두고, <b>총 시간</b>은 {@link #send} 가 잰다.
+   */
+  private final HttpClient http =
+      HttpClient.newBuilder()
+          .version(HttpClient.Version.HTTP_2)
+          .followRedirects(HttpClient.Redirect.NEVER)
+          .connectTimeout(Duration.ofMillis(TIMEOUT_MILLIS))
+          .build();
+
+  /**
+   * {@link #send} 의 본문 읽기(블로킹, 최대 {@code TIMEOUT_MILLIS})를 돌리는 자리. <b>{@code thenApply} 로 두면 JDK 가
+   * {@code ForkJoinPool.commonPool()} 에서 돌린다</b>(리뷰 2026-08-23 P2-1) — 4 OCPU 서버에서 공용 풀 워커는 3개라, 크롤
+   * 스레드 4개가 동시에 본문을 읽으면 다른 공용 풀 사용자와 경합한다. 가상 스레드는 블로킹이 싸고 개수 제한이 없다.
+   */
+  private final ExecutorService bodyReaders = Executors.newVirtualThreadPerTaskExecutor();
 
   /**
    * {@code base-url} 을 프로퍼티로 뺀 이유는 <b>테스트가 루프백 서버를 가리켜 {@code crawl()} 전체를 돌기 위해서다</b> — 특히 <b>로그인
@@ -241,45 +282,37 @@ public class InstagramUrlCrawler implements SiteUrlCrawler {
 
   /** 1단계 — 페이지에서 <b>새</b> lsd 토큰과 csrftoken 쿠키를 딴다. 굳은 값으로는 403 로그인 페이지가 온다. */
   private Bootstrap bootstrap(String postUrl) {
-    Connection.Response response;
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(postUrl))
+            .header("User-Agent", USER_AGENT)
+            // jsoup 이 기본으로 얹던 값 그대로 — HttpClient 는 Accept 를 알아서 붙이지 않는다.
+            .header("Accept", "text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .GET()
+            .build();
+    Fetched response;
     try {
-      response =
-          Jsoup.connect(postUrl)
-              .timeout(TIMEOUT_MILLIS)
-              .maxBodySize(MAX_BODY_SIZE)
-              .followRedirects(false)
-              .userAgent(USER_AGENT)
-              .header("Accept-Language", "en-US,en;q=0.9")
-              .ignoreContentType(true)
-              .execute();
+      // 연결 실패·타임아웃·본문 중간 끊김이 전부 여기로 온다 — 예전엔 execute() 와 body() 를 따로 감쌌다.
+      response = send(request, MAX_BODY_SIZE);
     } catch (Exception e) {
       log.warn("인스타 게시물 페이지를 불러오지 못했다: {}", postUrl, e);
       throw CrawlException.retryable("링크를 불러오지 못했어요. 다시 시도해 주세요", e);
     }
-    if (response.statusCode() >= 300) {
+    if (response.status() >= 300) {
       // 🔴 **이것이 소프트 블록의 모양이다**(2026-08-06 리뷰 P1). 참조 문서(test.md)가 적은 차단 증상이
       // 정확히 "302/403 to login even with valid tokens" 이고, 위 주석대로 차단 중에는 /p/ 페이지도
       // challenge 를 준다(실측 610KB). 비공개·삭제 게시물은 여기로 오지 않는다 — 그쪽은 부트스트랩을
       // 통과한 뒤 GraphQL 의 빈 items 로 걸러진다("공개된 게시물만 등록할 수 있어요").
-      return blocked("인스타 게시물 페이지가 리다이렉트/오류를 줬다(status={}) — 차단으로 본다", response.statusCode());
+      return blocked("인스타 게시물 페이지가 리다이렉트/오류를 줬다(status={}) — 차단으로 본다", response.status());
     }
 
-    // 원문을 **한 번만** 읽어 로컬에 둔다 — jsoup 응답 본문 재읽기 함정(YouTubeUrlCrawler 참고).
-    //
-    // 🔴 **`body()` 도 감싼다.** 이건 헤더 뒤 본문 읽기라 소켓이 중간에 끊기면
-    // `UncheckedIOException` 이 나는데, 그건 `CrawlException` 이 아니라서 양쪽 호출부가 둘 다
-    // 나쁘게 반응한다 — 비동기는 `markCrawlFailed()` 를 못 타 **영구 PENDING**, 동기는
-    // **HTTP 500**(`ArchiveCrawlProcessor` 주석이 스스로 경고한 그 사고). 같은 티켓에서 유튜브
-    // 쪽은 정확히 이 이유로 감쌌는데 여기만 빠져 있었다(2026-08-04 리뷰 P1-2).
-    String html;
-    try {
-      html = response.body();
-    } catch (Exception e) {
-      log.warn("인스타 게시물 페이지 본문을 읽지 못했다: {}", postUrl, e);
-      throw CrawlException.retryable("링크를 불러오지 못했어요. 다시 시도해 주세요", e);
-    }
+    // 본문은 `send()` 가 이미 다 읽어 String 으로 들고 있다 — 예전 jsoup 의 "본문 재읽기 함정"도,
+    // 본문 읽기 중 소켓이 끊겨 `UncheckedIOException` 이 새던 구멍(2026-08-04 리뷰 P1-2)도
+    // 위 try 하나가 다 덮는다.
+    String html = response.body();
+    Map<String, String> cookies = setCookies(response.headers());
     String lsd = between(html, LSD_NEEDLE, "\"");
-    String csrf = csrfToken(response.cookie("csrftoken"), html);
+    String csrf = csrfToken(cookies.get("csrftoken"), html);
     if (lsd.isBlank() || csrf.isBlank()) {
       // 둘 중 하나라도 비면 GraphQL 은 로그인 페이지만 돌려준다 — 여기서 끊는 편이 낫다.
       //
@@ -288,7 +321,25 @@ public class InstagramUrlCrawler implements SiteUrlCrawler {
       // 있다"고 말하면서 정작 예외는 영구 실패였다.
       return blocked("인스타 토큰을 못 땄다(lsd={}, csrf={}) — 차단으로 본다", !lsd.isBlank(), !csrf.isBlank());
     }
-    return new Bootstrap(lsd, csrf, graphqlCookies(response.cookies(), csrf));
+    return new Bootstrap(lsd, csrf, graphqlCookies(cookies, csrf));
+  }
+
+  /**
+   * 응답의 {@code Set-Cookie} 들에서 {@code 이름=값} 만 뗀다(속성 {@code Path}·{@code Secure} 등은 버린다). 순서는 응답 순서,
+   * 같은 이름이 두 번 오면 뒤가 이긴다 — jsoup 의 {@code response.cookies()} 와 같은 의미다. <b>빈 값도 그대로 넣는다</b>({@code
+   * csrftoken=} 처럼) — {@link #graphqlCookies} 의 {@code put} 논의가 그 경우를 다룬다.
+   */
+  static Map<String, String> setCookies(HttpHeaders headers) {
+    Map<String, String> cookies = new LinkedHashMap<>();
+    for (String setCookie : headers.allValues("Set-Cookie")) {
+      String pair = setCookie.split(";", 2)[0];
+      int eq = pair.indexOf('=');
+      if (eq <= 0) {
+        continue;
+      }
+      cookies.put(pair.substring(0, eq).trim(), pair.substring(eq + 1).trim());
+    }
+    return cookies;
   }
 
   /**
@@ -350,61 +401,132 @@ public class InstagramUrlCrawler implements SiteUrlCrawler {
                 .formatted(shortcode)
             + "\"hoisted_reply_id\":null,"
             + "\"__relay_internal__pv__PolarisAIGMMediaWebLabelEnabledrelayprovider\":false}";
-    // 🔴 **헤더를 하나씩 순서대로 얹는다 — `Map.of` 를 쓰지 말 것.**
-    //
-    // 예전엔 `.headers(Map.of(...))` 였다. `Map.of` 가 돌려주는 `ImmutableCollections.MapN` 은
-    // **반복 순서가 JVM 기동마다 달라진다**(클래스 로드 시 `System.nanoTime()` 으로 SALT 를 잡는다).
-    // jsoup 은 그 맵을 순회하며 헤더를 얹으므로, **이 요청의 헤더 10개 순서가 기동마다 바뀌고 한
-    // JVM 안에서는 고정**됐다 — 같은 코드를 4번 돌려 실측했다(2026-08-05).
-    //
-    // 그게 원인인지는 **아직 모른다**(curl 로는 어떤 순서든 200 JSON 이다). 다만 외부 안티봇
-    // 엔드포인트로 나가는 요청이 기동마다 달라지는 것 자체가 결함이고, "재시작하면 되기도 한다"는
-    // 오늘의 재현 불가를 그대로 설명한다. 순서는 참조 문서(브라우저 캡처)의 나열 순서를 따른다.
-    Connection connection =
-        Jsoup.connect(baseUrl + "/graphql/query/")
-            .timeout(TIMEOUT_MILLIS)
-            .maxBodySize(MAX_BODY_SIZE)
-            .followRedirects(false)
-            .ignoreContentType(true)
-            .ignoreHttpErrors(true)
-            .userAgent(USER_AGENT)
-            .cookies(bootstrap.cookies())
-            .headers(graphqlHeaders(bootstrap, postUrl))
-            .data("lsd", bootstrap.lsd())
-            .data("doc_id", docId)
-            .data("fb_api_req_friendly_name", FRIENDLY_NAME)
-            .data("server_timestamps", "true")
-            .data("variables", variables)
-            // ⚠️ `.post()` 가 아니다 — 그건 Document 를 돌려줘 `.body()` 가 <body> 엘리먼트가 된다.
-            // 우리가 필요한 것은 응답 원문(JSON)이다.
-            .method(Connection.Method.POST);
+    // 헤더 순서: `HttpClient` 는 우리가 얹은 순서와 무관하게 **대소문자 무시 알파벳순**으로 보낸다
+    // (`HttpRequest.Builder` 가 TreeMap 이다 — 리뷰 2026-08-23 실측). 즉 기동마다 달라지던 jsoup
+    // 시절의 결함(2026-08-05, `graphqlHeaders` 주석)은 스택 교체로 사라졌고, 운영 서버는 이 알파벳
+    // 순서로 통과했다. `graphqlHeaders` 의 LinkedHashMap 순서는 이제 로그의 이름 목록에만 남는다.
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder(URI.create(baseUrl + "/graphql/query/"))
+            .header("User-Agent", USER_AGENT)
+            .header("Cookie", cookieHeader(bootstrap.cookies()));
+    graphqlHeaders(bootstrap, postUrl).forEach(builder::header);
+    // `; charset=UTF-8` 꼬리 없음 — 운영 서버에서 실측으로 통과한 모양 그대로다(브라우저도 이렇게 보낸다).
+    builder.header("Content-Type", "application/x-www-form-urlencoded");
+    String form =
+        formEncode(
+            List.of(
+                Map.entry("lsd", bootstrap.lsd()),
+                Map.entry("doc_id", docId),
+                Map.entry("fb_api_req_friendly_name", FRIENDLY_NAME),
+                Map.entry("server_timestamps", "true"),
+                Map.entry("variables", variables)));
+    HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(form)).build();
 
-    Connection.Response response;
+    Fetched response;
     try {
-      response = connection.execute();
+      response = send(request, MAX_BODY_SIZE);
     } catch (Exception e) {
       log.warn("인스타 GraphQL 호출 실패: shortcode={}", shortcode, e);
-      // ignoreHttpErrors 를 켜 뒀으므로 여기 오는 것은 순수 네트워크 오류다(연결 실패·타임아웃) —
-      // 부트스트랩의 같은 실패와 성격이 정확히 같다. 문구가 달라서 분류에서 빠져 있었다(리뷰 P2).
+      // 상태코드는 예외가 아니라 값으로 온다 — 여기 오는 것은 순수 네트워크 오류다(연결 실패·타임아웃·
+      // 본문 중간 끊김). 부트스트랩의 같은 실패와 성격이 정확히 같다.
       throw CrawlException.retryable("링크를 불러오지 못했어요. 다시 시도해 주세요", e);
     }
     return readGraphqlBody(
-        response, shortcode, bootstrap.cookies().keySet(), connection.request().headers().keySet());
+        response, shortcode, bootstrap.cookies().keySet(), request.headers().map().keySet());
+  }
+
+  /** {@code k=v; k2=v2} — 브라우저가 보내는 모양. jsoup 의 {@code .cookies(map)} 이 만들던 것과 같다. */
+  static String cookieHeader(Map<String, String> cookies) {
+    StringBuilder sb = new StringBuilder();
+    for (Map.Entry<String, String> e : cookies.entrySet()) {
+      if (sb.length() > 0) {
+        sb.append("; ");
+      }
+      sb.append(e.getKey()).append('=').append(e.getValue());
+    }
+    return sb.toString();
+  }
+
+  /**
+   * {@code application/x-www-form-urlencoded} 본문. jsoup 의 {@code .data()} 도 같은 {@code URLEncoder} 로
+   * 만들었다.
+   */
+  static String formEncode(List<Map.Entry<String, String>> fields) {
+    StringBuilder sb = new StringBuilder();
+    for (Map.Entry<String, String> f : fields) {
+      if (sb.length() > 0) {
+        sb.append('&');
+      }
+      sb.append(URLEncoder.encode(f.getKey(), StandardCharsets.UTF_8))
+          .append('=')
+          .append(URLEncoder.encode(f.getValue(), StandardCharsets.UTF_8));
+    }
+    return sb.toString();
+  }
+
+  /** {@link #send} 가 돌려주는 것 — 본문은 이미 다 읽어 String 으로 들고 있다. */
+  record Fetched(int status, HttpHeaders headers, String body) {}
+
+  /**
+   * 요청 하나를 보내고 본문까지 읽는다. <b>{@code TIMEOUT_MILLIS} 는 연결·헤더·본문을 합친 총 시간이다.</b>
+   *
+   * <p>jsoup 의 {@code timeout()} 이 총 시간이었으므로 그 성질을 지킨다. {@code HttpRequest.timeout()} 은 <b>헤더가 올
+   * 때까지만</b> 재서, 그것만 쓰면 헤더를 주고 본문을 붙잡는 상대에게 무한정 잡힌다({@code specs/OPEN.md} 의 RestTemplate 실측 30초와 같은
+   * 함정) — 그래서 비동기로 보내고 본문 읽기까지 이어 붙인 future 하나를 {@code get(timeout)} 으로 기다린다. 시간이 넘으면 future 를 취소해
+   * 교환을 끊는다.
+   *
+   * <p>본문은 {@code maxBytes} 에서 <b>자른다</b> — jsoup {@code maxBodySize} 와 같은 동작이다(예외가 아니다). 인스타 게시물
+   * 페이지는 600KB 안팎, challenge 페이지도 610KB 라 2MB 상한 안이다.
+   */
+  private Fetched send(HttpRequest request, int maxBytes)
+      throws IOException, InterruptedException, TimeoutException {
+    CompletableFuture<Fetched> future =
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
+            .thenApplyAsync(
+                response -> {
+                  try (InputStream in = response.body()) {
+                    byte[] bytes = in.readNBytes(maxBytes);
+                    return new Fetched(
+                        response.statusCode(),
+                        response.headers(),
+                        new String(bytes, StandardCharsets.UTF_8));
+                  } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                  }
+                },
+                bodyReaders);
+    try {
+      return future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      future.cancel(true); // 파생 future 의 cancel(true) 가 교환 자체를 끊는다(HttpClient.sendAsync 문서)
+      throw e;
+    } catch (InterruptedException e) {
+      future.cancel(true);
+      Thread.currentThread().interrupt(); // get() 이 지운 플래그를 되살린다 — 호출부는 Exception 으로 뭉뚱그린다
+      throw e;
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof java.io.UncheckedIOException unchecked) {
+        throw unchecked.getCause();
+      }
+      if (cause instanceof IOException io) {
+        throw io;
+      }
+      throw new IOException(cause);
+    }
   }
 
   /**
    * GraphQL 요청 헤더를 <b>순서가 있는 맵</b>으로 만든다.
    *
-   * <p>🔴 <b>{@code LinkedHashMap} 이다 — {@code Map.of} 로 되돌리지 말 것.</b> {@code Map.of} 가 돌려주는 {@code
-   * ImmutableCollections.MapN} 은 <b>반복 순서가 JVM 기동마다 달라진다</b>(클래스 로드 시 {@code System.nanoTime()} 으로
-   * SALT 를 잡는다). jsoup 은 이 맵을 순회하며 헤더를 얹으므로, 예전 코드는 <b>같은 요청을 기동마다 다른 헤더 순서로</b> 보냈다 — 같은 코드를 4번 돌려
-   * 실측했다(2026-08-05). 한 JVM 안에서는 고정이라 "재시작하면 되기도 한다"가 됐다.
+   * <p>{@code LinkedHashMap} 인 것은 <b>역사</b>다: jsoup 시절 {@code Map.of} 를 썼더니 반복 순서가 JVM 기동마다 달라져(클래스
+   * 로드 시 {@code System.nanoTime()} SALT) 같은 요청이 기동마다 다른 헤더 순서로 나갔다(2026-08-05 실측). 그게 실패 원인은
+   * 아니었다(원인은 접속 지문, 2026-08-23 확정 — 클래스 주석).
    *
-   * <p>그것이 인스타 실패의 <b>원인인지는 모른다</b> — curl 로는 어떤 순서든 200 JSON 이다. 다만 외부 안티봇 엔드포인트로 나가는 요청이 비결정적인 것
-   * 자체가 결함이라 원인과 무관하게 고친다.
-   *
-   * <p>순서는 참조 문서(`Instagram Public Post Scraping`)의 나열 순서를 따랐다 — 브라우저 캡처에서 나온 것이라 우리가 가진 것 중 가장 근거
-   * 있는 순서다. <b>따로 뺀 이유는 테스트가 순서를 못 박기 위해서다.</b>
+   * <p>⚠️ <b>지금은 이 순서가 전선에 나가지 않는다.</b> {@code HttpClient} 는 헤더를 대소문자 무시 알파벳순으로 보낸다(리뷰 2026-08-23
+   * 실측: {@code Accept, Accept-Language, Content-Type, Origin, Referer, Sec-Fetch-*, User-Agent,
+   * X-CSRFToken, …}). 운영 서버는 그 순서로 통과했다. 이 맵의 순서는 실패 로그의 헤더 이름 목록에만 남는다 — 테스트가 순서를 보는 것은 <b>헤더 집합이
+   * 바뀌지 않았는지</b>를 보는 것이다.
    */
   static Map<String, String> graphqlHeaders(Bootstrap bootstrap, String postUrl) {
     Map<String, String> headers = new LinkedHashMap<>();
@@ -435,29 +557,22 @@ public class InstagramUrlCrawler implements SiteUrlCrawler {
    *
    * <p>🔴 <b>2026-08-05 운영 실측에서 그 가설은 기각됐다</b> — {@code cookies=[csrftoken, mid]}, 부트스트랩이 준 것뿐이었다.
    *
-   * <p><b>그래서 헤더 이름과 순서도 함께 남긴다.</b> 우리가 실제로 무엇을 어떤 순서로 보내는지 <b>지금까지 한 번도 확인한 적이 없다.</b> 같은 EC2 에서
-   * curl 은 200 JSON 을 받는데 우리만 로그인 HTML 을 받고, IP·쿠키·HTTP 버전·헤더 구성·헤더 순서를 curl 로 전부 배제했다 — 남은 것은
-   * <b>우리가 실제로 보내는 것</b> 아니면 <b>Java 클라이언트 지문</b>이다. 싼 쪽을 먼저 본다.
+   * <p><b>헤더 이름도 함께 남긴다.</b> 같은 서버에서 curl 은 200 JSON 을 받는데 우리만 로그인 HTML 을 받던 문제는 <b>2026-08-23 에 접속
+   * 지문으로 확정</b>됐다(클래스 주석 — {@code HttpURLConnection} 만 막히고 {@code HttpClient}/HTTP2 는 통과). 그래도 이
+   * 목록은 남긴다: 다음에 또 갈리면 "우리가 무엇을 보냈는가"가 첫 질문이다.
    *
-   * <p>⚠️ <b>이 목록이 전부는 아니다.</b> {@code Host}·{@code Content-Length}·{@code Connection} 처럼 {@code
-   * HttpURLConnection} 이 직접 붙이는 것은 jsoup 의 맵에 없고, 실제 <b>전송 순서</b>도 JDK 가 다시 정할 수 있다. 여기까지는 "jsoup 이
-   * 무엇을 얹었는가"다.
+   * <p>⚠️ <b>이 목록이 전부는 아니다.</b> {@code Host}·{@code Content-Length}·{@code Connection}·{@code
+   * Upgrade} 처럼 {@code HttpClient} 가 직접 붙이는 것은 {@code request.headers()} 에 없고, 실제 <b>전송 순서</b>도 JDK
+   * 가 다시 정할 수 있다. 여기까지는 "우리가 무엇을 얹었는가"다.
    */
   private String readGraphqlBody(
-      Connection.Response response,
+      Fetched response,
       String shortcode,
       Set<String> sentCookieNames,
       Set<String> sentHeaderNames) {
-    String body;
-    try {
-      body = response.body();
-    } catch (Exception e) {
-      log.warn("인스타 GraphQL 응답 본문을 읽지 못했다: shortcode={}", shortcode, e);
-      // 헤더 뒤 본문 읽기 중 소켓이 끊긴 것 — 부트스트랩의 body() 실패와 같다(리뷰 P2).
-      throw CrawlException.retryable("링크를 불러오지 못했어요. 다시 시도해 주세요", e);
-    }
+    String body = response.body();
 
-    int status = response.statusCode();
+    int status = response.status();
     String head = body == null ? "" : body.stripLeading();
     boolean html = head.startsWith("<");
 
@@ -472,7 +587,7 @@ public class InstagramUrlCrawler implements SiteUrlCrawler {
           shortcode,
           status,
           html,
-          response.header("Location"),
+          response.headers().firstValue("Location").orElse(null),
           sentCookieNames,
           sentHeaderNames,
           snippet(body));
