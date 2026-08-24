@@ -17,6 +17,7 @@ import 'assignee_avatar.dart';
 import 'pending_completion.dart';
 import 'todo_form_sheet.dart';
 import 'todo_order_store.dart';
+import 'todo_photo.dart';
 import 'todo_sync.dart';
 import 'todos_api.dart';
 import 'unassigned_sheet.dart';
@@ -2066,6 +2067,16 @@ class _TodoListRowState extends State<_TodoListRow> {
                     onTap: () => _enterEdit(memo: true),
                     child: Text(todo.detail!, style: memoStyle),
                   ),
+                ),
+              ],
+              // 첨부 사진 썸네일(2026-08-24 #65) — 읽기 모드 전용. 편집 진입 시
+              // 사라지며 행이 줄어드는 점프는 의도다(편집 중엔 입력에 집중).
+              // 간격 8: 메모 간격 4보다 한 단계 넓게(specs/design.md 투두 탭 절).
+              if ((todo.imageUrl ?? '').isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                TodoRowThumbnail(
+                  key: ValueKey('todo-thumb-${todo.id}'),
+                  url: todo.imageUrl!,
                 ),
               ],
             ],

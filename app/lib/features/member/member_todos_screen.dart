@@ -9,6 +9,7 @@ import '../auth/authenticated_http_client.dart';
 import '../auth/auth_service.dart';
 import '../room/room_session.dart';
 import '../settings/my_activity_card.dart';
+import '../todos/todo_photo.dart';
 import '../todos/todos_api.dart';
 
 typedef MemberTokenLoader = Future<String> Function();
@@ -400,6 +401,14 @@ class _MemberTodoRow extends StatelessWidget {
               style: AppTypography.caption.copyWith(color: AppColors.muted),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          // 첨부 사진 썸네일(2026-08-24 #65) — 투두 탭 읽기 행과 동일 모양 유지(0006:77③).
+          if ((todo.imageUrl ?? '').isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            TodoRowThumbnail(
+              key: ValueKey('todo-thumb-${todo.id}'),
+              url: todo.imageUrl!,
             ),
           ],
         ],

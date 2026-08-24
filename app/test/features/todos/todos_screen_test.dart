@@ -431,6 +431,48 @@ void main() {
     expect(find.text('주인 없는 투두 1개가 있어요!🥹'), findsOneWidget);
   });
 
+  testWidgets('사진이 첨부된 투두 행 아래에 썸네일이 보인다', (tester) async {
+    // 2026-08-24 #65 — 행 썸네일 50×40(specs/design.md 투두 탭 절). 테스트 환경의
+    // 스텁 HttpClient가 400을 주므로 실제로 그려지는 건 errorBuilder 폴백이지만,
+    // 위젯 존재 여부는 그걸로 충분하다(아카이브 테스트와 같은 전제).
+    final fakeApi = _FakeTodosApi(
+      todos: [
+        TodoItem(
+          id: 11,
+          title: '사진 투두',
+          completed: false,
+          assignees: [MemberBrief(userId: 'u1', nickname: '철수')],
+          imageUrl: 'https://storage.test/todo-11.jpg',
+        ),
+        TodoItem(
+          id: 12,
+          title: '사진 없는 투두',
+          completed: false,
+          assignees: [MemberBrief(userId: 'u1', nickname: '철수')],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TodosScreen(
+          api: fakeApi,
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          authService: _FakeAuthService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('todo-thumb-11')), findsOneWidget);
+    expect(find.byKey(const ValueKey('todo-thumb-12')), findsNothing);
+    // 치수는 specs/design.md 확정값(50×40) — 스펙 회귀 방지.
+    expect(
+      tester.getSize(find.byKey(const ValueKey('todo-thumb-11'))),
+      const Size(50, 40),
+    );
+  });
+
   testWidgets('미지정 배너를 누르면 S-17 시트가 실제로 뜬다', (tester) async {
     // 🔴 **이 테스트가 없어서 화면이 깨진 채로 dev 에 들어갔다**(2026-08-04). 위 테스트는 배너가
     // *보이는지*만 봤고 *누르는* 테스트가 없어서, 시트가 레이아웃 예외로 빈 채 뜨는 것을 아무도

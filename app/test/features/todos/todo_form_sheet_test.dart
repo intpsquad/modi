@@ -220,6 +220,49 @@ void main() {
     expect(submitted?.imageUrl, 'https://storage.test/todo-image');
   });
 
+  testWidgets('기존 첨부 사진이 미리보기로 보인다', (tester) async {
+    // 2026-08-24 #65 — 폼(=상세 S-18)에 미리보기 카드(전폭×180). 스텁 HttpClient 400
+    // → errorBuilder 폴백 렌더지만 위젯 존재 검증으로 충분(아카이브 테스트와 같은 전제).
+    await pumpSheet(
+      tester,
+      initial: TodoItem(
+        id: 1,
+        title: '기존 제목',
+        completed: false,
+        assignees: const [],
+        imageUrl: 'https://storage.test/existing.jpg',
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('todo-photo-preview')), findsOneWidget);
+    // 높이는 specs/design.md 확정값(전폭×180) — 스펙 회귀 방지.
+    expect(
+      tester.getSize(find.byKey(const ValueKey('todo-photo-preview'))).height,
+      180,
+    );
+  });
+
+  testWidgets('이미지를 새로 고르면 미리보기가 뜬다', (tester) async {
+    // 2026-08-24 #65 — 새로 고른 로컬 파일(XFile) 분기. fromData는 path가 빈 문자열이라
+    // Image.file이 실패하고 errorBuilder 폴백이 그려진다 — 존재 검증으로 충분.
+    await pumpSheet(
+      tester,
+      imagePicker: () async =>
+          XFile.fromData(Uint8List.fromList([1, 2, 3]), name: 'fake.jpg'),
+    );
+
+    expect(find.byKey(const ValueKey('todo-photo-preview')), findsNothing);
+
+    await tester.ensureVisible(find.text('이미지 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이미지 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('갤러리'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('todo-photo-preview')), findsOneWidget);
+  });
+
   testWidgets('수정 모드에서 이미지를 새로 고르지 않으면 기존 imageUrl을 그대로 유지한다', (tester) async {
     await pumpSheet(
       tester,

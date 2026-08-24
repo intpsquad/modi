@@ -51,6 +51,14 @@ void main() {
     expect(find.text('투 포인터 정리'), findsOneWidget);
   });
 
+  testWidgets('사진이 첨부된 투두 행 아래에 썸네일이 보인다', (tester) async {
+    // 2026-08-24 #65 — 멤버 행은 투두 탭 읽기 행과 동일 모양(specs/0006 :77③)이라 썸네일도 함께.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    expect(find.byKey(const ValueKey('todo-thumb-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('todo-thumb-1')), findsNothing);
+  });
+
   testWidgets('읽기전용 — 체크 동그라미(TodoCheckbox)가 없다', (tester) async {
     await pumpScreen(tester, _FakeMemberTodosApi());
 
@@ -131,7 +139,14 @@ class _FakeMemberTodosApi extends MemberTodosApi {
           categoryId: 1,
           assignees: const [],
         ),
-        TodoItem(id: 3, title: '독립 항목', completed: false, assignees: const []),
+        TodoItem(
+          id: 3,
+          title: '독립 항목',
+          completed: false,
+          assignees: const [],
+          // 2026-08-24 #65 — 행 썸네일 검증용. 스텁 HttpClient 400 → errorBuilder 폴백 렌더.
+          imageUrl: 'https://storage.test/todo-3.jpg',
+        ),
       ],
     );
   }
