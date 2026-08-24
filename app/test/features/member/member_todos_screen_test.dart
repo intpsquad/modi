@@ -2,6 +2,7 @@ import 'package:app/design/todo_checkbox.dart';
 import 'package:app/design/tokens.dart';
 import 'package:app/features/member/member_todos_screen.dart';
 import 'package:app/features/settings/my_activity_card.dart';
+import 'package:app/features/todos/todo_photo.dart';
 import 'package:app/features/todos/todos_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +50,24 @@ void main() {
     // 카드는 placeholder(정체불명)로 남고, 투두 리스트는 정상 렌더된다.
     expect(find.text('정체불명'), findsOneWidget);
     expect(find.text('투 포인터 정리'), findsOneWidget);
+  });
+
+  testWidgets('사진이 첨부된 투두 행 아래에 썸네일이 보인다', (tester) async {
+    // 2026-08-24 #65 — 멤버 행은 투두 탭 읽기 행과 동일 모양(specs/0006 :77③)이라 썸네일도 함께.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    expect(find.byKey(const ValueKey('todo-thumb-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('todo-thumb-1')), findsNothing);
+  });
+
+  testWidgets('썸네일을 누르면 사진을 크게 볼 수 있다', (tester) async {
+    // 2026-08-25 #65 — 읽기 전용 화면이라 보기만 된다.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    await tester.tap(find.byKey(const ValueKey('todo-thumb-3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TodoPhotoViewer), findsOneWidget);
   });
 
   testWidgets('읽기전용 — 체크 동그라미(TodoCheckbox)가 없다', (tester) async {
@@ -131,7 +150,14 @@ class _FakeMemberTodosApi extends MemberTodosApi {
           categoryId: 1,
           assignees: const [],
         ),
-        TodoItem(id: 3, title: '독립 항목', completed: false, assignees: const []),
+        TodoItem(
+          id: 3,
+          title: '독립 항목',
+          completed: false,
+          assignees: const [],
+          // 2026-08-24 #65 — 행 썸네일 검증용. 스텁 HttpClient 400 → errorBuilder 폴백 렌더.
+          imageUrl: 'https://storage.test/todo-3.jpg',
+        ),
       ],
     );
   }

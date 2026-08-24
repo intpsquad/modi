@@ -17,6 +17,7 @@ import 'assignee_avatar.dart';
 import 'pending_completion.dart';
 import 'todo_form_sheet.dart';
 import 'todo_order_store.dart';
+import 'todo_photo.dart';
 import 'todo_sync.dart';
 import 'todos_api.dart';
 import 'unassigned_sheet.dart';
@@ -818,8 +819,9 @@ class TodosScreenState extends State<TodosScreen> {
               detail: todo.detail,
               categoryId: todo.categoryId,
               assigneeUserIds: assigneeUserIds,
-              // PUT은 전체 교체라 담당자만 지정할 때도 마감일을 다시 실어 보내야 지워지지 않는다.
+              // PUT은 전체 교체라 담당자만 지정할 때도 나머지를 다시 실어 보내야 지워지지 않는다.
               dueDate: todo.dueDate,
+              imageUrl: todo.imageUrl,
             );
             mutated = true;
           },
@@ -1620,7 +1622,7 @@ class TodosScreenState extends State<TodosScreen> {
       _todoErrorText = null;
       _todos = [
         for (final t in _todos)
-          if (t.id == todo.id) _withTitleDetail(t, title, detail) else t,
+          if (t.id == todo.id) t.copyWith(title: title, detail: detail) else t,
       ];
     });
     try {
@@ -1635,6 +1637,7 @@ class TodosScreenState extends State<TodosScreen> {
         assigneeUserIds: todo.assignees.map((a) => a.userId).toList(),
         // PUT은 전체 교체라 제목/메모만 바꿔도 나머지를 다시 실어 보내야 지워지지 않는다.
         dueDate: todo.dueDate,
+        imageUrl: todo.imageUrl,
       );
       _notifyTodoChanged();
     } catch (_) {
@@ -1645,19 +1648,6 @@ class TodosScreenState extends State<TodosScreen> {
       });
     }
   }
-
-  // 제목/메모만 바꾼 사본(TodoItem.copyWith는 completed만 지원).
-  TodoItem _withTitleDetail(TodoItem t, String title, String? detail) =>
-      TodoItem(
-        id: t.id,
-        title: title,
-        detail: detail,
-        completed: t.completed,
-        categoryId: t.categoryId,
-        assignees: t.assignees,
-        createdAt: t.createdAt,
-        dueDate: t.dueDate,
-      );
 
   /// 수동 정렬 flat 목록에서 투두를 드롭했을 때: 순서 변경(로컬 저장) + (드롭 위치가 다른
   /// 카테고리면) 카테고리 이동(서버 저장). 헤더/추가행은 드래그 불가라 oldIndex는 항상 투두다.
@@ -1696,7 +1686,7 @@ class TodosScreenState extends State<TodosScreen> {
       if (categoryChanged) {
         _todos = [
           for (final t in _todos)
-            if (t.id == movedTodo.id) _withCategory(t, targetCat) else t,
+            if (t.id == movedTodo.id) t.copyWith(categoryId: targetCat) else t,
         ];
       }
     });
@@ -1731,8 +1721,9 @@ class TodosScreenState extends State<TodosScreen> {
         detail: todo.detail,
         categoryId: targetCat,
         assigneeUserIds: todo.assignees.map((a) => a.userId).toList(),
-        // PUT은 전체 교체라 카테고리만 옮길 때도 마감일을 다시 실어 보내야 지워지지 않는다.
+        // PUT은 전체 교체라 카테고리만 옮길 때도 나머지를 다시 실어 보내야 지워지지 않는다.
         dueDate: todo.dueDate,
+        imageUrl: todo.imageUrl,
       );
       _notifyTodoChanged();
     } catch (_) {
@@ -1740,7 +1731,7 @@ class TodosScreenState extends State<TodosScreen> {
       setState(() {
         _todos = [
           for (final t in _todos)
-            if (t.id == todo.id) _withCategory(t, todo.categoryId) else t,
+            if (t.id == todo.id) t.copyWith(categoryId: todo.categoryId) else t,
         ];
         _manualOrder = previousOrder; // 순서도 함께 원복(카테고리만 되돌리면 불일치)
         _todoErrorText = '카테고리 이동에 실패했어요. 다시 시도해 주세요';
@@ -1748,19 +1739,6 @@ class TodosScreenState extends State<TodosScreen> {
       _orderStore.save(roomId, previousOrder);
     }
   }
-
-  // categoryId를 명시적으로(널 포함) 바꾼 사본. TodoItem.copyWith는 completed만 지원하고
-  // nullable copyWith는 "생략 vs null"을 구분 못 해 기타(null)로 이동을 못 하므로 직접 만든다.
-  TodoItem _withCategory(TodoItem t, int? categoryId) => TodoItem(
-    id: t.id,
-    title: t.title,
-    detail: t.detail,
-    completed: t.completed,
-    categoryId: categoryId,
-    assignees: t.assignees,
-    createdAt: t.createdAt,
-    dueDate: t.dueDate,
-  );
 
   /// 현재 수동 표시 순서로 정렬한 전체 투두 id — 순서 저장의 기준 배열.
   List<int> _currentOrderedIds() {
@@ -2071,6 +2049,25 @@ class _TodoListRowState extends State<_TodoListRow> {
             ],
           );
 
+    // 첨부 사진 썸네일(2026-08-24 #65) — **읽기·편집 모드 모두**에 붙인다. 편집 진입 때
+    // 사라지게 뒀더니 행 높이가 튀어서 2026-08-25 사용자 요청으로 바꿨다.
+    // 간격 8: 메모 간격 4보다 한 단계 넓게(specs/design.md 투두 탭 절).
+    final photoUrl = todo.imageUrl ?? '';
+    final groupWithPhoto = photoUrl.isEmpty
+        ? group
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              group,
+              const SizedBox(height: AppSpacing.sm),
+              TodoRowThumbnail(
+                key: ValueKey('todo-thumb-${todo.id}'),
+                url: photoUrl,
+              ),
+            ],
+          );
+
     // 행 내용 — 순서: 체크박스 · (제목/메모 그룹) · [편집 시 information] · 프로필, 간격 10.
     Widget content = ConstrainedBox(
       key: ValueKey('todo-press-${todo.id}'),
@@ -2094,7 +2091,7 @@ class _TodoListRowState extends State<_TodoListRow> {
               enabled: widget.canComplete,
             ),
             const SizedBox(width: 10),
-            Expanded(child: group),
+            Expanded(child: groupWithPhoto),
             if (_editing) ...[
               const SizedBox(width: 10),
               Semantics(

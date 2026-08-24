@@ -61,11 +61,11 @@ class _FakeTodosApi extends TodosApi {
     int roomId,
     int todoId, {
     required String title,
-    String? detail,
-    int? categoryId,
-    List<String>? assigneeUserIds,
-    DateTime? dueDate,
-    String? imageUrl,
+    required String? detail,
+    required int? categoryId,
+    required List<String>? assigneeUserIds,
+    required DateTime? dueDate,
+    required String? imageUrl,
   }) async {
     if (updateError != null) throw updateError!;
     final result = TodoItem(
@@ -116,6 +116,23 @@ void main() {
   }
 
   group('TodoDetailScreen', () {
+    testWidgets('첨부 사진이 있는 투두 상세에 미리보기가 보인다', (tester) async {
+      // 2026-08-24 #65 — 상세는 TodoFormSheet 재사용이라 폼 미리보기가 그대로 보여야 한다.
+      final fakeApi = _FakeTodosApi(
+        todo: TodoItem(
+          id: 5,
+          title: '사진 투두',
+          completed: false,
+          assignees: const [],
+          imageUrl: 'https://storage.test/todo-5.jpg',
+        ),
+      );
+
+      await pumpDetail(tester, fakeApi);
+
+      expect(find.byKey(const ValueKey('todo-photo-preview')), findsOneWidget);
+    });
+
     testWidgets('서버 최신값으로 제목·내용·카테고리·담당자가 채워진다', (tester) async {
       final fakeApi = _FakeTodosApi(
         todo: TodoItem(
