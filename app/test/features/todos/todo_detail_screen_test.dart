@@ -61,11 +61,11 @@ class _FakeTodosApi extends TodosApi {
     int roomId,
     int todoId, {
     required String title,
-    String? detail,
-    int? categoryId,
-    List<String>? assigneeUserIds,
-    DateTime? dueDate,
-    String? imageUrl,
+    required String? detail,
+    required int? categoryId,
+    required List<String>? assigneeUserIds,
+    required DateTime? dueDate,
+    required String? imageUrl,
   }) async {
     if (updateError != null) throw updateError!;
     final result = TodoItem(

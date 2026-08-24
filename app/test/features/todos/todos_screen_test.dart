@@ -9,6 +9,7 @@ import 'package:app/features/shell/app_shell.dart';
 import 'package:app/features/shell/tab_activation.dart';
 import 'package:app/features/todos/ai_suggest_sheet.dart';
 import 'package:app/features/todos/todo_form_sheet.dart';
+import 'package:app/features/todos/todo_photo.dart';
 import 'package:app/features/todos/todo_sync.dart';
 import 'package:app/features/todos/todos_api.dart';
 import 'package:app/features/todos/todos_screen.dart';
@@ -183,6 +184,7 @@ class _FakeTodosApi extends TodosApi {
       categoryId: categoryId,
       assigneeUserIds: resolved,
       dueDate: dueDate,
+      imageUrl: imageUrl,
     ));
     final created = TodoItem(
       id: todos.length + 100,
@@ -238,11 +240,11 @@ class _FakeTodosApi extends TodosApi {
     int roomId,
     int todoId, {
     required String title,
-    String? detail,
-    int? categoryId,
-    List<String>? assigneeUserIds,
-    DateTime? dueDate,
-    String? imageUrl,
+    required String? detail,
+    required int? categoryId,
+    required List<String>? assigneeUserIds,
+    required DateTime? dueDate,
+    required String? imageUrl,
   }) async {
     final resolved = assigneeUserIds ?? const <String>[];
     updateCalls.add((id: todoId, categoryId: categoryId));
@@ -253,6 +255,7 @@ class _FakeTodosApi extends TodosApi {
       categoryId: categoryId,
       assigneeUserIds: resolved,
       dueDate: dueDate,
+      imageUrl: imageUrl,
     ));
     final updated = TodoItem(
       id: todoId,
@@ -283,6 +286,7 @@ typedef _TodoWrite = ({
   int? categoryId,
   List<String> assigneeUserIds,
   DateTime? dueDate,
+  String? imageUrl,
 });
 
 void main() {
@@ -466,11 +470,55 @@ void main() {
 
     expect(find.byKey(const ValueKey('todo-thumb-11')), findsOneWidget);
     expect(find.byKey(const ValueKey('todo-thumb-12')), findsNothing);
-    // 치수는 specs/design.md 확정값(50×40) — 스펙 회귀 방지.
+    // specs/design.md 확정값 — 사진은 50×40, 탭 영역은 최소 터치 규칙(44)에 맞춰 50×44.
     expect(
       tester.getSize(find.byKey(const ValueKey('todo-thumb-11'))),
-      const Size(50, 40),
+      const Size(50, 44),
+      reason: '탭 영역',
     );
+    expect(
+      tester.getSize(
+        find.descendant(
+          of: find.byKey(const ValueKey('todo-thumb-11')),
+          matching: find.byType(ClipRRect),
+        ),
+      ),
+      const Size(50, 40),
+      reason: '보이는 사진',
+    );
+  });
+
+  testWidgets('썸네일을 누르면 사진을 크게 볼 수 있다', (tester) async {
+    // 2026-08-25 #65 — 썸네일 탭 = 크게 보기(사용자 확정). 제목/메모 탭의
+    // 인라인 편집과 충돌하지 않아야 한다.
+    final fakeApi = _FakeTodosApi(
+      todos: [
+        TodoItem(
+          id: 11,
+          title: '사진 투두',
+          completed: false,
+          assignees: [MemberBrief(userId: 'u1', nickname: '철수')],
+          imageUrl: 'https://storage.test/todo-11.jpg',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TodosScreen(
+          api: fakeApi,
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          authService: _FakeAuthService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('todo-thumb-11')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TodoPhotoViewer), findsOneWidget);
+    expect(find.byType(TextField), findsNothing, reason: '인라인 편집으로 들어가면 안 된다');
   });
 
   testWidgets('미지정 배너를 누르면 S-17 시트가 실제로 뜬다', (tester) async {
@@ -575,6 +623,7 @@ void main() {
           completed: false,
           assignees: const [],
           dueDate: due,
+          imageUrl: 'https://storage.test/keep.jpg',
         ),
       ],
     );
@@ -602,6 +651,11 @@ void main() {
 
     expect(fakeApi.updateDrafts.single.assigneeUserIds, ['u1']);
     expect(fakeApi.updateDrafts.single.dueDate, due);
+    // 2026-08-25 #65 — 사진도 같은 이유로 보존해야 한다(PUT 전체교체).
+    expect(
+      fakeApi.updateDrafts.single.imageUrl,
+      'https://storage.test/keep.jpg',
+    );
   });
 
   /// 위와 같은 이유로 카테고리 이동(드래그 드롭)도 마감일을 보존해야 한다.
@@ -618,6 +672,7 @@ void main() {
           categoryId: null,
           assignees: [MemberBrief(userId: 'me', nickname: '나')],
           dueDate: due,
+          imageUrl: 'https://storage.test/keep.jpg',
         ),
       ],
     );
@@ -640,6 +695,13 @@ void main() {
 
     expect(fakeApi.updateCalls.single.categoryId, 7);
     expect(fakeApi.updateDrafts.single.dueDate, due);
+    // 2026-08-25 #65 — 사진도 마찬가지.
+    expect(
+      fakeApi.updateDrafts.single.imageUrl,
+      'https://storage.test/keep.jpg',
+    );
+    // 낙관적 갱신 사본도 사진을 들고 가야 서버 왕복 전에 썸네일이 사라지지 않는다.
+    expect(find.byKey(const ValueKey('todo-thumb-1')), findsOneWidget);
   });
 
   testWidgets('모두 담당자가 있으면 미지정 배너가 보이지 않는다', (tester) async {
@@ -1852,6 +1914,7 @@ void main() {
           categoryId: 3,
           assignees: [MemberBrief(userId: 'u1', nickname: '철수')],
           dueDate: DateTime(2026, 9, 1),
+          imageUrl: 'https://storage.test/keep.jpg',
         ),
       ],
     );
@@ -1859,6 +1922,8 @@ void main() {
 
     await tester.tap(find.text('옛제목'));
     await tester.pumpAndSettle();
+    // 2026-08-25 사용자 요청 — 편집 중에도 썸네일이 남는다(행 높이가 튀지 않게).
+    expect(find.byKey(const ValueKey('todo-thumb-5')), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, '새제목');
     // 바깥(앱바 영역) 탭 → 포커스 해제 → 저장.
     await tester.tapAt(const Offset(200, 20));
@@ -1870,7 +1935,12 @@ void main() {
     expect(draft.categoryId, 3, reason: 'PUT 전체교체 — 카테고리 보존');
     expect(draft.dueDate, DateTime(2026, 9, 1), reason: '마감일 보존');
     expect(draft.assigneeUserIds, ['u1'], reason: '담당자 보존');
+    // 2026-08-25 #65 — 이 경로가 사진을 지우던 버그(사용자 제보: 인라인 수정 후 i 를
+    // 누르면 상세에 사진이 없다). i 아이콘 탭도 같은 _commit 을 먼저 태우므로 여기서 잡힌다.
+    expect(draft.imageUrl, 'https://storage.test/keep.jpg', reason: '첨부 사진 보존');
     expect(find.byType(TextField), findsNothing, reason: '저장 후 편집 종료');
+    // 서버 왕복 전 낙관적 갱신 사본도 사진을 들고 가야 한다.
+    expect(find.byKey(const ValueKey('todo-thumb-5')), findsOneWidget);
   });
 
   testWidgets('메모가 있으면 제목 아래 13/muted로 보이고 탭하면 메모 편집으로 들어간다', (tester) async {
