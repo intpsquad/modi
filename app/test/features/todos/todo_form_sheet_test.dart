@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:app/design/theme.dart';
 import 'package:app/features/todos/todo_form_sheet.dart';
+import 'package:app/features/todos/todo_photo.dart';
 import 'package:app/features/todos/todos_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -240,6 +241,30 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('todo-photo-preview'))).height,
       180,
     );
+  });
+
+  testWidgets('미리보기를 누르면 사진을 크게 볼 수 있다', (tester) async {
+    // 2026-08-25 #65 — 목록 썸네일과 같은 동작.
+    await pumpSheet(
+      tester,
+      initial: TodoItem(
+        id: 1,
+        title: '기존 제목',
+        completed: false,
+        assignees: const [],
+        imageUrl: 'https://storage.test/existing.jpg',
+      ),
+    );
+
+    // 미리보기는 스크롤 하단이라 보이게 올린 뒤 탭한다(이미지 추가 박스 테스트와 같은 관례).
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('todo-photo-preview')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('todo-photo-preview')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TodoPhotoViewer), findsOneWidget);
   });
 
   testWidgets('이미지를 새로 고르면 미리보기가 뜬다', (tester) async {
