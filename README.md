@@ -435,7 +435,7 @@ cd <repo>/deploy && ./deploy.sh    # 컨테이너 재기동
 
 ## CI/CD
 
-- 저장소는 **GitHub**, CI/CD 는 **GitHub Actions** — 워크플로 한 파일이다: `.github/workflows/ci.yml`.
+- 저장소는 **GitHub**, CI/CD 는 **GitHub Actions** — 워크플로 한 파일이다: `.github/workflows/ci.yml`. (배포와 무관한 예약 감시 `instagram-doc-id.yml` 은 예외 — 아래 "인스타 doc_id 감시".)
 - `app/**`·`server/**`·`ai/**` 중 **바뀐 쪽만** 해당 잡이 돈다(`dorny/paths-filter`).
 - 🔴 **`main` 에 머지되면 자동으로 `api.maramodi.cloud` 에 배포된다.** `dev` 는 테스트만 돌고 **배포하지 않는다**(2026-08-15 변경 — 그전에는 `dev` 가 배포 브랜치였다).
 - 브랜치 3계층(`main` 운영 / `dev` 통합 / `feat/*`)과 커밋·이슈·PR 규칙은 **`CONTRIBUTING.md`** 가 단일 진실이다.
@@ -446,6 +446,10 @@ Jenkins 는 한 파이프라인의 스테이지라서 "테스트가 통과해야
 파일로 쪼개면 그 게이팅이 사라진다 — deploy 워크플로가 테스트 결과를 모른 채 push 만 보고
 배포한다. `workflow_run` 으로 묶는 방법도 있지만 **경로 필터로 스킵된 워크플로는 애초에 실행되지
 않아 트리거가 오지 않는다.** 그래서 잡을 한 파일에 두고 `needs` 로 묶었다.
+
+> **예외 — `instagram-doc-id.yml`** (2026-08-22): 배포와 무관한 **예약 감시**는 별도 파일이다. 이 사슬에
+> 끼지 않으니 게이팅을 잃을 것이 없고, 반대로 `ci.yml` 에 `schedule` 을 얹으면 `dorny/paths-filter` 가
+> schedule 이벤트에서 비교 기준(base)을 못 잡아 깨진다. "한 파일" 규칙은 **테스트→배포 사슬**에 대한 것이다.
 
 | 잡 | 하는 일 |
 |---|---|
@@ -773,6 +777,48 @@ ssh modi 'systemctl list-timers modi-backup.timer; journalctl -u modi-backup.ser
 > 2026-08-14 최초 구축 시 실제로 임시 컨테이너에 복구해 **20개 테이블 행 수가 운영과 전부 일치**하는 것을 확인했다.
 
 🔴 **아직 남은 한계 — 백업이 원본과 같은 디스크에 있다.** 지금은 실수로 지운 데이터·잘못된 마이그레이션·테이블 손상은 복구되지만, **인스턴스나 부트 볼륨 자체가 날아가면 백업도 같이 사라진다.** 서버 밖(오라클 오브젝트 스토리지 등)으로 보내는 것이 다음 과제이며, OCI API 키 발급이 선행돼야 한다.
+
+### 인스타 doc_id 감시 — 2026-08-22
+
+**인스타 링크 등록은 인스타가 마음대로 바꾸는 값 하나에 매달려 있다.** 서버(`InstagramUrlCrawler`)는 인스타 웹의 persisted query `PolarisPostRootQuery` 를 `doc_id` 로 부르는데, 인스타가 이 값을 **몇 주~몇 달마다 바꾼다.** 바뀌면 HTTP 200 에 `items: []` 가 와서 서버는 **비공개 게시물과 구분하지 못하고**, 사용자에게 "공개된 게시물만 등록할 수 있어요" 가 뜬다. 다른 사이트는 멀쩡해서 로그만 봐서는 인스타만 전부 실패 중이라는 걸 알 수 없다.
+
+| | |
+|---|---|
+| 무엇을 | 인스타 웹 번들에서 지금의 `doc_id` 를 읽어 **`main` 의 `application.yml` 기본값**과 비교. 다르면 실제 조회로 검증 |
+| 언제 | 매일 **09:17 KST** (GitHub Actions `schedule`) + 수동 실행 |
+| 어디서 | GitHub 러너 — **운영 서버가 아니다.** 같은 IP 의 비인증 호출이 누적되면 인스타 차단이 길어진다(러너 IP 는 매번 바뀐다) |
+| 결과 | 변화 없음 → 아무것도 안 함 / **갱신 필요 → 이슈 자동 생성**(담당 김주우) / 판정 불가 → 3일 연속이면 이슈 |
+| 스크립트 | [`scripts/instagram-doc-id.sh`](./scripts/instagram-doc-id.sh) · 테스트 [`scripts/test/instagram-doc-id.test.sh`](./scripts/test/instagram-doc-id.test.sh) |
+| 워크플로 | [`.github/workflows/instagram-doc-id.yml`](./.github/workflows/instagram-doc-id.yml) |
+
+**값을 고치는 건 사람이 한다** — 감시는 알려주기만 한다. `ARCHIVE_INSTAGRAM_DOC_ID` 환경변수는 **일부러** `docker-compose.app.yml` 에 전달 줄을 두지 않았다. 두면 서버 `.env` 값과 yml 기본값이 갈라지는데 감시는 `.env` 를 못 읽어 "yml 기본값 == 운영값" 이라는 전제가 깨진다. 그래서 **운영값 = `main` 의 `application.yml` 기본값** 하나다.
+
+이슈가 오면:
+
+1. `server/src/main/resources/application.yml` 의 `doc-id` 기본값을 이슈의 새값으로 바꾸고, 바로 위 `# 마지막 확인:` 날짜를 오늘로 고친다.
+2. 이슈에 "서버가 보내지 않는 providedVariables" 가 있으면 `InstagramUrlCrawler.java` 의 `variables` 리터럴에 `"<이름>":false` 를 추가한다. 빠뜨리면 `missing_required_field_value` 로 items 가 빈다.
+3. `feat/<이슈번호>-instagram-doc-id` → `dev` PR → `dev`→`main` PR → 배포. `server/` 를 건드리므로 리뷰어가 박민영으로 자동 지정된다.
+4. 배포 뒤 모아보기에 인스타 링크 하나를 등록해 제목·썸네일이 오는지 본다.
+
+로컬에서 직접 돌려 볼 때(가정용 IP 에서는 차단에 거의 안 걸린다):
+
+```bash
+IG_PROBE_SHORTCODES="<공개 게시물 shortcode 1> <2>" scripts/instagram-doc-id.sh check; echo "exit=$?"
+```
+
+exit `0` 변화 없음 · `10` 갱신 필요 · `30` 판정 불가. **그 외 코드(1 등)는 판정이 아니라 스크립트 오류**다 — 기준 게시물이 자리표시(`TODO…`)거나, `application.yml` 의 `doc-id` 줄 형식이 바뀌었거나, `python3` 이 없을 때. 워크플로는 이 경우 **잡을 빨갛게** 끝내 실패 메일이 가게 한다(초록으로 넘기면 감시가 멈춘 채 아무도 모른다). 네트워크 없는 자체 테스트는 `bash scripts/test/instagram-doc-id.test.sh`.
+
+**기준 게시물**(`IG_PROBE_SHORTCODES`, 워크플로 env 또는 저장소 Variables)은 **오래 남을 공개 계정의 게시물**이어야 한다(2개 권장 — 하나가 삭제돼도 다른 하나로 판정한다. 2026-08-22 시작값은 참고 문서의 `DZb-UAhz4Iq` 1개). 삭제·비공개되면 감시가 "판정 불가" 로 빠진다. 바꿀 땐 워크플로 파일의 env 나 Settings → Secrets and variables → Actions → Variables 의 `IG_PROBE_SHORTCODES` 를 고친다(Variables 가 있으면 그쪽이 이긴다).
+
+⚠️ **공개 저장소라도 60일 동안 커밋이 없으면 GitHub 이 `schedule` 을 자동으로 끈다.** Actions 탭에서 워크플로가 "disabled" 로 보이면 Enable 을 누른다.
+
+⚠️ 감시가 **못 잡는 것**: 러너 IP 가 막힌 날(판정 불가로 셈), 정의부가 초기 HTML 이 참조하지 않는 번들에만 있는 경우(`bundle_not_found`), 그리고 **curl 과 서버 Java 의 차이**. 이 감시는 "curl 이 겪는 것" 을 재므로, 인스타가 접속 방식으로 서버만 막는 날은 못 본다 — **실제로 그런 날이었다**(2026-08-23, 아래). 이 둘이 실제로 얼마나 나는지는 첫 몇 주의 실행 요약(Actions → 해당 실행 → Summary)으로 본다 — `specs/OPEN.md` "인스타그램 크롤링의 doc_id" 항목의 관측란에 적는다.
+
+**서버의 Java 로 직접 재기** (2026-08-23, #62) — 운영 서버에서 curl 은 JSON 을 받는데 서버만 로그인 HTML 을 받으면, 차이는 IP 가 아니라 **접속 지문**이다. 인스타는 데이터센터 IP 에서 `HttpURLConnection`(jsoup 이 쓰는 스택)을 봇으로 분류하고 `java.net.http.HttpClient`(HTTP/2)는 통과시켰다 — 그래서 서버의 www 요청은 `HttpClient` 로 나간다. 다시 의심될 때 재는 순서:
+
+1. 서버에서 curl: `scp scripts/instagram-doc-id.sh modi:/tmp/ig.sh` → `ssh modi 'bash /tmp/ig.sh verify <doc_id> <shortcode> <pv이름>'` — `ok` 면 IP 는 안 막힌 것.
+2. 같은 서버에서 Java: [`scripts/IgProbe.java`](./scripts/IgProbe.java)(부트스트랩 + GraphQL 을 `HttpURLConnection` 과 `HttpClient` 로 각각 보내는 단일 파일 프로그램)를 `scp scripts/IgProbe.java modi:/tmp/` 로 올리고 `ssh modi 'docker run --rm -v /tmp/IgProbe.java:/IgProbe.java eclipse-temurin:21-jdk java /IgProbe.java <shortcode>'` 로 돌린다(빌드용 JDK 이미지라 서버에 이미 있다). 토큰·쿠키 **값은 찍지 않는다**. 결과가 `HttpURLConnection=HTML, HttpClient=JSON` 이면 지문 문제, 둘 다 HTML 이면 IP 차단이다.
+3. 그래도 갈리면 브라우저 devtools 네트워크 탭의 `graphql/query` 요청과 헤더 단위로 비교한다(`specs/OPEN.md` doc_id 항목).
 
 ### 로그 회전
 

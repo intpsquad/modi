@@ -1,0 +1,88 @@
+name: 이슈 등록
+description: 기능 · 버그 · 문서 · 그 밖의 모든 작업
+projects: ["intpsquad/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 이슈 생성 -> 브랜치 생성 -> PR 생성
+
+        | | |
+        |---|---|
+        | 제목 | `[타입] 설명` - 예) `[feat] 로그인 API 구현` |
+        | 라벨 | 타입과 **같은 이름** 선택 (`feat` `fix` `docs` `refactor` `test` `chore` `revert` `design`) |
+        | 브랜치 | 예) `feat/<이슈번호>-<내용>` |
+        | 커밋 | `타입: 설명` - 타입은 **소문자** |
+
+        🔴 아래에서 타입을 고른 뒤 **제목 앞에 `[타입]` 을 직접 쓰고, 오른쪽에서 라벨도 그 타입으로**
+        골라 주세요.
+
+        🔴 **오른쪽 `Projects` 에 「MODI 운영」이 붙었는지 확인하세요.** 자동으로 붙지만 권한이
+        없으면 안 붙습니다 — https://github.com/orgs/intpsquad/projects/1
+
+        규칙 전문은 [CONTRIBUTING.md](https://github.com/intpsquad/modi/blob/dev/CONTRIBUTING.md).
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 타입
+      options:
+        - feat — 새 기능 추가
+        - fix — 버그 수정
+        - docs — 문서 수정
+        - refactor — 기능 변화 없는 코드 구조 개선
+        - test — 테스트 코드 추가/수정
+        - chore — 빌드, 설정, 패키지 등 자잘한 작업
+        - revert — 이전 커밋 되돌리기
+        - design — UI/디자인 변경
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 📝 작업 내용
+      description: 구체적으로 뭘 할 건지 항목별로.
+      placeholder: |
+        - 로그인 화면에 카카오 버튼 추가
+        - POST /auth/kakao 연동
+        - 실패 시 문구 매핑
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug
+    attributes:
+      label: 🐞 버그면 — 재현 · 기대 · 실제
+      description: |
+        타입이 `fix` 일 때만 채웁니다. 아니면 비워 두세요.
+        **"안 돼요" 만으로는 못 고칩니다** — 로그·스크린샷·에러 메시지를 붙여 주세요.
+      placeholder: |
+        재현
+        1. 방 상세 → 아카이브 탭
+        2. 링크 자료를 길게 누른다
+        3. 삭제를 누른다
+
+        기대: 목록에서 바로 사라진다
+        실제: "삭제에 실패했어요" 가 뜨고 남아 있다
+
+        환경: iOS 18.2 실기기 / 앱 1.0.0(5)
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📣 참고사항
+      description: 관련 링크, 의존 이슈, 주의할 점. 해당하는 `specs/` 문서가 있으면 여기에.
+      placeholder: |
+        - 스펙: specs/0007-온보딩.md
+        - #12 가 먼저 머지돼야 한다
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ☑️ 체크리스트
+      options:
+        - label: 제목을 `[타입] 설명` 으로 썼나요?
+        - label: 라벨을 위에서 고른 타입으로 달았나요?
+        - label: 담당자를 설정했나요?
+        - label: 오른쪽 `Projects` 에 「MODI 운영」이 연결됐나요?

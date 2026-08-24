@@ -176,10 +176,7 @@ void main() {
     await _tapSettingsTile(tester, '문의하기');
     await tester.pumpAndSettle();
 
-    expect(
-      launchedUri,
-      Uri(scheme: 'mailto', path: 'myeonglyeonghajim@gmail.com'),
-    );
+    expect(launchedUri, Uri(scheme: 'mailto', path: 'modi.app.team@gmail.com'));
   });
 
   testWidgets('메일 앱을 열 수 없으면 지원 메일 주소를 안내한다', (tester) async {
@@ -198,7 +195,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('메일 앱을 열 수 없어요'), findsOneWidget);
-    expect(find.textContaining('myeonglyeonghajim@gmail.com'), findsOneWidget);
+    expect(find.textContaining('modi.app.team@gmail.com'), findsOneWidget);
   });
 
   testWidgets('마지막 멤버의 방 나가기 확인창은 방 삭제를 함께 경고한다', (tester) async {

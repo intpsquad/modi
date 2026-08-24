@@ -1,0 +1,237 @@
+# 인스타그램 doc_id 감시 — 배포와 무관한 **예약 작업**이라 ci.yml 과 별도 파일이다.
+#
+# ci.yml 을 한 파일로 둔 이유는 "테스트가 통과해야 배포가 돈다" 는 사슬을 needs 로 묶기 위해서였다.
+# 이 워크플로는 그 사슬에 끼지 않는다(배포를 하지 않고, 테스트 결과에 의존하지 않는다).
+# ci.yml 에 schedule 을 얹으면 dorny/paths-filter 가 schedule 이벤트에서 비교 기준(base)을 못 잡아 깨진다.
+#
+# 무엇을 하나: scripts/instagram-doc-id.sh 가 인스타 웹 번들에서 지금의 `PolarisPostRootQuery` doc_id 를
+# 읽어 `main` 의 application.yml 기본값과 비교한다. 다르면 실제 조회로 검증한 뒤 **이슈를 만든다.**
+# 값을 고치는 PR·main 머지·배포는 사람이 평소 흐름대로 한다. 절차는 README "인스타 doc_id 감시".
+#
+# exit 0 변화 없음 / 10 갱신 필요(이슈) / 30 판정 불가(러너 IP 차단 등 — 잡을 실패시키지 않고 연속 횟수만 센다)
+#
+# ⚠️ 공개 저장소라도 **60일 동안 커밋이 없으면 GitHub 이 schedule 을 자동으로 끈다.**
+#    Actions 탭에서 이 워크플로가 "disabled" 로 보이면 Enable 을 누른다.
+name: 인스타 doc_id 감시
+
+on:
+  schedule:
+    - cron: '17 0 * * *' # 09:17 KST. 정각은 러너가 몰려 지연되므로 피한다
+  workflow_dispatch:
+    inputs:
+      force_issue:
+        description: '판정과 무관하게 이슈 생성 경로를 한 번 태운다(경로 검증용). 만든 이슈는 닫으면 된다'
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - scripts/instagram-doc-id.sh
+      - scripts/test/**
+      - .github/workflows/instagram-doc-id.yml
+  push:
+    branches: [dev, main]
+    paths:
+      - scripts/instagram-doc-id.sh
+      - scripts/test/**
+      - .github/workflows/instagram-doc-id.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: instagram-doc-id-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # 네트워크 없는 자체 테스트. PR·push 에서 돈다.
+  selftest:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck scripts/instagram-doc-id.sh scripts/test/instagram-doc-id.test.sh
+      - name: 오프라인 테스트
+        run: bash scripts/test/instagram-doc-id.test.sh
+
+  # 실제 인스타 상대 감시. schedule·수동 실행에서만 돈다.
+  monitor:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # 검증에 쓰는 공개 게시물 shortcode(공백 구분, 2개 권장). 오래 남을 계정의 게시물이어야 한다 —
+      # 삭제되면 감시가 "판정 불가" 로 빠진다. 바꿀 땐 README "인스타 doc_id 감시" 의 선정 기준을 본다.
+      # 저장소 Variables 에 IG_PROBE_SHORTCODES 가 있으면 그쪽이 이긴다(코드 수정 없이 교체 가능).
+      # 2026-08-22: 참고 문서의 게시물 1개로 시작(사용자 확정). 두 번째는 Variables 로 추가한다.
+      IG_PROBE_SHORTCODES: ${{ vars.IG_PROBE_SHORTCODES || 'DZb-UAhz4Iq' }}
+      STREAK_FILE: .ig-streak/count
+    steps:
+      - uses: actions/checkout@v4
+
+      # 운영값은 main 의 application.yml 이다. 러너는 기본 브랜치(dev)를 checkout 하므로 따로 받는다.
+      - name: main 의 application.yml·Java 를 비교 기준으로
+        run: |
+          git fetch --depth=1 origin main
+          git show origin/main:server/src/main/resources/application.yml > "$RUNNER_TEMP/main-application.yml"
+          # providedVariables 집합도 main 기준이어야 한다 — dev 에 Java 수정이 먼저 들어가면 "변화 없음" 으로 오판한다
+          git show origin/main:server/src/main/java/com/nomara/modi/server/domain/archive/client/InstagramUrlCrawler.java > "$RUNNER_TEMP/main-InstagramUrlCrawler.java"
+
+      # 연속 "판정 불가" 횟수. cache 키는 불변이라 run_id 로 새 키를 만들고 접두로 직전 것을 복원한다.
+      - uses: actions/cache@v4
+        with:
+          path: .ig-streak
+          key: instagram-doc-id-streak-${{ github.run_id }}
+          restore-keys: instagram-doc-id-streak-
+
+      - name: 감시
+        id: check
+        env:
+          CURRENT_YML: ${{ runner.temp }}/main-application.yml
+          CURRENT_JAVA: ${{ runner.temp }}/main-InstagramUrlCrawler.java
+          IG_RESULT_FILE: ${{ runner.temp }}/result.txt
+        run: |
+          set +e
+          scripts/instagram-doc-id.sh check
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "exit=$code"
+          # 0/10/30 만 판정이다. 그 외(자리표시 shortcode, yml 형식 변경, python3 부재, 버그)는 **잡을 빨갛게** 끝내
+          # 워크플로 실패 메일이 가게 한다 — 초록으로 넘기면 감시가 멈춘 채 아무도 모른다.
+          case "$code" in 0|10|30) ;; *) echo "::error::감시 스크립트가 판정 없이 끝났다(exit $code) — 위 로그를 본다"; exit "$code" ;; esac
+
+      - name: 연속 판정 불가 횟수
+        id: streak
+        run: |
+          mkdir -p "$(dirname "$STREAK_FILE")"
+          prev=0; [ -f "$STREAK_FILE" ] && prev="$(cat "$STREAK_FILE")"
+          if [ "${{ steps.check.outputs.code }}" = "30" ]; then
+            next=$((prev + 1))
+          else
+            next=0
+          fi
+          echo "$next" > "$STREAK_FILE"
+          echo "count=$next" >> "$GITHUB_OUTPUT"
+          echo "연속 판정 불가: $prev → $next"
+
+      - name: 갱신 필요 이슈
+        if: steps.check.outputs.code == '10' || inputs.force_issue == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ runner.temp }}/result.txt
+          FORCE: ${{ inputs.force_issue == true && 'true' || 'false' }}
+        run: |
+          val() { sed -n "s/^$1=//p" "$RESULT" | head -1; }
+          current="$(val current_doc_id)"
+          new="$(val extracted_doc_id)"
+          status="$(val status)"
+          new_pv="$(val new_pv)"
+          if [ "$FORCE" = "true" ] && [ -z "$new" ]; then new="$current"; status="forced_test"; fi
+
+          title="[chore] 인스타 doc_id 갱신 필요: $new"
+          [ "$FORCE" != "true" ] || title="$title (이슈 경로 테스트 — 닫아도 된다)"
+
+          # dev 에 이미 새값이 들어갔으면(PR 머지, main 배포만 남음) 본문에 구분해 적는다
+          dev_doc="$(scripts/instagram-doc-id.sh current | sed -n 's/^doc_id=//p')"
+          dev_note=""
+          [ "$dev_doc" != "$new" ] || [ "$new" = "$current" ] || dev_note="ℹ️ \`dev\` 의 application.yml 은 **이미 새값**이다 — \`dev\`→\`main\` 머지와 배포만 남았다."
+
+          case "$status" in
+            rotated) situation="🔴 **현재값은 빈 응답, 새값은 정상.** 지금 인스타 링크 등록이 전부 \"공개된 게시물만 등록할 수 있어요\" 로 실패하고 있다." ;;
+            changed_current_still_works) situation="현재값이 **아직 동작한다.** 번들에 새값이 먼저 올라온 상태라, 만료 전에 바꿀 수 있는 사전 통보다." ;;
+            *) situation="(강제 실행 — 판정 없이 이슈 생성 경로만 확인한다)" ;;
+          esac
+
+          pv_step="2. providedVariables 변화 없음 — \`InstagramUrlCrawler.java\` 는 건드리지 않는다."
+          [ -z "$new_pv" ] || pv_step="2. \`InstagramUrlCrawler.java\` 의 \`variables\` 리터럴에 \`\"$new_pv\":false\` 를 추가한다 — \`server/\` 라 리뷰어로 @minyeongg 가 자동 지정된다. 빠뜨리면 \`missing_required_field_value\` 로 items 가 빈다."
+
+          body="$(cat <<EOF
+          ## 무슨 일인가
+
+          인스타 웹 번들의 \`PolarisPostRootQuery\` doc_id 가 우리 값과 다르다. 감시 워크플로가 찾아냈다.
+
+          | | 값 |
+          |---|---|
+          | 현재값 (\`main\` application.yml) | \`$current\` |
+          | 번들에서 읽은 새값 | \`$new\` |
+          | 판정 | \`$status\` |
+          | 서버가 보내지 않는 providedVariables | ${new_pv:-없음} |
+
+          $situation
+
+          $dev_note
+
+          ## 할 일
+
+          1. \`server/src/main/resources/application.yml\` 의 \`doc-id\` 기본값을 \`$new\` 로 바꾸고 바로 위 \`# 마지막 확인:\` 날짜를 오늘로 고친다.
+          $pv_step
+          3. \`feat/<이 이슈 번호>-instagram-doc-id\` 브랜치 → \`dev\` PR → \`dev\`→\`main\` PR → 배포.
+          4. 배포 뒤 인스타 링크 하나를 모아보기에 등록해 제목·썸네일이 오는지 본다.
+
+          절차 상세와 수동 확인 방법: README "인스타 doc_id 감시".
+
+          ## 검증 로그
+
+          \`\`\`
+          $(cat "$RESULT")
+          \`\`\`
+
+          실행: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          > 자동 생성 이슈라 오른쪽 \`Projects\` 에 「MODI 운영」이 안 붙는다 — 직접 연결해 주세요.
+
+          <!-- instagram-doc-id-monitor -->
+          EOF
+          )"
+
+          # 같은 제목 접두의 열린 이슈가 있으면: 같은 새값 → 건너뜀 / 다른 값 → 댓글로 덧붙임
+          existing="$(gh issue list --state open --label chore --search '"인스타 doc_id 갱신 필요" in:title' --json number,title --jq '.[] | "\(.number)\t\(.title)"')"
+          if [ -n "$existing" ] && [ "$FORCE" != "true" ]; then
+            if printf '%s\n' "$existing" | grep -q "$new"; then
+              echo "같은 새값($new)의 이슈가 이미 열려 있다 — 건너뛴다"; printf '%s\n' "$existing"
+              exit 0
+            fi
+            num="$(printf '%s\n' "$existing" | head -1 | cut -f1)"
+            gh issue comment "$num" --body "$body"
+            echo "열린 이슈 #$num 에 새 판정을 댓글로 덧붙였다"
+            exit 0
+          fi
+          gh issue create --title "$title" --label chore --assignee kimzoo5676-del --body "$body"
+
+      - name: 연속 판정 불가 이슈
+        if: steps.streak.outputs.count >= 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ runner.temp }}/result.txt
+          COUNT: ${{ steps.streak.outputs.count }}
+        run: |
+          title="[chore] 인스타 doc_id 감시 ${COUNT}일째 판정 불가"
+          if gh issue list --state open --label chore --search '"인스타 doc_id 감시" in:title' --json number --jq 'length' | grep -qv '^0$'; then
+            echo "이미 열린 판정 불가 이슈가 있다 — 건너뛴다"; exit 0
+          fi
+          body="$(cat <<EOF
+          감시 워크플로가 ${COUNT}일 연속으로 판정을 내리지 못했다. doc_id 가 바뀌어도 **지금은 알 수 없는 상태**다.
+
+          흔한 원인과 확인 순서:
+          1. 러너 IP 가 인스타에 막혔다(\`blocked_page\` / \`blocked_graphql\`) — 며칠 더 지켜보고, 계속되면 실행 시각(cron)을 바꿔 본다.
+          2. 기준 게시물이 삭제·비공개됐다(\`both_empty\`) — \`IG_PROBE_SHORTCODES\`(저장소 Variables 또는 워크플로 env)를 다른 공개 게시물로 바꾼다.
+          3. 번들 구조가 바뀌어 정의부를 못 찾는다(\`bundle_not_found\` / \`ambiguous_candidates\`) — 브라우저 devtools 네트워크 탭에서 \`graphql/query\` 요청의 \`doc_id\` 를 직접 본다(specs/OPEN.md 절차).
+
+          마지막 실행 결과:
+          \`\`\`
+          $(cat "$RESULT" 2>/dev/null || echo "(결과 파일 없음)")
+          \`\`\`
+
+          실행: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          > 자동 생성 이슈라 오른쪽 \`Projects\` 에 「MODI 운영」이 안 붙는다 — 직접 연결해 주세요.
+
+          <!-- instagram-doc-id-monitor -->
+          EOF
+          )"
+          gh issue create --title "$title" --label chore --assignee kimzoo5676-del --body "$body"

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -14,9 +15,11 @@ import 'features/auth/share_auth_sync.dart';
 import 'features/notifications/fcm_service.dart';
 import 'features/onboarding/intro_screen.dart';
 import 'features/room/invite_share.dart';
+import 'features/room/room_session.dart';
 import 'firebase_options.dart';
 import 'routing/app_router.dart';
 import 'routing/app_session.dart';
+import 'routing/fresh_install.dart';
 
 final appFcmService = FcmService();
 
@@ -43,6 +46,16 @@ void main() async {
   ShareAuthSync.bind();
   unawaited(ShareAuthSync.syncCurrentSession());
   final prefs = await SharedPreferences.getInstance();
+  // 🔴 `bootstrap()` **앞**이어야 한다. 뒤에 두면 홈이 잠깐 떴다가 로그인으로 튄다.
+  // 앱을 지웠다 다시 깐 경우 Keychain 에 남아 되살아난 세션을 끊는다 — 이슈 #29.
+  await signOutIfFreshInstall(
+    prefs: prefs,
+    hasSession: FirebaseAuth.instance.currentUser != null,
+    signOut: () async {
+      await FirebaseAuth.instance.signOut();
+      await appRoomSession.clear();
+    },
+  );
   appSession.setIntroStatus(
     completed: prefs.getBool(onboardingIntroCompletedKey) ?? false,
   );

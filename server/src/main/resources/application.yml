@@ -183,6 +183,9 @@ modi:
       # 사용자에게는 "공개된 게시물만 등록할 수 있어요" 로 보인다 — 즉 **조용히 인스타만 실패한다.**
       # 갱신 절차는 specs/OPEN.md 에 적어뒀다. 키가 아니라 공개 상수라 여기 기본값으로 둔다.
       #
+      # 🔁 scripts/instagram-doc-id.sh 가 매일 인스타 번들의 값과 이 기본값을 비교해, 다르면 이슈를 만든다
+      #    (.github/workflows/instagram-doc-id.yml, README "인스타 doc_id 감시"). 비교 기준은 **main 의 이 줄**이다.
+      #    ARCHIVE_INSTAGRAM_DOC_ID 는 일부러 compose 에 전달 줄이 없다 — 운영값은 이 기본값 하나여야 감시가 맞는다.
       # 마지막 확인: 2026-08-03
       doc-id: ${ARCHIVE_INSTAGRAM_DOC_ID:26713194205046842}
       # 인스타 웹 주소. **테스트가 루프백 서버를 가리키려고 뺀 이음매**이고 운영에서 바꿀 일이 없다
