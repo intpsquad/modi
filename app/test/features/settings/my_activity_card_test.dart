@@ -35,6 +35,59 @@ void main() {
     });
   });
 
+  // `GET /me/character`(마이페이지)가 #68로 사라지면서 계약 파싱 테스트를 여기로 옮겼다.
+  // 같은 스키마를 멤버 화면의 `GET /rooms/{id}/members/{userId}/character`가 그대로 쓴다.
+  group('MyActivitySummary.fromJson', () {
+    test('캐릭터 응답 계약을 카드 표시 단위로 파싱한다', () {
+      final summary = MyActivitySummary.fromJson(const {
+        'characterId': 'PROCRASTINATOR',
+        'name': '미루기 장인',
+        'copy': '내일의 나를 믿는 타입',
+        'why': '몰아서 끝내고 있어요',
+        'evolveTo': 'SPRINTER',
+        'evolveProgress': 0.55,
+        'evolveHint': '3일 연속 완료하면 진화해요',
+        'confidence': 'LOW',
+        'activityStats': {
+          'completed': 128,
+          'streak': 19,
+          'deadlineKeptRate': 0.78,
+          'helpGiven': 23,
+          'shared': 12,
+          'dueDateCompletedCount': 5,
+        },
+      });
+
+      expect(summary.characterId, 'PROCRASTINATOR');
+      expect(summary.characterName, '미루기 장인');
+      expect(summary.characterQuote, '내일의 나를 믿는 타입');
+      expect(summary.deadlineKeptPercent, 78); // 0.78 → %
+      expect(summary.bestStreakDays, 19);
+      expect(summary.sharedCount, 12);
+      expect(summary.completedCount, 128);
+    });
+
+    test('마감일 있는 완료 투두가 없으면 마감 준수율은 0%가 아니라 표시 안 함(null)이다', () {
+      final summary = MyActivitySummary.fromJson(const {
+        'characterId': 'WARMING_UP',
+        'name': '정체불명',
+        'copy': '곧 정체가 드러나요',
+        'why': '투두를 더 완료하면 캐릭터가 드러나요',
+        'confidence': 'LOW',
+        'activityStats': {
+          'completed': 3,
+          'streak': 0,
+          'deadlineKeptRate': 0.0,
+          'helpGiven': 0,
+          'shared': 0,
+          'dueDateCompletedCount': 0,
+        },
+      });
+
+      expect(summary.deadlineKeptPercent, isNull);
+    });
+  });
+
   group('MyActivityCard', () {
     Widget wrap(Widget child) => MaterialApp(
       home: Scaffold(body: SingleChildScrollView(child: child)),

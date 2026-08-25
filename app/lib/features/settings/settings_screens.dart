@@ -23,7 +23,6 @@ import '../room/room_form_fields.dart';
 import '../room/room_session.dart';
 import '../shell/app_shell.dart';
 import '../shell/tab_activation.dart';
-import 'my_activity_card.dart';
 
 typedef TokenLoader = Future<String> Function();
 typedef ContactEmailLauncher = Future<bool> Function(Uri uri);
@@ -56,17 +55,10 @@ class SettingsApi {
     );
   }
 
-  /// 협업 캐릭터(마이 탭). 백엔드 `GET /me/character`(specs/0016) 조회.
-  Future<MyActivitySummary> fetchCharacter(String idToken) async {
-    final response = await _client.get(
-      Uri.parse('$baseUrl/me/character'),
-      idToken: idToken,
-    );
-    _checkOk(response, '캐릭터 조회');
-    return MyActivitySummary.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
-  }
+  // 협업 캐릭터 조회(`GET /me/character`)는 2026-08-25(#68)에 여기서 제거했다 —
+  // 캐릭터를 멤버 투두 화면으로 옮기면서 마이페이지가 더 이상 쓰지 않는다.
+  // 서버 엔드포인트 자체는 남아 있다(specs/0016). 멤버 화면은 방 스코프 엔드포인트
+  // (`GET /rooms/{roomId}/members/{userId}/character`)를 쓴다.
 
   Future<UserProfile> updateProfile(
     String idToken, {
@@ -452,7 +444,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   RoomSummary? _currentRoom;
   UserProfile? _profile;
   int? _memberCount;
-  MyActivitySummary? _character;
   bool _withdrawing = false;
 
   /// 마이 탭 재탭 시 맨 위로 스크롤(2026-08-09 QA, 홈과 같은 패턴)용 컨트롤러.
@@ -466,7 +457,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.roomSession.addListener(_onRoomSessionChanged);
     _loadProfileSummary();
     _loadMemberCount();
-    _loadCharacter();
   }
 
   @override
@@ -526,24 +516,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _loadCharacter() async {
-    try {
-      final character = await widget.api.fetchCharacter(await _token());
-      if (mounted) setState(() => _character = character);
-    } catch (_) {
-      // 캐릭터는 보조 정보라 실패해도 카드가 placeholder로 남고 나머지는 계속 쓸 수 있다.
-    }
-  }
-
-  /// 당겨서 새로고침 — 화면에 보이는 세 가지 비동기 정보(프로필·멤버 수·캐릭터)를 한꺼번에
+  /// 당겨서 새로고침 — 화면에 보이는 두 가지 비동기 정보(프로필·멤버 수)를 한꺼번에
   /// 다시 불러온다. 각 로더가 이미 자기 실패를 알아서 삼키므로(보조 정보라 개별 실패해도
   /// 나머지는 계속 쓸 수 있어야 한다는 기존 원칙) 여기서 별도 에러 처리를 하지 않는다.
   Future<void> _refresh() {
-    return Future.wait([
-      _loadProfileSummary(),
-      _loadMemberCount(),
-      _loadCharacter(),
-    ]);
+    return Future.wait([_loadProfileSummary(), _loadMemberCount()]);
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -669,23 +646,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              // ── 상단 흰색 존: 프로필 헤더 + 활동 카드 ──
+              // ── 상단 흰색 존: 프로필 헤더 ──
+              // 협업 캐릭터 카드는 2026-08-25(#68)에 멤버 투두 화면(S-30-M)으로 옮겼다 —
+              // 두 화면에 같은 카드가 중복 노출되던 것을 한 곳으로 모았다(specs/0012·0016).
               ColoredBox(
                 color: AppColors.canvas,
                 child: Padding(
                   // 좌우 20(디자이너 지정), 아래 22 후 회색 존 시작.
                   padding: const EdgeInsets.fromLTRB(20, AppSpacing.sm, 20, 22),
-                  child: Column(
-                    children: [
-                      _ProfileHeaderRow(profile: _profile, onTap: _openProfile),
-                      const SizedBox(height: 20),
-                      MyActivityCard(
-                        nickname: _profile?.nickname ?? '나',
-                        summary: _character,
-                        // 마이페이지는 이미 전체 맥락 — "모든 방 활동" 캡션 불필요(2026-08-09).
-                        showScopeCaption: false,
-                      ),
-                    ],
+                  child: _ProfileHeaderRow(
+                    profile: _profile,
+                    onTap: _openProfile,
                   ),
                 ),
               ),

@@ -3,7 +3,6 @@ import 'dart:io' as io;
 import 'package:app/design/theme.dart';
 import 'package:app/design/tokens.dart';
 import 'package:app/features/room/room_session.dart';
-import 'package:app/features/settings/my_activity_card.dart';
 import 'package:app/features/settings/settings_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -160,12 +159,6 @@ class _GoldenSettingsApi extends SettingsApi {
   @override
   Future<UserProfile> fetchProfile(String idToken) async =>
       const UserProfile(userId: 'minname01', nickname: '민네임');
-
-  // 활동 카드는 기준 레이아웃(placeholder) 그대로 둔다 — 캐릭터 목업을 붙이면
-  // 골든이 달라지므로 여기서는 미제공 상태를 유지한다.
-  @override
-  Future<MyActivitySummary> fetchCharacter(String idToken) =>
-      throw UnimplementedError();
 
   @override
   Future<NotificationSettings> fetchNotificationSettings(
