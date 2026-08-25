@@ -53,5 +53,4 @@ public class RoomCoverImageService {
     storage.put(objectKey, content, imageType.contentType());
     return new CoverImageResponse(storage.publicUrl(objectKey));
   }
-
 }

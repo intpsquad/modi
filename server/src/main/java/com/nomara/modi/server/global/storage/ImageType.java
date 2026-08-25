@@ -3,8 +3,8 @@ package com.nomara.modi.server.global.storage;
 import java.util.Optional;
 
 /**
- * 업로드된 바이트의 실제 이미지 형식. <b>파일명 확장자나 {@code Content-Type} 헤더를 믿지 않고 매직바이트로 판별한다</b> — FE가 multipart 파트에
- * 명시적 Content-Type 헤더를 붙이지 않기 때문이다(방 대표 이미지 업로드에서 확인).
+ * 업로드된 바이트의 실제 이미지 형식. <b>파일명 확장자나 {@code Content-Type} 헤더를 믿지 않고 매직바이트로 판별한다</b> — FE가 multipart
+ * 파트에 명시적 Content-Type 헤더를 붙이지 않기 때문이다(방 대표 이미지 업로드에서 확인).
  *
  * <p>원래 {@code RoomCoverImageService}의 private enum이었다. 피드백 스크린샷 업로드(#70)가 같은 판별을 필요로 해서 공용으로 뽑았다 —
  * 복붙하면 지원 형식이 두 곳에서 갈린다.
