@@ -77,21 +77,15 @@ String characterAssetPath(String? characterId) {
 /// 칩 테두리 #D1D1D6, 칩 텍스트 12/500). design.md 반영 전까지 이 컴포넌트 예외 —
 /// specs/OPEN.md 드리프트 항목 참고.
 class MyActivityCard extends StatelessWidget {
-  const MyActivityCard({
-    super.key,
-    required this.nickname,
-    this.summary,
-    this.showScopeCaption = true,
-  });
+  const MyActivityCard({super.key, required this.nickname, this.summary});
 
   final String nickname;
 
   /// null이면 캐릭터 판정 데이터가 아직 없는 placeholder 상태(A안, 2026-08-07).
   final MyActivitySummary? summary;
 
-  /// "모든 방 활동을 합친 기록이에요" 캡션 노출 여부. 멤버 상세(특정 방 맥락)에선 오해를 막으려
-  /// 보여주지만, **마이페이지에선 이미 전체 맥락이라 불필요**해서 끈다(2026-08-09 요청).
-  final bool showScopeCaption;
+  // `showScopeCaption`(마이페이지에서 스코프 캡션 끄기)은 2026-08-25(#68)에 제거했다 —
+  // 마이페이지에 카드가 없어지면서 캡션을 끌 호출자가 남지 않았다.
 
   // 칩 테두리(디자이너 지정, 토큰 밖).
   static const _chipBorder = Color(0xFFD1D1D6);
@@ -193,7 +187,7 @@ class MyActivityCard extends StatelessWidget {
         // 캐릭터가 방이 아니라 전체 활동 기준이라는 걸 카드 밖에 짧게 알려준다(2026-08-09 QA
         // — 멤버 상세(특정 방 맥락)에서 이 카드를 보면 "이 방에서"로 오해하기 쉬웠다). 분석 전
         // (summary null) placeholder에는 아직 합칠 데이터가 없어 표시하지 않는다.
-        if (s != null && showScopeCaption) ...[
+        if (s != null) ...[
           const SizedBox(height: AppSpacing.xs),
           Text(
             '모든 방 활동을 합친 기록이에요',

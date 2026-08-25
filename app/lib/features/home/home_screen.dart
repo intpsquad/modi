@@ -501,9 +501,10 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 72,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: isSelf
-                  ? () => _goToBranch(context, 1)
-                  : () => context.push('/member/${member.userId}'),
+              // 본인 아바타도 멤버 투두 화면으로 간다(#68) — 내 협업 캐릭터를 보는 곳이
+              // 마이페이지에서 이쪽으로 옮겨졌다(specs/0011, specs/0003-navigation.md).
+              // 2026-08-04에 "본인은 투두 탭으로" 정정했던 동작을 이걸로 되돌린다.
+              onTap: () => context.push('/member/${member.userId}'),
               child: Column(
                 children: [
                   // 아바타 + (상위3) 순위 메달 배지(우상단). 메달 SVG가 금·은·동 디자인을

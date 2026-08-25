@@ -63,6 +63,43 @@ void main() {
     expect(find.text('회원 탈퇴'), findsOneWidget);
   });
 
+  testWidgets('마이페이지에 협업 캐릭터 카드가 없다(#68 — 멤버 투두 화면으로 이전)', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          api: _FakeSettingsApi(),
+          tokenLoader: () async => 'token',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MyActivityCard), findsNothing);
+    expect(find.text('요즘 민네임님은'), findsNothing);
+    // placeholder 문구(정체불명/곧 정체가 드러나요)도 남지 않는다.
+    expect(find.text('정체불명'), findsNothing);
+    // 프로필 헤더와 설정 메뉴는 그대로.
+    expect(find.text('민네임'), findsOneWidget);
+    expect(find.text('로그인 계정 정보'), findsOneWidget);
+  });
+
+  testWidgets('설정 행 라벨은 16으로 렌더된다(#68 폰트 확대)', (tester) async {
+    // 2026-08-08에 13→14로 키웠던 값을 한 단계 더(14→16, AppTypography.body).
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          api: _FakeSettingsApi(),
+          tokenLoader: () async => 'token',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final label = tester.widget<Text>(find.text('로그인 계정 정보'));
+    expect(label.style?.fontSize, 16);
+    expect(label.style?.fontWeight, FontWeight.w500);
+  });
+
   testWidgets('위에서 아래로 당기면 프로필 등 정보를 다시 불러온다', (tester) async {
     final api = _FakeSettingsApi();
 
@@ -632,11 +669,6 @@ class _FakeSettingsApi extends SettingsApi {
     fetchProfileCallCount++;
     return const UserProfile(userId: 'minname01', nickname: '민네임');
   }
-
-  // 활동 카드는 이 테스트들의 관심사가 아니라 네트워크를 타지 않게 미제공 처리한다.
-  @override
-  Future<MyActivitySummary> fetchCharacter(String idToken) =>
-      throw UnimplementedError();
 
   @override
   Future<String> uploadProfilePhoto(

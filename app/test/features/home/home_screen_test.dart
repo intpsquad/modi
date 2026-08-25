@@ -760,7 +760,7 @@ void main() {
     expect(fakeApi.fetchCallCount, before + 1); // 대시보드 리로드
   });
 
-  group('멤버 아바타 탭 — 2026-08-04 정정(specs/0005-홈-대시보드.md)', () {
+  group('멤버 아바타 탭 — 2026-08-25 #68 재정정(specs/0005-홈-대시보드.md)', () {
     // '/home'(HomeScreen 실물) + '/todos'(플레이스홀더) 셸과, 셸 밖 '/member/:userId'
     // (플레이스홀더)을 실제 go_router로 구성해 어느 목적지로 갔는지를 직접 확인한다.
     Widget shellApp({required String? currentUserId, HomeApi? api}) {
@@ -804,7 +804,9 @@ void main() {
       return MaterialApp.router(routerConfig: router);
     }
 
-    testWidgets('본인 아바타를 탭하면 멤버 투두가 아니라 투두 탭으로 전환된다', (tester) async {
+    testWidgets('본인 아바타를 탭해도 멤버 투두 화면으로 이동한다', (tester) async {
+      // #68 — 내 협업 캐릭터를 보는 곳이 마이페이지에서 멤버 투두 화면으로 옮겨져,
+      // 본인 아바타도 투두 탭 전환이 아니라 S-30-M push로 통일됐다(specs/0011).
       // _dashboard()의 유일한 멤버는 userId: 'uid-a' — 로그인 유저와 동일하게 맞춘다.
       await tester.pumpWidget(shellApp(currentUserId: 'uid-a'));
       await tester.pumpAndSettle();
@@ -812,8 +814,8 @@ void main() {
       await tester.tap(find.text('철수(나)'));
       await tester.pumpAndSettle();
 
-      expect(find.text('TODOS_TAB'), findsOneWidget);
-      expect(find.text('MEMBER_TODOS_uid-a'), findsNothing);
+      expect(find.text('MEMBER_TODOS_uid-a'), findsOneWidget);
+      expect(find.text('TODOS_TAB'), findsNothing);
     });
 
     testWidgets('다른 멤버 아바타를 탭하면 그대로 멤버 투두 화면으로 이동한다', (tester) async {
