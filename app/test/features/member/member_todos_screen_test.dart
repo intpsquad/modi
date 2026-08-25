@@ -8,7 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Future<void> pumpScreen(WidgetTester tester, _FakeMemberTodosApi api) async {
+  /// [currentUserId]가 `member-1`이면 본인 페이지, 아니면 타인 페이지다.
+  /// 기본은 타인(`me` ≠ `member-1`) — 대부분의 테스트가 타인 조회를 검증한다.
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    _FakeMemberTodosApi api, {
+    String? currentUserId = 'me',
+  }) async {
     // 프로필 행 + 캐릭터 카드 + 투두까지 한 화면에 담아 ListView 지연 생성으로
     // 투두 행이 트리에서 빠지지 않게 뷰포트를 넉넉히 잡는다.
     tester.view.devicePixelRatio = 1;
@@ -22,6 +28,7 @@ void main() {
           roomId: 3,
           api: api,
           tokenLoader: () async => 'token',
+          currentUserId: () => currentUserId,
         ),
       ),
     );
@@ -117,6 +124,30 @@ void main() {
 
     expect(api.pokeCount, 1);
     expect(find.text('콕 찔렀어요'), findsOneWidget);
+  });
+
+  // ---- 본인 페이지(#68) — 홈에서 내 아바타를 탭해도 이 화면으로 들어온다 ----
+
+  testWidgets('본인 페이지에서는 찌르기 버튼이 보이지 않는다', (tester) async {
+    await pumpScreen(tester, _FakeMemberTodosApi(), currentUserId: 'member-1');
+
+    expect(find.text('찌르기'), findsNothing);
+  });
+
+  testWidgets('본인 페이지에서도 이름·완료율 문구·캐릭터 카드는 그대로 보인다', (tester) async {
+    // 캐릭터를 보는 곳이 마이페이지가 아니라 여기로 옮겨졌으므로(#68) 카드는 반드시 남는다.
+    await pumpScreen(tester, _FakeMemberTodosApi(), currentUserId: 'member-1');
+
+    expect(find.text('준'), findsWidgets);
+    expect(find.text('투두를 33% 완료했어요'), findsOneWidget);
+    expect(find.text('요즘 준님은'), findsOneWidget);
+    expect(find.text('미루기 장인'), findsOneWidget);
+  });
+
+  testWidgets('로그인 사용자를 못 읽어도(null) 타인 페이지로 취급해 찌르기가 남는다', (tester) async {
+    await pumpScreen(tester, _FakeMemberTodosApi(), currentUserId: null);
+
+    expect(find.text('찌르기'), findsOneWidget);
   });
 }
 

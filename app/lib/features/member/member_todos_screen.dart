@@ -14,6 +14,11 @@ import '../todos/todos_api.dart';
 
 typedef MemberTokenLoader = Future<String> Function();
 
+/// 로그인한 사용자의 uid를 **지연** 조회한다(#68). 생성자 기본값에서 곧바로
+/// `AuthService().currentUserId`를 읽으면 `FirebaseAuth.instance`를 건드려
+/// 위젯 테스트가 깨지므로, 호출 시점을 build까지 미룬다.
+typedef MemberCurrentUserIdLoader = String? Function();
+
 class MemberTodosApi {
   MemberTodosApi({
     this.baseUrl = Env.apiBaseUrl,
@@ -131,14 +136,20 @@ class MemberTodosScreen extends StatefulWidget {
     int? roomId,
     MemberTodosApi? api,
     MemberTokenLoader? tokenLoader,
+    MemberCurrentUserIdLoader? currentUserId,
   }) : roomId = roomId ?? appRoomSession.currentRoomId,
        api = api ?? MemberTodosApi(),
-       tokenLoader = tokenLoader ?? AuthService().getIdToken;
+       tokenLoader = tokenLoader ?? AuthService().getIdToken,
+       currentUserId = currentUserId ?? (() => AuthService().currentUserId);
 
   final String userId;
   final int? roomId;
   final MemberTodosApi api;
   final MemberTokenLoader tokenLoader;
+
+  /// 본인 페이지 여부 판정용 — 홈에서 내 아바타를 탭해도 이 화면으로 들어오므로(#68)
+  /// 자기 자신을 찌르는 버튼을 숨기는 데 쓴다.
+  final MemberCurrentUserIdLoader currentUserId;
 
   @override
   State<MemberTodosScreen> createState() => _MemberTodosScreenState();
@@ -264,7 +275,9 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
   }
 
   /// 프로필 행(마이페이지식) — 아바타 + [이름 + 진행률 문구] + 우측 "찌르기" 버튼.
+  /// 본인 페이지면 찌르기 버튼을 아예 그리지 않는다(#68) — 자기 자신은 찌를 수 없다.
   Widget _buildProfileRow(MemberTodosData data) {
+    final isSelf = widget.currentUserId() == widget.userId;
     final percent = data.assignedTotal == 0
         ? 0
         : (data.assignedDone / data.assignedTotal * 100).round();
@@ -302,8 +315,10 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          _PokeButton(loading: _poking, onTap: _poke),
+          if (!isSelf) ...[
+            const SizedBox(width: AppSpacing.sm),
+            _PokeButton(loading: _poking, onTap: _poke),
+          ],
         ],
       ),
     );
