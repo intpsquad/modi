@@ -2138,13 +2138,14 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 행 라벨 = #6A6A6A 14/medium(2026-08-08: 다른 화면 대비 작아 13→14). 파괴적 액션만 accentDanger.
+    // 행 라벨 = #6A6A6A 16/medium(2026-08-08: 13→14, 2026-08-25 #68: 14→16).
+    // 파괴적 액션만 accentDanger. 우측 값(trailing)은 14 그대로 둬 라벨과 위계를 만든다.
     final color = danger ? AppColors.accentDanger : AppColors.muted;
     return ListTile(
       visualDensity: const VisualDensity(vertical: -2),
       title: Text(
         title,
-        style: AppTypography.bodySmall.copyWith(
+        style: AppTypography.body.copyWith(
           fontWeight: FontWeight.w500,
           color: color,
         ),

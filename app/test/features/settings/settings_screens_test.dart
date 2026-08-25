@@ -83,6 +83,23 @@ void main() {
     expect(find.text('로그인 계정 정보'), findsOneWidget);
   });
 
+  testWidgets('설정 행 라벨은 16으로 렌더된다(#68 폰트 확대)', (tester) async {
+    // 2026-08-08에 13→14로 키웠던 값을 한 단계 더(14→16, AppTypography.body).
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          api: _FakeSettingsApi(),
+          tokenLoader: () async => 'token',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final label = tester.widget<Text>(find.text('로그인 계정 정보'));
+    expect(label.style?.fontSize, 16);
+    expect(label.style?.fontWeight, FontWeight.w500);
+  });
+
   testWidgets('위에서 아래로 당기면 프로필 등 정보를 다시 불러온다', (tester) async {
     final api = _FakeSettingsApi();
 
