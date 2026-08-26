@@ -236,6 +236,41 @@ void main() {
     );
   });
 
+  group('inviteShareOrigin', () {
+    testWidgets('렌더 박스 크기가 0이면(hasSize=true) 화면 전체 rect로 대신한다', (tester) async {
+      late BuildContext capturedContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          // Center는 자식에게 느슨한(0..화면) 제약을 주므로, 그 안의 SizedBox(0,0)은
+          // 화면 루트의 tight 제약 때문에 강제로 되돌려지지 않고 실제로 0×0이 된다
+          // (SizedBox.shrink()를 화면 루트에 바로 두면 enforce()가 화면 크기로 되돌린다).
+          home: Center(
+            child: SizedBox(
+              width: 0,
+              height: 0,
+              child: Builder(
+                builder: (context) {
+                  capturedContext = context;
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      final box = capturedContext.findRenderObject() as RenderBox;
+      expect(box.hasSize, isTrue);
+      expect(box.size, Size.zero, reason: '이 테스트가 재현하려는 조건 자체가 0×0이어야 한다');
+
+      final origin = inviteShareOrigin(capturedContext);
+
+      // box.hasSize는 레이아웃이 됐는지만 보장하고 크기가 0이 아님은 보장하지 않는다 —
+      // 이 커밋이 막으려는 iOS의 "빈 rect" 실패와 같은 종류라 화면 전체로 대신해야 한다.
+      expect(origin, isNotNull);
+      expect(origin!.isEmpty, isFalse);
+    });
+  });
+
   group('buildInviteMessage', () {
     test('방 이름이 있으면 문구에 포함된다', () {
       final msg = buildInviteMessage(code: 'ABC123', roomName: '부산 여행');

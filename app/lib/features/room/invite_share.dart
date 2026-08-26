@@ -68,7 +68,9 @@ Future<void> shareInviteText(String text, {Rect? sharePositionOrigin}) =>
 /// 항상 비어 있지 않은 값을 돌려준다.
 Rect? inviteShareOrigin(BuildContext context) {
   final box = context.findRenderObject() as RenderBox?;
-  if (box != null && box.hasSize) {
+  // hasSize는 레이아웃이 됐는지만 보장할 뿐 크기가 0이 아님은 보장하지 않는다 — 그대로
+  // 두면 이 함수가 막으려는 iOS의 "빈 rect" 실패를 그대로 재현할 수 있다.
+  if (box != null && box.hasSize && !box.size.isEmpty) {
     return box.localToGlobal(Offset.zero) & box.size;
   }
   final mediaSize = MediaQuery.maybeSizeOf(context);
