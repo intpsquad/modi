@@ -560,6 +560,7 @@ void main() {
       endDate: DateTime(2026, 8, 10),
     );
     String? shared;
+    Rect? sharedOrigin;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -568,7 +569,10 @@ void main() {
           api: api,
           tokenLoader: () async => 'token',
           currentUserId: 'me',
-          shareInvite: (text, {sharePositionOrigin}) async => shared = text,
+          shareInvite: (text, {sharePositionOrigin}) async {
+            shared = text;
+            sharedOrigin = sharePositionOrigin;
+          },
         ),
       ),
     );
@@ -581,6 +585,10 @@ void main() {
 
     expect(shared, contains('K7QP-2M9X'));
     expect(shared, contains('여름 알고리즘 스터디'));
+    // iOS 네이티브(share_plus)는 앵커 rect가 비어 있으면(CGRectZero) 시트를 띄우지 않고
+    // 에러를 돌려준다(iPhone도 해당) — 항상 비어 있지 않은 rect를 넘겨야 한다.
+    expect(sharedOrigin, isNotNull);
+    expect(sharedOrigin!.isEmpty, isFalse);
   });
 
   testWidgets('초대 공유 채널 선택 시트는 360px 화면 폭에서도 모두 보인다', (tester) async {

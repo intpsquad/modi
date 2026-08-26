@@ -64,13 +64,28 @@ void main() {
 
   testWidgets('"더보기"를 탭하면 OS 공유 시트로 초대 문구가 전달된다', (tester) async {
     final s = spies();
-    await pumpScreen(
-      tester,
-      copied: s.copied,
-      shared: s.shared,
-      launched: s.launched,
-      kakaoInvites: s.kakaoInvites,
+    final origins = <Rect?>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          roomId: 1,
+          roomName: '여름 알고리즘 스터디',
+          coverImage: 'https://storage.test/room-cover.jpg',
+          inviteCode: 'ABC123',
+          copy: (text) async => s.copied.add(text),
+          shareInvite: (text, {sharePositionOrigin}) async {
+            s.shared.add(text);
+            origins.add(sharePositionOrigin);
+          },
+          shareKakao: (invite) async => s.kakaoInvites.add(invite),
+          launchApp: (url) async {
+            s.launched.add(url);
+            return true;
+          },
+        ),
+      ),
     );
+    await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('더보기'));
     await tester.tap(find.text('더보기'));
@@ -78,6 +93,11 @@ void main() {
 
     expect(s.shared, hasLength(1));
     expect(s.shared.single, contains('ABC123'));
+    // iOS 네이티브(share_plus)는 앵커 rect가 비어 있으면(CGRectZero) 시트를 띄우지 않고
+    // 에러를 돌려준다(iPhone도 해당) — 항상 비어 있지 않은 rect를 넘겨야 한다.
+    expect(origins, hasLength(1));
+    expect(origins.single, isNotNull);
+    expect(origins.single!.isEmpty, isFalse);
   });
 
   testWidgets('"카카오톡"을 탭하면 SDK 템플릿에 방 초대 데이터를 전달한다', (tester) async {
@@ -214,6 +234,41 @@ void main() {
       inviteJoinLocation(Uri.parse('kakaoappkey://kakaolink?route=room/join')),
       isNull,
     );
+  });
+
+  group('inviteShareOrigin', () {
+    testWidgets('렌더 박스 크기가 0이면(hasSize=true) 화면 전체 rect로 대신한다', (tester) async {
+      late BuildContext capturedContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          // Center는 자식에게 느슨한(0..화면) 제약을 주므로, 그 안의 SizedBox(0,0)은
+          // 화면 루트의 tight 제약 때문에 강제로 되돌려지지 않고 실제로 0×0이 된다
+          // (SizedBox.shrink()를 화면 루트에 바로 두면 enforce()가 화면 크기로 되돌린다).
+          home: Center(
+            child: SizedBox(
+              width: 0,
+              height: 0,
+              child: Builder(
+                builder: (context) {
+                  capturedContext = context;
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      final box = capturedContext.findRenderObject() as RenderBox;
+      expect(box.hasSize, isTrue);
+      expect(box.size, Size.zero, reason: '이 테스트가 재현하려는 조건 자체가 0×0이어야 한다');
+
+      final origin = inviteShareOrigin(capturedContext);
+
+      // box.hasSize는 레이아웃이 됐는지만 보장하고 크기가 0이 아님은 보장하지 않는다 —
+      // 이 커밋이 막으려는 iOS의 "빈 rect" 실패와 같은 종류라 화면 전체로 대신해야 한다.
+      expect(origin, isNotNull);
+      expect(origin!.isEmpty, isFalse);
+    });
   });
 
   group('buildInviteMessage', () {
