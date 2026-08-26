@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../features/archive/archive_folder_items_screen.dart';
 import '../features/archive/archive_item_detail_screen.dart';
@@ -21,6 +22,7 @@ import '../features/room/join_room_screen.dart';
 import '../features/room/restart_room_screen.dart';
 import '../features/room/room_setup_screen.dart';
 import '../features/schedule/schedule_screen.dart';
+import '../features/settings/feedback_screen.dart';
 import '../features/settings/settings_screens.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/branch_container.dart';
@@ -296,6 +298,15 @@ final appRouter = GoRouter(
                   path: 'past-rooms',
                   parentNavigatorKey: rootNavigatorKey,
                   builder: (context, state) => PastRoomsScreen(),
+                ),
+                // 문의하기(#70) — 예전에는 mailto: 딥링크라 라우트가 없었다.
+                GoRoute(
+                  path: 'contact',
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (context, state) => FeedbackScreen(
+                    contactEmailLauncher: (uri) =>
+                        launchUrl(uri, mode: LaunchMode.externalApplication),
+                  ),
                 ),
                 GoRoute(
                   path: 'notification-history',
