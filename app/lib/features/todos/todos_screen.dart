@@ -7,6 +7,7 @@ import '../../design/notice_banner.dart';
 import '../../design/ai_sparkle_button.dart';
 import '../../design/todo_checkbox.dart';
 import '../../design/tokens.dart';
+import '../../design/segmented_toggle.dart';
 import '../../design/tab_header.dart';
 import '../auth/auth_service.dart';
 import '../room/room_session.dart';
@@ -45,11 +46,6 @@ const Color _kInk = Color(0xFF111111); // 제목·본문 진한 텍스트
 const Color _kMutedInk = Color(0xFF636366); // 기타/셰브론/뱃지 텍스트
 const Color _kCircleBorder = Color(0xFFC7C7CC); // 체크/점선 원 테두리
 const Color _kDividerColor = Color(0xFFE5E5EA); // 그룹 구분선
-
-// 세그먼트 탭 높이 — 트랙과 선택 알약이 같은 높이다(2026-08-06 지정, design.md §6).
-// (폐지: 트랙 48 + 패딩 4 + 흰 알약 그림자 `_kActiveTabShadow`·트랙색 `_kSegBg`·
-//  비활성 글씨 `_kInactiveInk`. 이제 토큰 surface-soft/primary/on-primary/muted를 쓴다.)
-const double _kSegHeight = 40;
 
 /// 투두 정렬 기준 — specs/0006-투두-탭.md. 마감일순은 데이터상 불가(투두 마감 없음, 0002).
 /// manual은 서버 `position`에 저장되는 실제 드래그 순서다(2026-08-04, "내 투두만" 토글일 때만
@@ -1039,7 +1035,7 @@ class TodosScreenState extends State<TodosScreen> {
   Widget _buildFilterBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-      child: _SegmentedToggle(
+      child: SegmentedToggle(
         segments: const ['내 투두만', '전체보기'],
         selectedIndex: _showAllMembers ? 1 : 0,
         onChanged: (i) {
@@ -2684,94 +2680,6 @@ class _ConfirmDeleteCategoryDialogState
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 세그먼티드 컨트롤 — design.md §6 세그먼트 규격. 트랙 `surface-strong`+pill,
-/// 선택칸만 `surface` 채움 + `elevation.float`(입체 카드) + `foreground` 텍스트.
-class _SegmentedToggle extends StatelessWidget {
-  const _SegmentedToggle({
-    required this.segments,
-    required this.selectedIndex,
-    required this.onChanged,
-  });
-
-  final List<String> segments;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
-  /// 전환 시간 — design.md §6(모션 토큰 부재 임시값, `specs/OPEN.md`).
-  static const _duration = Duration(milliseconds: 150);
-
-  @override
-  Widget build(BuildContext context) {
-    // 트랙: 높이 40, radius.pill, 배경 surface-soft(2026-08-06 지정).
-    return Container(
-      key: const ValueKey('segmented-track'),
-      height: _kSegHeight,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // 선택 알약은 **하나뿐**이고 좌우로 미끄러진다(2026-08-06 요청). 칸마다 배경을
-          // 켜고 끄면 이동이 아니라 "사라졌다 나타나기"가 된다.
-          AnimatedAlign(
-            duration: _duration,
-            curve: Curves.easeOut,
-            alignment: _thumbAlignment,
-            child: FractionallySizedBox(
-              widthFactor: 1 / segments.length,
-              heightFactor: 1,
-              child: Container(
-                key: const ValueKey('segmented-thumb'),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              for (var i = 0; i < segments.length; i++)
-                Expanded(child: _segment(i)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 칸 i의 중심에 알약을 놓는 정렬값 — 칸이 하나뿐이면 가운데.
-  Alignment get _thumbAlignment {
-    if (segments.length < 2) return Alignment.center;
-    return Alignment(-1 + 2 * selectedIndex / (segments.length - 1), 0);
-  }
-
-  Widget _segment(int index) {
-    final selected = index == selectedIndex;
-    // 칸 자체는 배경이 없다(투명) — 배경은 위의 알약 하나가 맡는다.
-    // 글씨색은 AnimatedDefaultTextStyle이 보간해 fade처럼 바뀐다.
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onChanged(index),
-      child: Center(
-        child: AnimatedDefaultTextStyle(
-          duration: _duration,
-          curve: Curves.easeOut,
-          style: TextStyle(
-            fontFamily: AppTypography.fontFamily,
-            fontSize: 15,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: selected ? AppColors.onPrimary : AppColors.muted,
-          ),
-          child: Text(segments[index]),
-        ),
-      ),
     );
   }
 }
