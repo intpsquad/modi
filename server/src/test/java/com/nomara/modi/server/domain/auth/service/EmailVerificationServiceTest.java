@@ -3,6 +3,7 @@ package com.nomara.modi.server.domain.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
+import com.nomara.modi.server.domain.auth.client.EmailAttachment;
 import com.nomara.modi.server.domain.auth.client.EmailSender;
 import com.nomara.modi.server.global.exception.ApiException;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,13 @@ class EmailVerificationServiceTest {
       this.lastTo = to;
       this.lastPlainText = plainText;
       this.lastHtml = html;
+    }
+
+    @Override
+    public void sendNotification(
+        String to, String subject, String plainText, EmailAttachment attachment) {
+      // 인증코드는 이 경로를 쓰지 않는다(팀 알림 전용, #70). 잘못 불리면 조용히 지나가지 않게 터뜨린다.
+      throw new UnsupportedOperationException("인증코드는 send를 쓴다");
     }
   }
 

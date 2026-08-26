@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../config/env.dart';
 import '../../design/confirm_dialog.dart';
@@ -25,12 +25,9 @@ import '../shell/app_shell.dart';
 import '../shell/tab_activation.dart';
 
 typedef TokenLoader = Future<String> Function();
-typedef ContactEmailLauncher = Future<bool> Function(Uri uri);
 
-const _supportEmailAddress = 'modi.app.team@gmail.com';
-
-Future<bool> _launchContactEmail(Uri uri) =>
-    launchUrl(uri, mode: LaunchMode.externalApplication);
+// 문의 메일 주소·mailto 런처는 2026-08-26(#70)에 feedback_screen.dart로 옮겼다 —
+// 문의하기가 인앱 폼이 되면서 mailto는 그 화면의 전송 실패 폴백으로만 남는다.
 
 class SettingsApi {
   SettingsApi({
@@ -53,6 +50,35 @@ class SettingsApi {
     return UserProfile.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  /// 인앱 문의하기(#70). 서버는 **단일 multipart**로 받는다 — 스크린샷이 비공개 저장이라
+  /// 2단계 업로드로 URL을 먼저 받아 봐야 클라이언트가 쓸 데가 없다(`docs/api/feedback.md`).
+  Future<void> submitFeedback(
+    String idToken, {
+    required String type,
+    required String content,
+    String? replyEmail,
+    String? appVersion,
+    String? deviceInfo,
+    List<int>? imageBytes,
+  }) async {
+    final response = await _client.sendMultipart(
+      Uri.parse('$baseUrl/feedback'),
+      idToken: idToken,
+      fields: {
+        'type': type,
+        'content': content,
+        if (replyEmail != null && replyEmail.isNotEmpty)
+          'replyEmail': replyEmail,
+        'appVersion': ?appVersion,
+        'deviceInfo': ?deviceInfo,
+      },
+      fileField: imageBytes == null ? null : 'image',
+      bytes: imageBytes,
+      filename: imageBytes == null ? null : 'screenshot',
+    );
+    _checkOk(response, '문의 전송');
   }
 
   // 협업 캐릭터 조회(`GET /me/character`)는 2026-08-25(#68)에 여기서 제거했다 —
@@ -236,6 +262,7 @@ class UserProfile {
     this.profileImage,
     this.loginProvider,
     this.createdAt,
+    this.email,
   });
 
   final String userId;
@@ -252,12 +279,17 @@ class UserProfile {
   /// (docs/backend/my-page-handoff.md §1).
   final DateTime? createdAt;
 
+  /// 계정 이메일. 문의 폼(#70)의 회신 주소 프리필에 쓴다. 소셜 로그인은 제공사가 이메일을
+  /// 안 줄 수 있어(카카오 동의항목 등) **없을 수 있다** — 그때 폼은 빈 칸으로 두고 안내한다.
+  final String? email;
+
   UserProfile copyWith({String? nickname, String? profileImage}) => UserProfile(
     userId: userId,
     nickname: nickname ?? this.nickname,
     profileImage: profileImage ?? this.profileImage,
     loginProvider: loginProvider,
     createdAt: createdAt,
+    email: email,
   );
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -269,6 +301,7 @@ class UserProfile {
       final String s => DateTime.tryParse(s),
       _ => null,
     },
+    email: json['email'] as String?,
   );
 }
 
@@ -407,15 +440,13 @@ class SettingsScreen extends StatefulWidget {
     AppSession? session,
     RoomSession? roomSession,
     TabActivation? tabActivation,
-    ContactEmailLauncher? contactEmailLauncher,
     this.tokenLoader,
   }) : currentRoom = currentRoom ?? _currentRoom(roomSession ?? appRoomSession),
        authService = authService ?? AuthService(),
        api = api ?? SettingsApi(),
        session = session ?? appSession,
        roomSession = roomSession ?? appRoomSession,
-       tabActivation = tabActivation ?? appTabActivation,
-       contactEmailLauncher = contactEmailLauncher ?? _launchContactEmail;
+       tabActivation = tabActivation ?? appTabActivation;
 
   final RoomSummary? currentRoom;
   final AuthService authService;
@@ -423,7 +454,6 @@ class SettingsScreen extends StatefulWidget {
   final AppSession session;
   final RoomSession roomSession;
   final TabActivation tabActivation;
-  final ContactEmailLauncher contactEmailLauncher;
   final TokenLoader? tokenLoader;
 
   static RoomSummary? _currentRoom([RoomSession? roomSession]) {
@@ -446,6 +476,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int? _memberCount;
   bool _withdrawing = false;
 
+  /// '버전 정보' 타일 값. 2026-08-26(#70)까지 `'1.0.0'` 하드코딩이라 릴리스와 어긋날 수 있었다.
+  /// 읽기 전에는 '—'로 둔다(빈 문자열이면 타일이 비활성으로 보인다).
+  String _appVersion = '—';
+
   /// 마이 탭 재탭 시 맨 위로 스크롤(2026-08-09 QA, 홈과 같은 패턴)용 컨트롤러.
   final ScrollController _scrollController = ScrollController();
 
@@ -457,6 +491,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.roomSession.addListener(_onRoomSessionChanged);
     _loadProfileSummary();
     _loadMemberCount();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() => _appVersion = '${info.version}(${info.buildNumber})');
+      }
+    } catch (_) {
+      // 버전 표시는 보조 정보다 — 못 읽으면 '—'로 남는다.
+    }
   }
 
   @override
@@ -584,23 +630,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) this.context.go('/onboarding/intro');
   }
 
-  Future<void> _contact() async {
-    final recipient = Uri(scheme: 'mailto', path: _supportEmailAddress);
-    try {
-      final opened = await widget.contactEmailLauncher(recipient);
-      if (!opened && mounted) _showContactFallback();
-    } catch (_) {
-      if (mounted) _showContactFallback();
-    }
-  }
-
-  void _showContactFallback() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('메일 앱을 열 수 없어요. $_supportEmailAddress으로 직접 문의해 주세요.'),
-      ),
-    );
-  }
+  // 문의하기는 2026-08-26(#70)에 mailto: 딥링크에서 인앱 폼(/mypage/contact)으로 바뀌었다.
+  // mailto 폴백은 사라지지 않고 그 화면의 "전송 실패" 상태로 옮겨갔다(FeedbackScreen).
 
   Future<void> _openProfile() async {
     await context.push('/mypage/profile');
@@ -739,8 +770,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: '약관 · 정책',
                           onTap: () => context.push('/legal'),
                         ),
-                        _SettingsTile(title: '문의하기', onTap: _contact),
-                        const _SettingsTile(title: '버전 정보', trailing: '1.0.0'),
+                        _SettingsTile(
+                          title: '문의하기',
+                          onTap: () => context.push('/mypage/contact'),
+                        ),
+                        _SettingsTile(title: '버전 정보', trailing: _appVersion),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.base),

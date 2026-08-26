@@ -88,6 +88,18 @@ spring:
         # 자리에 두는 편이 "아카이브 파생 데이터를 뭐로 만드는가"를 한눈에 보기 좋아서다.
         embeddings-path: embeddings
 
+feedback:
+  # 인앱 문의하기(#70) 알림을 받을 팀 주소.
+  #
+  # 여기는 minio.endpoint/spring.mail.host와 달리 **기본값을 둔다.** 저 둘은 값의 존재 자체가
+  # @ConditionalOnProperty로 빈 생성을 가르는 스위치라 기본값이 조건을 항상 참으로 만들지만,
+  # 이건 그냥 문자열이라 그런 부작용이 없다. 오히려 기본값이 없으면 환경변수를 안 넣은 배포에서
+  # 컨텍스트가 안 뜬다(@Value 해석 실패) — 알림 주소 하나 때문에 서버가 죽는 건 과하다.
+  #
+  # 메일 발송 자체는 spring.mail.host가 있을 때만 동작한다(EmailConfig). 없으면 피드백은
+  # 저장되고 알림만 건너뛴다(FeedbackNotifier) — 제출을 잃지 않는 것이 우선이다.
+  notify-to: ${FEEDBACK_NOTIFY_TO:modi.app.team@gmail.com}
+
 minio:
   # 프로필 사진 등 이미지 업로드.
   #

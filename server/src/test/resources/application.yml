@@ -51,3 +51,8 @@ modi:
       # 값 자체는 테스트에서 안 쓴다(네트워크를 안 탄다) — InstagramUrlCrawler 빈이 뜨는 데만 필요하다.
       # 없으면 @Value 가 못 풀어 **컨텍스트 전체가 안 뜬다**(위 주석의 "여기에도 둬야 한다"가 그 뜻이다).
       doc-id: "0"
+
+# 같은 이유로 여기에도 둔다 — FeedbackNotifier 의 @Value 가 못 풀면 컨텍스트가 안 뜬다(#70).
+# 실주소를 쓰지 않는다: 테스트가 실수로 진짜 발송 경로를 타더라도 팀 메일함으로 가지 않게.
+feedback:
+  notify-to: team@example.test
