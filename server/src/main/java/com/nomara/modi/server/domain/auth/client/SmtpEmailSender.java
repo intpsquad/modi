@@ -6,6 +6,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -46,6 +47,31 @@ public class SmtpEmailSender implements EmailSender {
       mailSender.send(message);
     } catch (MailException | MessagingException e) {
       log.warn("이메일 발송 실패: {}", to, e);
+      throw new BadGatewayException("이메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요", e);
+    }
+  }
+
+  @Override
+  public void sendNotification(
+      String to, String subject, String plainText, EmailAttachment attachment) {
+    try {
+      MimeMessage message = mailSender.createMimeMessage();
+      // multipart=true는 첨부가 있을 때만 필요하지만, 분기해도 얻는 게 없어 항상 켠다.
+      MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+      helper.setFrom(from);
+      helper.setTo(to);
+      helper.setSubject(subject);
+      // 평문만 — 팀이 읽는 내부 알림이라 HTML 대체본도 로고도 필요 없다.
+      helper.setText(plainText, false);
+      if (attachment != null) {
+        helper.addAttachment(
+            attachment.filename(),
+            new ByteArrayResource(attachment.content()),
+            attachment.contentType());
+      }
+      mailSender.send(message);
+    } catch (MailException | MessagingException e) {
+      log.warn("알림 이메일 발송 실패: {}", to, e);
       throw new BadGatewayException("이메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요", e);
     }
   }

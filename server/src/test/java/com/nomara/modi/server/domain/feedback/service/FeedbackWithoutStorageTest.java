@@ -35,6 +35,16 @@ class FeedbackWithoutStorageTest {
   @Autowired private FeedbackRepository feedbackRepository;
 
   @Test
+  void submitSucceedsWhenMailIsNotConfiguredEither() {
+    // spring.mail.host가 없어 EmailSender 빈 자체가 없는 환경(로컬/CI). 인증코드는 이때 503을
+    // 던지지만 피드백은 아니다 — 메일을 못 보낸다고 사용자의 제보를 거절할 이유가 없다.
+    var response =
+        feedbackService.submit("uid-1", FeedbackType.SUGGESTION, "제안", null, null, null, null);
+
+    assertThat(feedbackRepository.findById(response.id())).isPresent();
+  }
+
+  @Test
   void submitWithoutImageSucceedsEvenWhenStorageIsNotConfigured() {
     // 스크린샷이 없으면 스토리지를 아예 건드리지 않으므로 제출은 정상이어야 한다.
     var response =
