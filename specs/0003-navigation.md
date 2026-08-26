@@ -46,6 +46,9 @@
     /mypage/notification-history  S-41 알림 내역   ※ 하위 페이지 = 루트 네비게이터(네비바 없음).
                              홈 알림 벨의 진입지가 2026-08-09 `/mypage/notifications`(알림 설정)에서
                              이관됨 — 설정 화면 자체는 그대로 마이페이지 메뉴에서 접근. `specs/0017`.
+    /mypage/contact          문의하기(인앱 피드백 폼) ※ 하위 페이지 = 루트 네비게이터(네비바 없음).
+                             2026-08-26 #70 신설 — 그전엔 라우트 없이 `mailto:` 딥링크로 OS 메일 앱을
+                             열었다. mailto 는 이 화면의 **전송 실패 폴백**으로 남아 있다.
 
 /room/create                 S-10  → (성공) /room/create/invite
   /room/create/invite        S-10-A 초대코드 생성/공유
