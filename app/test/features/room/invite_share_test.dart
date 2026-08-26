@@ -64,13 +64,28 @@ void main() {
 
   testWidgets('"더보기"를 탭하면 OS 공유 시트로 초대 문구가 전달된다', (tester) async {
     final s = spies();
-    await pumpScreen(
-      tester,
-      copied: s.copied,
-      shared: s.shared,
-      launched: s.launched,
-      kakaoInvites: s.kakaoInvites,
+    final origins = <Rect?>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InviteShareScreen(
+          roomId: 1,
+          roomName: '여름 알고리즘 스터디',
+          coverImage: 'https://storage.test/room-cover.jpg',
+          inviteCode: 'ABC123',
+          copy: (text) async => s.copied.add(text),
+          shareInvite: (text, {sharePositionOrigin}) async {
+            s.shared.add(text);
+            origins.add(sharePositionOrigin);
+          },
+          shareKakao: (invite) async => s.kakaoInvites.add(invite),
+          launchApp: (url) async {
+            s.launched.add(url);
+            return true;
+          },
+        ),
+      ),
     );
+    await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('더보기'));
     await tester.tap(find.text('더보기'));
@@ -78,6 +93,11 @@ void main() {
 
     expect(s.shared, hasLength(1));
     expect(s.shared.single, contains('ABC123'));
+    // iOS 네이티브(share_plus)는 앵커 rect가 비어 있으면(CGRectZero) 시트를 띄우지 않고
+    // 에러를 돌려준다(iPhone도 해당) — 항상 비어 있지 않은 rect를 넘겨야 한다.
+    expect(origins, hasLength(1));
+    expect(origins.single, isNotNull);
+    expect(origins.single!.isEmpty, isFalse);
   });
 
   testWidgets('"카카오톡"을 탭하면 SDK 템플릿에 방 초대 데이터를 전달한다', (tester) async {

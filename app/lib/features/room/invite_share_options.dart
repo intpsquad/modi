@@ -58,7 +58,8 @@ class _InviteShareOptionsSheet extends StatelessWidget {
     Navigator.of(sheetContext).pop();
     try {
       await shareKakao(invite);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('카카오톡 공유를 열지 못했어요: $error');
       _showMessage('카카오톡 공유를 열지 못했어요. 다시 시도해 주세요.');
     }
   }
@@ -76,16 +77,20 @@ class _InviteShareOptionsSheet extends StatelessWidget {
             ? '초대 코드를 복사했어요. 인스타그램 DM에서 붙여넣어 주세요.'
             : '초대 코드는 복사됐어요. 인스타그램을 열지 못했으니 DM에 붙여넣어 주세요.',
       );
-    } catch (_) {
+    } catch (error) {
+      debugPrint('초대 코드를 복사하지 못했어요: $error');
       _showMessage('초대 코드를 복사하지 못했어요. 다시 시도해 주세요.');
     }
   }
 
   Future<void> _runMore(BuildContext sheetContext) async {
+    // sheetContext는 pop 직후 죽으므로, 시트를 띄운 화면의 hostContext로 앵커를 구한다.
+    final origin = inviteShareOrigin(hostContext);
     Navigator.of(sheetContext).pop();
     try {
-      await shareInvite(invite.message);
-    } catch (_) {
+      await shareInvite(invite.message, sharePositionOrigin: origin);
+    } catch (error) {
+      debugPrint('공유하기를 열지 못했어요: $error');
       _showMessage('공유하기를 열지 못했어요. 다시 시도해 주세요.');
     }
   }

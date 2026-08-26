@@ -78,13 +78,12 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
 
   Future<void> _shareSheet() async {
     try {
-      // iOS(iPad) 공유 시트 팝오버 앵커 — 트리거 화면 영역을 넘긴다(iPhone/안드로이드는 무시).
-      final box = context.findRenderObject() as RenderBox?;
-      final origin = box != null && box.hasSize
-          ? box.localToGlobal(Offset.zero) & box.size
-          : null;
-      await widget.shareInvite(_message, sharePositionOrigin: origin);
-    } catch (_) {
+      await widget.shareInvite(
+        _message,
+        sharePositionOrigin: inviteShareOrigin(context),
+      );
+    } catch (error) {
+      debugPrint('공유하기를 열지 못했어요: $error');
       _showMessage('공유하기를 열지 못했어요. 다시 시도해 주세요.');
     }
   }

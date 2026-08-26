@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:share_plus/share_plus.dart';
@@ -51,13 +52,31 @@ String buildInviteMessage({required String code, String? roomName}) {
 }
 
 /// 기본 구현 — OS 공유 시트를 띄운다.
-/// 주의: iPad는 popover 위치(`sharePositionOrigin`)가 없으면 예외가 날 수 있다.
-/// 현재는 폰 타깃이라 생략했고, iPad 지원 시 호출부에서 버튼 Rect를 넘겨야 한다.
-/// OS 네이티브 공유 시트. iOS(특히 iPad)에선 팝오버 앵커([sharePositionOrigin]) 없이
-/// 호출하면 시트가 안 뜨거나 예외가 나므로, 트리거 위치를 넘긴다(2026-08-07 iOS에서
-/// 공유하기 안 열리던 문제 대응). share_plus 10.x API.
+/// 주의: [sharePositionOrigin]이 비어 있으면(`CGRectZero`) iOS 네이티브가 팝오버 앵커를
+/// 잡지 못해 시트를 아예 띄우지 않고 에러를 돌려준다 — **iPad 전용이 아니라 iPhone도
+/// 해당**(`UIActivityViewController.popoverPresentationController`는 기기 종류와 무관하게
+/// non-nil이다). 호출부는 항상 [inviteShareOrigin]으로 구한 rect를 넘겨야 한다
+/// (2026-08-07 iOS에서 공유하기 안 열리던 문제 대응 — 그때 S-10-A 화면 경로만 고치고
+/// 설정 시트(더보기) 경로를 빠뜨려 2026-08-26 같은 증상이 재발했다).
+/// OS 네이티브 공유 시트. share_plus 10.x API.
 Future<void> shareInviteText(String text, {Rect? sharePositionOrigin}) =>
     Share.share(text, sharePositionOrigin: sharePositionOrigin);
+
+/// [shareInviteText] 팝오버 앵커. [context]의 렌더 박스를 화면 좌표로 변환해 넘기고,
+/// 아직 레이아웃이 안 잡혀 있으면(드물게 시트 pop 직후 등) 화면 전체 rect로 대신한다 —
+/// `null`이나 빈 rect를 넘기면 iOS에서 시트가 아예 안 뜨므로(위 [shareInviteText] 참고)
+/// 항상 비어 있지 않은 값을 돌려준다.
+Rect? inviteShareOrigin(BuildContext context) {
+  final box = context.findRenderObject() as RenderBox?;
+  if (box != null && box.hasSize) {
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+  final mediaSize = MediaQuery.maybeSizeOf(context);
+  if (mediaSize != null && mediaSize.width > 0 && mediaSize.height > 0) {
+    return Offset.zero & mediaSize;
+  }
+  return null;
+}
 
 /// 기본 구현 — 클립보드에 복사한다.
 Future<void> copyToClipboard(String text) =>
