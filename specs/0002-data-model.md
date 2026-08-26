@@ -176,6 +176,15 @@
 - **보존 90일** — `UserActivityRetentionScheduler`가 매일 새벽(`@Scheduled(cron)`, 기본 04:00 KST) 90일 지난 행을 삭제한다(`specs/OPEN.md`에 확정 근거).
 - 인덱스: `(user_id, created_at DESC)` — 최근 N일 집계 쿼리(캐릭터 판정)가 이 순서로 스캔한다.
 
+### feedback  (인앱 문의, `V30__create_feedback.sql`, 2026-08-26, #70)
+- `id`, `user_id`(nullable), `type`(VARCHAR(20) — `FeedbackType` 3종: `BUG`·`QUESTION`·`SUGGESTION`), `content`(TEXT), `reply_email`(nullable), `app_version`(nullable), `device_info`(nullable), `image_key`(nullable), `created_at`.
+- 문의하기가 `mailto:` 딥링크에서 인앱 폼(`/mypage/contact`)으로 바뀌면서 생겼다 — 그전에는 서버에 아무 기록이 없었다(`specs/0012-설정.md`).
+- **`user_id`는 탈퇴 시 `ON DELETE SET NULL`**(사용자 확정 2026-08-25). `V9__account_deletion_cascades.sql`가 "공유 콘텐츠는 SET NULL / 개인 활동 기록은 CASCADE"로 갈라놨는데 피드백은 둘 중 어느 쪽도 아니다 — 다른 사용자와 공유하지 않지만 **팀이 처리해야 하는 제보**라, 제보자가 탈퇴했다고 미해결 버그 기록이 사라지면 안 된다. 대신 개인정보인 `reply_email`은 `UserService.withdrawAppData`가 유저 행 삭제 **전에** 명시적으로 NULL로 지운다(FK SET NULL은 `user_id`만 비운다).
+- `image_key`는 **URL이 아니라 오브젝트 키**다. 스크린샷에는 개인정보가 담길 수 있어 `rooms/cover/*`처럼 공개 읽기로 열지 않는다(버킷 정책 미변경) — 공개 URL이 존재하지 않으므로 키만 남기고, 팀에게는 알림 메일에 **바이트를 첨부**해 보낸다.
+- 저장이 진실이고 알림 메일은 부가물이다 — 발송이 실패하거나 SMTP 미설정으로 `EmailSender` 빈이 없어도 행은 남는다(`FeedbackService`). 인증코드(`EmailVerificationService`)가 발송을 먼저 하는 것과 **반대 순서**다.
+- **보존 기간 미정** — `user_activity`·`notifications`의 90일 선례가 있지만 피드백은 처리 이력이라 성격이 달라 정하지 않았다(`specs/OPEN.md`). 정해지기 전까지 삭제 배치를 만들지 않는다.
+- 인덱스: `(created_at DESC)` — 운영자가 최근 제보부터 훑는 경로뿐이다(조회 API 없음).
+
 ### notifications  (알림 내역, `V24__create_notifications.sql`, 2026-08-09, S-41)
 - `id`, `user_id`(수신자), `type`(VARCHAR(32) — `PushType` 이름 그대로, `specs/0015-알림-트리거.md`의 발송 트리거 7종과 1:1), `room_id`(nullable), `title`, `body`, `read_at`(nullable — null이면 안읽음), `created_at`.
 - **발송 시점에 실제로 쓰인 title/body 문자열을 그대로 스냅샷 저장**한다 — 나중에 문구가 바뀌어도 과거 기록은 그때 실제로 보낸 문구를 유지한다(구조화 재구성이 아니라 사실 기록).
@@ -193,7 +202,7 @@
 
 ## 삭제 정책
 - **방 삭제 = DB 레벨 CASCADE.** room_id를 참조하는 모든 하위 테이블(room_members, invite_codes, categories, todos→todo_assignees/todo_tags, schedules, archive_folders→archive_items→archive_item_tags/archive_likes/archive_item_comments, pokes, todo_suggestion_exposures, activities, user_activity)은 `ON DELETE CASCADE`로 방과 함께 삭제된다. **예외: `notifications.room_id`는 `ON DELETE SET NULL`** — 방이 삭제돼도 개인 알림 기록 자체는 남긴다(위 `notifications` 참고).
-- `todos.created_by`/`schedules.created_by`/`activities.actor_user_id`/`activities.target_user_id`/`archive_item_comments.author_user_id`는 작성자 탈퇴 시 `ON DELETE SET NULL`(공유 콘텐츠는 남기고 참조만 지움, `archive_items.created_by`와 같은 규칙). `user_activity.user_id`/`notifications.user_id`는 반대로 **CASCADE**(개인 로그·개인 기록이라 본인 탈퇴 시 함께 사라짐).
+- `todos.created_by`/`schedules.created_by`/`activities.actor_user_id`/`activities.target_user_id`/`archive_item_comments.author_user_id`는 작성자 탈퇴 시 `ON DELETE SET NULL`(공유 콘텐츠는 남기고 참조만 지움, `archive_items.created_by`와 같은 규칙). `user_activity.user_id`/`notifications.user_id`는 반대로 **CASCADE**(개인 로그·개인 기록이라 본인 탈퇴 시 함께 사라짐). `feedback.user_id`는 **SET NULL** — 공유 콘텐츠는 아니지만 팀이 처리해야 하는 제보라 탈퇴로 사라지면 안 된다(위 `feedback` 참고). 이때 개인정보인 `reply_email`은 FK가 지워주지 않으므로 `UserService.withdrawAppData`가 코드로 함께 비운다.
 - `todos.category_id`는 카테고리 삭제 시 `ON DELETE SET NULL`(투두는 독립 ToDo로 남음, 스펙상 category_id nullable과 일치).
 - 방을 언제 삭제할지(마지막 멤버 퇴장 후 즉시 vs 유예 기간 뒤 배치 등)는 **미확정** — `specs/OPEN.md` 참고 (2026-07-23).
 
@@ -249,4 +258,5 @@ erDiagram
   users ||--o{ user_activity : does
   rooms ||--o{ notifications : logs
   users ||--o{ notifications : receives
+  users ||--o{ feedback : submits
 ```

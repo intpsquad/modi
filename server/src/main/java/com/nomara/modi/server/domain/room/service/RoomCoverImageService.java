@@ -3,6 +3,7 @@ package com.nomara.modi.server.domain.room.service;
 import com.nomara.modi.server.domain.room.dto.CoverImageResponse;
 import com.nomara.modi.server.global.exception.BadRequestException;
 import com.nomara.modi.server.global.exception.ServiceUnavailableException;
+import com.nomara.modi.server.global.storage.ImageType;
 import com.nomara.modi.server.global.storage.ObjectStorage;
 import java.io.IOException;
 import java.util.Optional;
@@ -51,57 +52,5 @@ public class RoomCoverImageService {
     String objectKey = "rooms/cover/" + UUID.randomUUID() + "." + imageType.extension();
     storage.put(objectKey, content, imageType.contentType());
     return new CoverImageResponse(storage.publicUrl(objectKey));
-  }
-
-  private enum ImageType {
-    JPEG("jpg", "image/jpeg"),
-    PNG("png", "image/png"),
-    WEBP("webp", "image/webp");
-
-    private final String extension;
-    private final String contentType;
-
-    ImageType(String extension, String contentType) {
-      this.extension = extension;
-      this.contentType = contentType;
-    }
-
-    String extension() {
-      return extension;
-    }
-
-    String contentType() {
-      return contentType;
-    }
-
-    static Optional<ImageType> sniff(byte[] bytes) {
-      if (startsWith(bytes, 0xFF, 0xD8, 0xFF)) {
-        return Optional.of(JPEG);
-      }
-      if (startsWith(bytes, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)) {
-        return Optional.of(PNG);
-      }
-      if (bytes.length >= 12
-          && startsWith(bytes, 'R', 'I', 'F', 'F')
-          && bytes[8] == 'W'
-          && bytes[9] == 'E'
-          && bytes[10] == 'B'
-          && bytes[11] == 'P') {
-        return Optional.of(WEBP);
-      }
-      return Optional.empty();
-    }
-
-    private static boolean startsWith(byte[] bytes, int... signature) {
-      if (bytes.length < signature.length) {
-        return false;
-      }
-      for (int i = 0; i < signature.length; i++) {
-        if ((bytes[i] & 0xFF) != signature[i]) {
-          return false;
-        }
-      }
-      return true;
-    }
   }
 }

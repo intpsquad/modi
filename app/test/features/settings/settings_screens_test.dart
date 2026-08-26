@@ -193,46 +193,36 @@ void main() {
     expect(find.text('연결됨'), findsNothing);
   });
 
-  testWidgets('문의하기는 지정된 지원 메일 작성 화면을 연다', (tester) async {
-    Uri? launchedUri;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SettingsScreen(
-          api: _FakeSettingsApi(),
-          tokenLoader: () async => 'token',
-          contactEmailLauncher: (uri) async {
-            launchedUri = uri;
-            return true;
-          },
+  testWidgets('문의하기는 메일 앱이 아니라 인앱 폼(/mypage/contact)으로 이동한다', (tester) async {
+    // 2026-08-26 #70 — mailto: 딥링크를 인앱 폼으로 교체했다. mailto는 사라진 게 아니라
+    // 그 화면의 전송 실패 폴백으로 옮겨갔다(feedback_screen_test.dart가 검증).
+    final router = GoRouter(
+      initialLocation: '/mypage',
+      routes: [
+        GoRoute(
+          path: '/mypage',
+          builder: (context, state) => SettingsScreen(
+            api: _FakeSettingsApi(),
+            tokenLoader: () async => 'token',
+          ),
+          routes: [
+            GoRoute(
+              path: 'contact',
+              builder: (context, state) =>
+                  const Scaffold(body: Center(child: Text('CONTACT_FORM'))),
+            ),
+          ],
         ),
-      ),
+      ],
     );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
     await _tapSettingsTile(tester, '문의하기');
     await tester.pumpAndSettle();
 
-    expect(launchedUri, Uri(scheme: 'mailto', path: 'modi.app.team@gmail.com'));
-  });
-
-  testWidgets('메일 앱을 열 수 없으면 지원 메일 주소를 안내한다', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SettingsScreen(
-          api: _FakeSettingsApi(),
-          tokenLoader: () async => 'token',
-          contactEmailLauncher: (_) async => false,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await _tapSettingsTile(tester, '문의하기');
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('메일 앱을 열 수 없어요'), findsOneWidget);
-    expect(find.textContaining('modi.app.team@gmail.com'), findsOneWidget);
+    expect(find.text('CONTACT_FORM'), findsOneWidget);
   });
 
   testWidgets('마지막 멤버의 방 나가기 확인창은 방 삭제를 함께 경고한다', (tester) async {
