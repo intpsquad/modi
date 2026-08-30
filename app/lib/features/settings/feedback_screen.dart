@@ -204,8 +204,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('문의를 보냈어요')));
       Navigator.of(context).pop();
-    } catch (_) {
+    } catch (error) {
       // 전송이 막혀도 문의 자체를 포기하게 두지 않는다 — mailto가 마지막 통로다(#70).
+      // 원인은 화면에 드러내지 않되 로그에는 남긴다 — 옛 `catch (_)` 는 404 인지 인증
+      // 실패인지조차 남기지 않아, 서버를 직접 찔러보기 전에는 알 수 없었다(#76).
+      debugPrint('문의 전송 실패: $error');
       if (mounted) {
         setState(() => _error = '문의를 보내지 못했어요. 잠시 후 다시 시도해 주세요');
       }
@@ -217,9 +220,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   Future<void> _openMailFallback() async {
     final launcher = widget.contactEmailLauncher;
     if (launcher == null) return;
-    final opened = await launcher(
-      Uri(scheme: 'mailto', path: supportEmailAddress),
-    );
+    var opened = false;
+    try {
+      opened = await launcher(Uri(scheme: 'mailto', path: supportEmailAddress));
+    } catch (error) {
+      // launchUrl 은 처리할 앱이 없을 때 false 를 돌려주기도 하고 예외를 던지기도 한다.
+      // 던지는 쪽에서는 안내조차 못 띄운 채 아무 일도 일어나지 않았다(#76, iOS
+      // 시뮬레이터에 메일 앱이 없을 때 실측). 여기서 흡수해 아래 안내로 보낸다.
+      debugPrint('mailto 실행 실패: $error');
+    }
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
