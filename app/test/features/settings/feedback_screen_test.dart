@@ -227,6 +227,29 @@ void main() {
 
     expect(find.textContaining(supportEmailAddress), findsOneWidget);
   });
+
+  testWidgets('메일 앱 실행이 예외를 던져도 주소를 직접 안내한다', (tester) async {
+    // launchUrl 은 처리할 앱이 없을 때 false 를 돌려주기도 하지만 예외를 던지기도 한다
+    // (iOS 시뮬레이터에 메일 앱이 없을 때 실측, #76). 위 테스트는 false 만 덮고 있어서,
+    // 예외 경로에서는 안내조차 못 띄운 채 아무 일도 일어나지 않았다.
+    await pump(
+      tester,
+      _FakeFeedbackApi(failing: true),
+      launcher: (_) async => throw Exception('no mail app'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('feedback-content-field')),
+      '내용',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('feedback-submit-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('feedback-mail-fallback')));
+    await tester.pump();
+
+    expect(find.textContaining(supportEmailAddress), findsOneWidget);
+  });
 }
 
 class _FakeFeedbackApi extends SettingsApi {
