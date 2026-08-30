@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 #
 # ⚠️ 빌드 번호(`+6`)는 **App Store Connect 에 올린 순간** 소모된다 — 거절당한 업로드도
 # 소모한다(2026-08-14 `-19232` 실측). 여기서 올려 두는 것만으로는 아무것도 소모되지 않는다.
-version: 1.0.1+6
+version: 1.0.1+7
 
 environment:
   sdk: ^3.12.2
