@@ -348,7 +348,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   }
 }
 
-/// 스크린샷 첨부 — 없으면 점선 추가 버튼, 있으면 썸네일 + 삭제.
+/// 스크린샷 첨부 — 없으면 아웃라인 박스, 있으면 썸네일 + 삭제.
 class _ScreenshotField extends StatelessWidget {
   const _ScreenshotField({
     required this.bytes,
@@ -366,11 +366,36 @@ class _ScreenshotField extends StatelessWidget {
   Widget build(BuildContext context) {
     final picked = bytes;
     if (picked == null) {
-      return OutlinedButton.icon(
-        key: const ValueKey('feedback-add-screenshot'),
-        onPressed: enabled ? onPick : null,
-        icon: const Icon(Icons.image_outlined, size: AppSpacing.base),
-        label: const Text('스크린샷 첨부 (선택)'),
+      // design.md §7 「이미지 추가」 규격 — surface + border 1px, radius.card, 높이 62.
+      // 스타일 없는 OutlinedButton 은 Secondary 테마(foreground 검정 테두리·높이 48)를
+      // 받아 주변 입력 필드보다 과하게 무거웠다(#77). 형태는 todo_form_sheet.dart 와
+      // archive_item_register_sheet.dart 의 `_ImageAddBox` 와 맞춘다 — 탭 리플 없음.
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onPick : null,
+        child: Container(
+          key: const ValueKey('feedback-add-screenshot'),
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.border),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Text(
+                '스크린샷 첨부 (선택)',
+                style: AppTypography.title.copyWith(
+                  color: AppColors.foreground,
+                ),
+              ),
+              const Spacer(),
+              const Icon(Icons.add, size: 20, color: AppColors.muted),
+            ],
+          ),
+        ),
       );
     }
     return Row(
