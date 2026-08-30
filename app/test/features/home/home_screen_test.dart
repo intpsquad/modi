@@ -187,6 +187,52 @@ void main() {
     expect(find.text('모아보기'), findsOneWidget);
   });
 
+  testWidgets('아바타 줄 맨 끝 초대 버튼을 누르면 초대 시트가 열린다', (tester) async {
+    // #81 — 초대 진입점이 마이페이지뿐이라 불편하다는 의견. 홈에서 바로 연다.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: _FakeHomeApi(dashboard: _dashboard()),
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          inviteCodeLoader: (roomId) async => 'ABC123',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final button = find.byKey(const ValueKey('home-invite-button'));
+    expect(button, findsOneWidget);
+
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+
+    expect(find.text('팀원 초대하기'), findsOneWidget);
+    expect(find.text('ABC123'), findsOneWidget);
+    expect(find.text('코드 복사'), findsOneWidget);
+    expect(find.text('외부로 공유하기'), findsOneWidget);
+  });
+
+  testWidgets('초대 코드를 못 불러오면 시트가 재시도를 준다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: _FakeHomeApi(dashboard: _dashboard()),
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          inviteCodeLoader: (roomId) async => throw Exception('boom'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('home-invite-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('불러오지 못했어요'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invite-sheet-retry')), findsOneWidget);
+  });
+
   /// 홈 활동 피드(2026-08-06, docs/backend/home-activity-feed.md)가 실제로 배너에 뜨는지 —
   /// 진행률·D-day를 만들지 않도록 마감이 지난 방을 써서 활동 이벤트가 배너의 첫 문구가 되게 한다.
   testWidgets('대시보드 activities가 있으면 활동 배너에 그 문구가 보인다', (tester) async {
