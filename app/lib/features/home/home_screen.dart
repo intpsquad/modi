@@ -16,6 +16,8 @@ import '../todos/todo_sync.dart';
 import '../todos/todos_api.dart' show TodoNotAssigneeException;
 import 'activity_banner.dart';
 import 'archive_carousel.dart';
+import '../room/invite_share_body.dart';
+import '../settings/settings_screens.dart' show SettingsApi;
 import 'avatar_progress_ring.dart';
 import 'home_coach_anchors.dart';
 import 'home_api.dart';
@@ -24,6 +26,9 @@ import 'week_calendar.dart';
 
 /// S-04 홈 대시보드 — specs/0005-홈-대시보드.md.
 /// "현재 방" 해석·전환은 [RoomSession](specs/0008-방-전환.md) 참고.
+/// 방 초대 코드를 가져오는 경계(#81).
+typedef HomeInviteCodeLoader = Future<String> Function(int roomId);
+
 class HomeScreen extends StatefulWidget {
   HomeScreen({
     super.key,
@@ -33,12 +38,16 @@ class HomeScreen extends StatefulWidget {
     TodoSync? todoSync,
     TabActivation? tabActivation,
     NotificationsApi? notificationsApi,
+    this.inviteCodeLoader,
   }) : api = api ?? HomeApi(),
        authService = authService ?? AuthService(),
        roomSession = roomSession ?? appRoomSession,
        todoSync = todoSync ?? appTodoSync,
        tabActivation = tabActivation ?? appTabActivation,
        notificationsApi = notificationsApi ?? NotificationsApi();
+
+  /// 초대 코드 조회 경계 — null 이면 서버에서 가져온다(테스트에서 고정값 주입).
+  final HomeInviteCodeLoader? inviteCodeLoader;
 
   final HomeApi api;
   final AuthService authService;
@@ -262,6 +271,26 @@ class _HomeScreenState extends State<HomeScreen> {
     // 체크: 화면엔 체크(진행률 +1)로 두고 2초 뒤 커밋 예약.
     setState(() => _data = _withDoneDelta(data, 1));
     _pending.schedule(todo.id, () => _commitCompletion(todo));
+  }
+
+  /// 아바타 줄 맨 끝 `+` — 초대 시트를 연다(#81).
+  ///
+  /// 방 생성 직후 화면(S-10-A)과 **같은 본문**을 쓴다. 코드는 홈에 없으므로 열 때 받아온다.
+  Future<void> _openInviteSheet() async {
+    final roomId = _roomId;
+    if (roomId == null) return;
+    final loader = widget.inviteCodeLoader ?? _fetchInviteCode;
+    await showInviteSheet(
+      context: context,
+      roomId: roomId,
+      codeLoader: () => loader(roomId),
+      roomName: _data?.room.name,
+    );
+  }
+
+  Future<String> _fetchInviteCode(int roomId) async {
+    final idToken = await widget.authService.getIdToken();
+    return SettingsApi().fetchInviteCode(idToken, roomId);
   }
 
   /// 2초 뒤(또는 flush로) 실제 서버 반영 — 성공하면 목록에서 빼고 다른 화면에 동기화한다.
@@ -488,11 +517,15 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.content),
-        itemCount: ranked.length,
+        // +1 = 맨 끝 초대 버튼(#81). 진행률 정렬 밖이고 줄과 함께 스크롤된다.
+        itemCount: ranked.length + 1,
         // 아바타 사이 간격 — 12(md)에서 8(sm)로 좁힘(2026-08-09 QA).
         separatorBuilder: (context, index) =>
             const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
+          if (index == ranked.length) {
+            return _InviteAvatarButton(onTap: _openInviteSheet);
+          }
           final member = ranked[index].member;
           final isSelf = member.userId == myId;
           final rank = ranked[index].rank;
@@ -1120,6 +1153,57 @@ class _TodoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 아바타 줄 맨 끝 초대 버튼(#81) — 아바타와 같은 64px 원.
+///
+/// 진행률 링·메달이 없고 정렬 밖이다. 크기를 40(design.md 원형 아이콘 버튼)이 아니라
+/// 64로 맞춘 것은 줄 안에 섞여야 하기 때문이다 — 세로 구조(원 + 라벨)도 아바타와 같다.
+class _InviteAvatarButton extends StatelessWidget {
+  const _InviteAvatarButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 72,
+      child: GestureDetector(
+        key: const ValueKey('home-invite-button'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 70,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceStrong,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    size: 28,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '초대',
+              style: AppTypography.caption.copyWith(color: AppColors.muted),
+            ),
+          ],
+        ),
       ),
     );
   }
