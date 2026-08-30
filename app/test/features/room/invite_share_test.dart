@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:app/features/room/invite_share.dart';
 import 'package:app/features/room/invite_share_screen.dart';
 import 'package:flutter/material.dart';
@@ -283,6 +285,71 @@ void main() {
       expect(
         buildInviteMessage(code: 'ABC123', roomName: '   '),
         contains('우리 방'),
+      );
+    });
+  });
+
+  /// 초대 카드가 가리키는 주소는 **앱이 만들고 서버(Caddy)가 연다.** 두 벌이 어긋나면
+  /// 카드를 눌러도 아무 페이지가 없는데, 앱 코드만 봐서는 알아챌 방법이 없다 —
+  /// 실제로 그렇게 카드가 죽어 있었다(2026-08-31 #74: `/room/join` 이 404 였다).
+  ///
+  /// 웹 약관 페이지를 앱 본문과 대조하는 `legal_web_sync_test.dart` 와 같은 이유·같은
+  /// 방식으로 여기서 잡는다. `flutter test` 는 `app/` 에서 도니 저장소 루트는 `../` 다.
+  group('초대 웹 페이지', () {
+    File repoFile(String path) => File('../$path');
+
+    /// 🔴 **느슨하게 비교하지 말 것.** 처음엔 `contains('path /room/join')` 하나였는데,
+    /// 세 가지 뮤테이션이 전부 초록이었다(2026-08-31 리뷰가 실제로 돌려 증명):
+    ///  ① 경로를 `/room/join2` 로 → 부분 문자열이라 그대로 걸린다
+    ///  ② `route` 본문을 통째로 삭제 → 핸들러 없는 고아 matcher 는 Caddy 문법 오류가 아니다
+    ///  ③ 본문만 따로 `contains('rewrite * /join.html')` 로 봐도 → **maramodi.cloud 블록에
+    ///     같은 줄이 있어** api 쪽을 지워도 통과한다
+    /// 셋 다 #74(카드를 눌러도 페이지가 없음)를 그대로 재현한다. 그래서 **matcher 줄과 바로
+    /// 뒤따르는 route 블록을 한 덩어리로** 본다.
+    test('앱이 만드는 초대 주소의 경로를 Caddy 가 열어 준다', () {
+      final path = buildInviteWebUrl('K7QP2X').path;
+      final caddyfile = repoFile('deploy/Caddyfile');
+      expect(caddyfile.existsSync(), isTrue, reason: '${caddyfile.path} 가 없다');
+      final escaped = RegExp.escape(path);
+
+      expect(
+        caddyfile.readAsStringSync(),
+        matches(
+          RegExp(
+            // 끝 슬래시 변형(`/room/join/`)을 함께 적는 것은 허용하되, `/room/join2` 처럼
+            // 이어 붙인 다른 경로는 걸러야 하므로 줄 끝까지 고정한다.
+            '@join\\s+path\\s+$escaped(\\s+$escaped/)?\\s*\\n'
+            // 그 matcher 를 실제로 쓰는 route 블록이 붙어 있고, 그 안에서 초대 페이지로 간다.
+            // `[^}]` 라 블록을 벗어나 다른 블록의 같은 줄을 주워오지 못한다.
+            r'\s*route\s+@join\s*\{[^}]*?rewrite\s+\*\s+/join\.html',
+          ),
+        ),
+        reason:
+            'buildInviteWebUrl 이 만드는 경로($path)를 deploy/Caddyfile 의 초대 페이지 라우트가 '
+            '열어 주지 않는다. 카톡 초대 카드를 눌러도 페이지가 없다.',
+      );
+    });
+
+    /// 🔴 **주석을 걷어내고 본다.** 처음엔 파일 전체에서 `inviteCode` 를 찾았는데,
+    /// 실제 코드에서 `params.get('inviteCode')` 를 지워도 **머리말 주석에 그 단어가 있어**
+    /// 초록이었다(2026-08-31 리뷰). 그 상태면 카톡이 보낸 모든 링크가 "코드가 없어요" 가 된다.
+    test('초대 페이지가 앱이 보내는 이름으로 코드를 읽는다', () {
+      final page = repoFile('deploy/site/join.html');
+      expect(
+        page.existsSync(),
+        isTrue,
+        reason: '${page.path} 가 없다. 카톡 초대 카드가 여는 페이지다.',
+      );
+
+      final withoutComments = page
+          .readAsStringSync()
+          .replaceAll(RegExp(r'<!--.*?-->', dotAll: true), '')
+          .replaceAll(RegExp(r'^\s*//.*$', multiLine: true), '');
+
+      expect(
+        withoutComments,
+        contains("params.get('inviteCode')"),
+        reason: '앱은 초대 코드를 ?inviteCode= 로 넘긴다 — 페이지가 그 이름을 읽어야 한다.',
       );
     });
   });

@@ -295,7 +295,7 @@ docker compose up -d          # 로컬 PostgreSQL(5432, modi/modi/modi) + Redis(
 
 | 파일 (서버 경로) | 용도 | 준비 방법 |
 |---|---|---|
-| `/home/ubuntu/maramodi/.env` | 운영 환경변수(DB 비번·`OPENAI_API_KEY`·`YOUTUBE_API_KEY`·`INTERNAL_API_KEY`·`SPRING_MAIL_HOST`/`USERNAME`/`PASSWORD` 등). compose와 `deploy/deploy.sh`가 `--env-file`로 읽는다 | 저장소의 `deploy/.env.example`을 복사해 값 채우기. `chmod 600` |
+| `/home/ubuntu/maramodi/.env` | 운영 환경변수(DB 비번·`OPENAI_API_KEY`·`YOUTUBE_API_KEY`·`INTERNAL_API_KEY`·`SPRING_MAIL_HOST`/`USERNAME`/`PASSWORD`·`KAKAO_NATIVE_APP_KEY` 등). compose와 `deploy/deploy.sh`가 `--env-file`로 읽는다 | 저장소의 `deploy/.env.example`을 복사해 값 채우기. `chmod 600` |
 | `/home/ubuntu/maramodi/secrets/firebase-service-account.json` | 운영 서버의 Firebase Admin SDK 키. Spring 컨테이너가 읽기전용으로 마운트해 간다 | 개발용과 같은 파일(Firebase 콘솔 → 서비스 계정 → 새 비공개 키). `scp`로 올린다 |
 
 ### server/ 로컬 환경변수 — `server/.env` 하나로 모은다
@@ -575,6 +575,34 @@ spring-blue:8080  ┊  spring-green:8080  minio:9000    (완전 내부)
 |---|---|---|
 | 인프라 층 | `deploy/docker-compose.infra.yml` (Caddy 하나) | **사람이 수동으로만** |
 | 앱 층 | `deploy/docker-compose.app.yml` (spring **두 색**, ai, minio, postgres, redis) | `main` push 마다 `deploy.sh` 가 |
+
+### 카톡 초대 링크가 여는 페이지 — 2026-08-31 (#74)
+
+카카오톡 초대 카드의 링크는 `https://api.maramodi.cloud/room/join?inviteCode=XXXXXX` 다
+(앱의 `buildInviteWebUrl`). API 서버에 그 경로가 없어 404 였고 **카드를 눌러도 아무 일도
+일어나지 않았다.** 이미 App Store 에 나간 빌드가 이 주소를 들고 있어서, 앱이 아니라
+Caddy 가 그 주소를 정적 페이지(`deploy/site/join.html`)로 연결한다.
+
+페이지는 초대 코드를 보여주고 복사·앱 열기·앱 설치를 제공한다. **"앱에서 열기" 버튼만**
+카카오 네이티브 앱 키가 필요하다 — 이 저장소는 공개라 키를 커밋하지 않고 운영 `.env` 로 준다.
+
+```bash
+# 서버에서 1회 — ~/maramodi/.env 에 아래 한 줄을 추가한 뒤
+#   KAKAO_NATIVE_APP_KEY=<카카오 콘솔의 네이티브 앱 키 32자리>
+# 인프라 층을 다시 만든다. ⚠️ 환경변수 추가는 `caddy reload` 로 반영되지 않는다.
+cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml \
+    --env-file /home/ubuntu/maramodi/.env up -d
+```
+
+값을 안 넣어도 페이지는 정상 동작하고 그 버튼만 숨는다(코드·복사·앱스토어는 그대로).
+같은 파일이 `https://maramodi.cloud/join` 으로도 열린다 — 두 주소 모두 `templates` 를 거치는
+전용 라우트를 갖고 있다. **앱의 초대 주소를 언젠가 그쪽으로 옮기더라도 그 라우트를 지우면 안 된다**
+(`specs/OPEN.md` 참고).
+
+`deploy/site/join.html` 은 Caddy 의 `templates` 로 렌더되므로 **주석을 포함해 파일 전체가
+템플릿으로 해석된다** — 중괄호 두 개를 여는 표기를 설명용으로도 적으면 500 이 난다.
+반대로 약관·지원 페이지에는 일부러 `templates` 를 걸지 않았다(본문에 중괄호가 들어가는 순간
+Apple 이 읽는 주소가 500 이 된다).
 
 ### 무중단 배포 (blue/green) — 2026-08-13
 

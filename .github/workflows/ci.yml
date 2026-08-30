@@ -80,6 +80,12 @@ jobs:
               # 잡히지만 `deploy/site/*.html` 만 고치면 잡이 아예 안 돌아 그냥 통과한다.
               # 하필 Apple 이 읽는 것은 웹 쪽이라 그 방향이 더 위험하다.
               - 'deploy/site/**'
+              # 카톡 초대 링크가 여는 경로도 여기서 지킨다(2026-08-31 #74).
+              # `invite_share_test.dart` 의 "초대 웹 페이지" 그룹이 앱이 만드는 주소와
+              # 이 파일의 `@join path` 가 어긋나지 않는지 본다. **이 줄이 없으면
+              # Caddyfile 만 고친 커밋에서 app 잡이 안 돌아 가드가 그냥 통과한다** —
+              # 위 deploy/site 와 같은 이유다.
+              - 'deploy/Caddyfile'
               - '.github/workflows/ci.yml'
             server:
               - 'server/**'
