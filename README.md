@@ -576,6 +576,34 @@ spring-blue:8080  ┊  spring-green:8080  minio:9000    (완전 내부)
 | 인프라 층 | `deploy/docker-compose.infra.yml` (Caddy 하나) | **사람이 수동으로만** |
 | 앱 층 | `deploy/docker-compose.app.yml` (spring **두 색**, ai, minio, postgres, redis) | `main` push 마다 `deploy.sh` 가 |
 
+### 🔴 `deploy/Caddyfile` 을 고쳤으면 배포만으로는 반영되지 않는다 — 2026-08-31
+
+**인프라 층을 다시 만들어야 한다.** 환경변수를 추가했을 때도 같다.
+
+```bash
+ssh modi 'cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml \
+    --env-file /home/ubuntu/maramodi/.env up -d'
+```
+
+이유: Caddyfile 은 **단일 파일 bind-mount** 라 inode 가 묶여 있는데, 배포의 rsync 는 임시 파일을
+만들어 rename 하므로 컨테이너가 **옛 파일을 계속 본다**. `deploy/deploy.sh` 가
+`active-upstream.conf` 에 대해 경고하던 것과 같은 함정인데, **그 규칙이 Caddyfile 자체에도
+걸린다는 걸 2026-08-31 까지 아무도 몰랐다.**
+
+⚠️ **`caddy reload` 로는 못 고친다.** reload 는 성공하고 로그도 정상으로 남는다 — 옛 내용을
+성공적으로 다시 적용할 뿐이다. #74 배포 실측:
+
+```
+==> Caddy 를 spring-green 로 전환
+{"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+{"msg":"adapted config to JSON","adapter":"caddyfile"}
+    reload 완료
+```
+
+이렇게 찍혔는데 새로 추가한 `/room/join` 은 계속 404 였고, 컨테이너를 다시 만들자 즉시 200 이
+됐다. 즉 **"배포는 성공했는데 아무것도 안 바뀐다"** 로 보인다. 그럴 때 여기를 의심할 것.
+로컬 Docker Desktop 에서는 재현되지 않는다(파일 공유가 경로 기반이다) — 운영에서만 터진다.
+
 ### 카톡 초대 링크가 여는 페이지 — 2026-08-31 (#74)
 
 카카오톡 초대 카드의 링크는 `https://api.maramodi.cloud/room/join?inviteCode=XXXXXX` 다
@@ -586,12 +614,16 @@ Caddy 가 그 주소를 정적 페이지(`deploy/site/join.html`)로 연결한�
 페이지는 초대 코드를 보여주고 복사·앱 열기·앱 설치를 제공한다. **"앱에서 열기" 버튼만**
 카카오 네이티브 앱 키가 필요하다 — 이 저장소는 공개라 키를 커밋하지 않고 운영 `.env` 로 준다.
 
+서버 `~/maramodi/.env` 에 `KAKAO_NATIVE_APP_KEY=<네이티브 앱 키 32자리>` 를 넣고
+**위 절의 인프라 층 재생성**을 돌린다. 서버에는 편집기가 없으므로(2026-08-31 실측:
+`nano`·`vi` 둘 다 없음) 셸에서 바로 채운다 — 히스토리에 키가 남지 않게 `read -s` 를 쓴다:
+
 ```bash
-# 서버에서 1회 — ~/maramodi/.env 에 아래 한 줄을 추가한 뒤
-#   KAKAO_NATIVE_APP_KEY=<카카오 콘솔의 네이티브 앱 키 32자리>
-# 인프라 층을 다시 만든다. ⚠️ 환경변수 추가는 `caddy reload` 로 반영되지 않는다.
-cd ~/maramodi/repo && docker compose -f deploy/docker-compose.infra.yml \
-    --env-file /home/ubuntu/maramodi/.env up -d
+grep -q '^KAKAO_NATIVE_APP_KEY=' ~/maramodi/.env || echo 'KAKAO_NATIVE_APP_KEY=' >> ~/maramodi/.env
+read -rsp 'Kakao Native App Key: ' K; printf '\n'
+K="$K" perl -pi -e 's|^KAKAO_NATIVE_APP_KEY=.*|KAKAO_NATIVE_APP_KEY=$ENV{K}|' ~/maramodi/.env
+unset K; chmod 600 ~/maramodi/.env   # perl -i 가 파일을 새로 만들어 권한이 풀린다
+awk -F= '/^KAKAO_NATIVE_APP_KEY=/{print "값 길이:", length($2), "(32 면 정상)"}' ~/maramodi/.env
 ```
 
 값을 안 넣어도 페이지는 정상 동작하고 그 버튼만 숨는다(코드·복사·앱스토어는 그대로).
