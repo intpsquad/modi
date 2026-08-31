@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../design/tokens.dart';
+import '../../design/time_wheel_sheet.dart';
 import 'schedule_api.dart';
 import 'schedule_time_format.dart';
 
@@ -78,7 +79,7 @@ class _ScheduleFormSheetState extends State<ScheduleFormSheet> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
+    final picked = await showTimeWheelSheet(
       context: context,
       initialTime: _time ?? TimeOfDay.now(),
     );
@@ -94,7 +95,7 @@ class _ScheduleFormSheetState extends State<ScheduleFormSheet> {
   });
 
   Future<void> _pickEndTime() async {
-    final picked = await showTimePicker(
+    final picked = await showTimeWheelSheet(
       context: context,
       initialTime: _endTime ?? _time ?? TimeOfDay.now(),
     );

@@ -7,6 +7,7 @@ import '../../design/notice_banner.dart';
 import '../../design/ai_sparkle_button.dart';
 import '../../design/todo_checkbox.dart';
 import '../../design/tokens.dart';
+import '../../design/segmented_toggle.dart';
 import '../../design/tab_header.dart';
 import '../auth/auth_service.dart';
 import '../room/room_session.dart';
@@ -17,6 +18,7 @@ import 'assignee_avatar.dart';
 import 'pending_completion.dart';
 import 'todo_form_sheet.dart';
 import 'todo_order_store.dart';
+import 'todo_photo.dart';
 import 'todo_sync.dart';
 import 'todos_api.dart';
 import 'unassigned_sheet.dart';
@@ -44,11 +46,6 @@ const Color _kInk = Color(0xFF111111); // 제목·본문 진한 텍스트
 const Color _kMutedInk = Color(0xFF636366); // 기타/셰브론/뱃지 텍스트
 const Color _kCircleBorder = Color(0xFFC7C7CC); // 체크/점선 원 테두리
 const Color _kDividerColor = Color(0xFFE5E5EA); // 그룹 구분선
-
-// 세그먼트 탭 높이 — 트랙과 선택 알약이 같은 높이다(2026-08-06 지정, design.md §6).
-// (폐지: 트랙 48 + 패딩 4 + 흰 알약 그림자 `_kActiveTabShadow`·트랙색 `_kSegBg`·
-//  비활성 글씨 `_kInactiveInk`. 이제 토큰 surface-soft/primary/on-primary/muted를 쓴다.)
-const double _kSegHeight = 40;
 
 /// 투두 정렬 기준 — specs/0006-투두-탭.md. 마감일순은 데이터상 불가(투두 마감 없음, 0002).
 /// manual은 서버 `position`에 저장되는 실제 드래그 순서다(2026-08-04, "내 투두만" 토글일 때만
@@ -818,8 +815,9 @@ class TodosScreenState extends State<TodosScreen> {
               detail: todo.detail,
               categoryId: todo.categoryId,
               assigneeUserIds: assigneeUserIds,
-              // PUT은 전체 교체라 담당자만 지정할 때도 마감일을 다시 실어 보내야 지워지지 않는다.
+              // PUT은 전체 교체라 담당자만 지정할 때도 나머지를 다시 실어 보내야 지워지지 않는다.
               dueDate: todo.dueDate,
+              imageUrl: todo.imageUrl,
             );
             mutated = true;
           },
@@ -1037,7 +1035,7 @@ class TodosScreenState extends State<TodosScreen> {
   Widget _buildFilterBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-      child: _SegmentedToggle(
+      child: SegmentedToggle(
         segments: const ['내 투두만', '전체보기'],
         selectedIndex: _showAllMembers ? 1 : 0,
         onChanged: (i) {
@@ -1620,7 +1618,7 @@ class TodosScreenState extends State<TodosScreen> {
       _todoErrorText = null;
       _todos = [
         for (final t in _todos)
-          if (t.id == todo.id) _withTitleDetail(t, title, detail) else t,
+          if (t.id == todo.id) t.copyWith(title: title, detail: detail) else t,
       ];
     });
     try {
@@ -1635,6 +1633,7 @@ class TodosScreenState extends State<TodosScreen> {
         assigneeUserIds: todo.assignees.map((a) => a.userId).toList(),
         // PUT은 전체 교체라 제목/메모만 바꿔도 나머지를 다시 실어 보내야 지워지지 않는다.
         dueDate: todo.dueDate,
+        imageUrl: todo.imageUrl,
       );
       _notifyTodoChanged();
     } catch (_) {
@@ -1645,19 +1644,6 @@ class TodosScreenState extends State<TodosScreen> {
       });
     }
   }
-
-  // 제목/메모만 바꾼 사본(TodoItem.copyWith는 completed만 지원).
-  TodoItem _withTitleDetail(TodoItem t, String title, String? detail) =>
-      TodoItem(
-        id: t.id,
-        title: title,
-        detail: detail,
-        completed: t.completed,
-        categoryId: t.categoryId,
-        assignees: t.assignees,
-        createdAt: t.createdAt,
-        dueDate: t.dueDate,
-      );
 
   /// 수동 정렬 flat 목록에서 투두를 드롭했을 때: 순서 변경(로컬 저장) + (드롭 위치가 다른
   /// 카테고리면) 카테고리 이동(서버 저장). 헤더/추가행은 드래그 불가라 oldIndex는 항상 투두다.
@@ -1696,7 +1682,7 @@ class TodosScreenState extends State<TodosScreen> {
       if (categoryChanged) {
         _todos = [
           for (final t in _todos)
-            if (t.id == movedTodo.id) _withCategory(t, targetCat) else t,
+            if (t.id == movedTodo.id) t.copyWith(categoryId: targetCat) else t,
         ];
       }
     });
@@ -1731,8 +1717,9 @@ class TodosScreenState extends State<TodosScreen> {
         detail: todo.detail,
         categoryId: targetCat,
         assigneeUserIds: todo.assignees.map((a) => a.userId).toList(),
-        // PUT은 전체 교체라 카테고리만 옮길 때도 마감일을 다시 실어 보내야 지워지지 않는다.
+        // PUT은 전체 교체라 카테고리만 옮길 때도 나머지를 다시 실어 보내야 지워지지 않는다.
         dueDate: todo.dueDate,
+        imageUrl: todo.imageUrl,
       );
       _notifyTodoChanged();
     } catch (_) {
@@ -1740,7 +1727,7 @@ class TodosScreenState extends State<TodosScreen> {
       setState(() {
         _todos = [
           for (final t in _todos)
-            if (t.id == todo.id) _withCategory(t, todo.categoryId) else t,
+            if (t.id == todo.id) t.copyWith(categoryId: todo.categoryId) else t,
         ];
         _manualOrder = previousOrder; // 순서도 함께 원복(카테고리만 되돌리면 불일치)
         _todoErrorText = '카테고리 이동에 실패했어요. 다시 시도해 주세요';
@@ -1748,19 +1735,6 @@ class TodosScreenState extends State<TodosScreen> {
       _orderStore.save(roomId, previousOrder);
     }
   }
-
-  // categoryId를 명시적으로(널 포함) 바꾼 사본. TodoItem.copyWith는 completed만 지원하고
-  // nullable copyWith는 "생략 vs null"을 구분 못 해 기타(null)로 이동을 못 하므로 직접 만든다.
-  TodoItem _withCategory(TodoItem t, int? categoryId) => TodoItem(
-    id: t.id,
-    title: t.title,
-    detail: t.detail,
-    completed: t.completed,
-    categoryId: categoryId,
-    assignees: t.assignees,
-    createdAt: t.createdAt,
-    dueDate: t.dueDate,
-  );
 
   /// 현재 수동 표시 순서로 정렬한 전체 투두 id — 순서 저장의 기준 배열.
   List<int> _currentOrderedIds() {
@@ -2071,6 +2045,25 @@ class _TodoListRowState extends State<_TodoListRow> {
             ],
           );
 
+    // 첨부 사진 썸네일(2026-08-24 #65) — **읽기·편집 모드 모두**에 붙인다. 편집 진입 때
+    // 사라지게 뒀더니 행 높이가 튀어서 2026-08-25 사용자 요청으로 바꿨다.
+    // 간격 8: 메모 간격 4보다 한 단계 넓게(specs/design.md 투두 탭 절).
+    final photoUrl = todo.imageUrl ?? '';
+    final groupWithPhoto = photoUrl.isEmpty
+        ? group
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              group,
+              const SizedBox(height: AppSpacing.sm),
+              TodoRowThumbnail(
+                key: ValueKey('todo-thumb-${todo.id}'),
+                url: photoUrl,
+              ),
+            ],
+          );
+
     // 행 내용 — 순서: 체크박스 · (제목/메모 그룹) · [편집 시 information] · 프로필, 간격 10.
     Widget content = ConstrainedBox(
       key: ValueKey('todo-press-${todo.id}'),
@@ -2094,7 +2087,7 @@ class _TodoListRowState extends State<_TodoListRow> {
               enabled: widget.canComplete,
             ),
             const SizedBox(width: 10),
-            Expanded(child: group),
+            Expanded(child: groupWithPhoto),
             if (_editing) ...[
               const SizedBox(width: 10),
               Semantics(
@@ -2687,94 +2680,6 @@ class _ConfirmDeleteCategoryDialogState
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 세그먼티드 컨트롤 — design.md §6 세그먼트 규격. 트랙 `surface-strong`+pill,
-/// 선택칸만 `surface` 채움 + `elevation.float`(입체 카드) + `foreground` 텍스트.
-class _SegmentedToggle extends StatelessWidget {
-  const _SegmentedToggle({
-    required this.segments,
-    required this.selectedIndex,
-    required this.onChanged,
-  });
-
-  final List<String> segments;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
-  /// 전환 시간 — design.md §6(모션 토큰 부재 임시값, `specs/OPEN.md`).
-  static const _duration = Duration(milliseconds: 150);
-
-  @override
-  Widget build(BuildContext context) {
-    // 트랙: 높이 40, radius.pill, 배경 surface-soft(2026-08-06 지정).
-    return Container(
-      key: const ValueKey('segmented-track'),
-      height: _kSegHeight,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // 선택 알약은 **하나뿐**이고 좌우로 미끄러진다(2026-08-06 요청). 칸마다 배경을
-          // 켜고 끄면 이동이 아니라 "사라졌다 나타나기"가 된다.
-          AnimatedAlign(
-            duration: _duration,
-            curve: Curves.easeOut,
-            alignment: _thumbAlignment,
-            child: FractionallySizedBox(
-              widthFactor: 1 / segments.length,
-              heightFactor: 1,
-              child: Container(
-                key: const ValueKey('segmented-thumb'),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              for (var i = 0; i < segments.length; i++)
-                Expanded(child: _segment(i)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 칸 i의 중심에 알약을 놓는 정렬값 — 칸이 하나뿐이면 가운데.
-  Alignment get _thumbAlignment {
-    if (segments.length < 2) return Alignment.center;
-    return Alignment(-1 + 2 * selectedIndex / (segments.length - 1), 0);
-  }
-
-  Widget _segment(int index) {
-    final selected = index == selectedIndex;
-    // 칸 자체는 배경이 없다(투명) — 배경은 위의 알약 하나가 맡는다.
-    // 글씨색은 AnimatedDefaultTextStyle이 보간해 fade처럼 바뀐다.
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onChanged(index),
-      child: Center(
-        child: AnimatedDefaultTextStyle(
-          duration: _duration,
-          curve: Curves.easeOut,
-          style: TextStyle(
-            fontFamily: AppTypography.fontFamily,
-            fontSize: 15,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: selected ? AppColors.onPrimary : AppColors.muted,
-          ),
-          child: Text(segments[index]),
-        ),
-      ),
     );
   }
 }

@@ -187,6 +187,52 @@ void main() {
     expect(find.text('모아보기'), findsOneWidget);
   });
 
+  testWidgets('아바타 줄 맨 끝 초대 버튼을 누르면 초대 시트가 열린다', (tester) async {
+    // #81 — 초대 진입점이 마이페이지뿐이라 불편하다는 의견. 홈에서 바로 연다.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: _FakeHomeApi(dashboard: _dashboard()),
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          inviteCodeLoader: (roomId) async => 'ABC123',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final button = find.byKey(const ValueKey('home-invite-button'));
+    expect(button, findsOneWidget);
+
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+
+    expect(find.text('팀원 초대하기'), findsOneWidget);
+    expect(find.text('ABC123'), findsOneWidget);
+    expect(find.text('코드 복사'), findsOneWidget);
+    expect(find.text('외부로 공유하기'), findsOneWidget);
+  });
+
+  testWidgets('초대 코드를 못 불러오면 시트가 재시도를 준다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: _FakeHomeApi(dashboard: _dashboard()),
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+          inviteCodeLoader: (roomId) async => throw Exception('boom'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('home-invite-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('불러오지 못했어요'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invite-sheet-retry')), findsOneWidget);
+  });
+
   /// 홈 활동 피드(2026-08-06, docs/backend/home-activity-feed.md)가 실제로 배너에 뜨는지 —
   /// 진행률·D-day를 만들지 않도록 마감이 지난 방을 써서 활동 이벤트가 배너의 첫 문구가 되게 한다.
   testWidgets('대시보드 activities가 있으면 활동 배너에 그 문구가 보인다', (tester) async {
@@ -760,7 +806,7 @@ void main() {
     expect(fakeApi.fetchCallCount, before + 1); // 대시보드 리로드
   });
 
-  group('멤버 아바타 탭 — 2026-08-04 정정(specs/0005-홈-대시보드.md)', () {
+  group('멤버 아바타 탭 — 2026-08-25 #68 재정정(specs/0005-홈-대시보드.md)', () {
     // '/home'(HomeScreen 실물) + '/todos'(플레이스홀더) 셸과, 셸 밖 '/member/:userId'
     // (플레이스홀더)을 실제 go_router로 구성해 어느 목적지로 갔는지를 직접 확인한다.
     Widget shellApp({required String? currentUserId, HomeApi? api}) {
@@ -804,7 +850,9 @@ void main() {
       return MaterialApp.router(routerConfig: router);
     }
 
-    testWidgets('본인 아바타를 탭하면 멤버 투두가 아니라 투두 탭으로 전환된다', (tester) async {
+    testWidgets('본인 아바타를 탭해도 멤버 투두 화면으로 이동한다', (tester) async {
+      // #68 — 내 협업 캐릭터를 보는 곳이 마이페이지에서 멤버 투두 화면으로 옮겨져,
+      // 본인 아바타도 투두 탭 전환이 아니라 S-30-M push로 통일됐다(specs/0011).
       // _dashboard()의 유일한 멤버는 userId: 'uid-a' — 로그인 유저와 동일하게 맞춘다.
       await tester.pumpWidget(shellApp(currentUserId: 'uid-a'));
       await tester.pumpAndSettle();
@@ -812,8 +860,8 @@ void main() {
       await tester.tap(find.text('철수(나)'));
       await tester.pumpAndSettle();
 
-      expect(find.text('TODOS_TAB'), findsOneWidget);
-      expect(find.text('MEMBER_TODOS_uid-a'), findsNothing);
+      expect(find.text('MEMBER_TODOS_uid-a'), findsOneWidget);
+      expect(find.text('TODOS_TAB'), findsNothing);
     });
 
     testWidgets('다른 멤버 아바타를 탭하면 그대로 멤버 투두 화면으로 이동한다', (tester) async {

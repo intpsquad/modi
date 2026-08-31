@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../config/env.dart';
 import 'api_client.dart';
+import 'stale_session_recovery.dart';
 
 /// 소셜 로그인과 이메일 회원가입을 Firebase Authentication 세션으로 교환한다.
 /// Google·Apple은 Firebase 네이티브 provider를 사용하고, Kakao는 Spring Custom Token을 교환한다.
@@ -21,30 +22,35 @@ class AuthService {
   final ApiClient _apiClient;
   final KakaoLoginClient _kakaoLoginClient;
 
-  Future<User> signInWithGoogle() async {
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) {
-      throw StateError('로그인이 취소되었습니다.');
-    }
+  Future<User> signInWithGoogle() {
+    return retryAfterClearingStaleSession(
+      signOut: signOut,
+      signIn: () async {
+        final googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) {
+          throw StateError('로그인이 취소되었습니다.');
+        }
 
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(
+          credential,
+        );
+        final user = userCredential.user;
+        if (user == null) {
+          throw StateError('Firebase 로그인에 실패했습니다.');
+        }
+
+        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+          await _syncOAuthProfile(user);
+        }
+        return user;
+      },
     );
-
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(
-      credential,
-    );
-    final user = userCredential.user;
-    if (user == null) {
-      throw StateError('Firebase 로그인에 실패했습니다.');
-    }
-
-    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      await _syncOAuthProfile(user);
-    }
-    return user;
   }
 
   /// Apple의 네이티브 인증 결과를 Firebase Authentication 세션으로 교환한다.
@@ -55,21 +61,26 @@ class AuthService {
       throw StateError('애플 로그인은 현재 모바일 앱에서만 지원합니다.');
     }
 
-    final appleProvider = AppleAuthProvider()
-      ..addScope('email')
-      ..addScope('name');
-    final userCredential = await FirebaseAuth.instance.signInWithProvider(
-      appleProvider,
-    );
-    final user = userCredential.user;
-    if (user == null) {
-      throw StateError('Firebase 로그인에 실패했습니다.');
-    }
+    return retryAfterClearingStaleSession(
+      signOut: signOut,
+      signIn: () async {
+        final appleProvider = AppleAuthProvider()
+          ..addScope('email')
+          ..addScope('name');
+        final userCredential = await FirebaseAuth.instance.signInWithProvider(
+          appleProvider,
+        );
+        final user = userCredential.user;
+        if (user == null) {
+          throw StateError('Firebase 로그인에 실패했습니다.');
+        }
 
-    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      await _syncOAuthProfile(user);
-    }
-    return user;
+        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+          await _syncOAuthProfile(user);
+        }
+        return user;
+      },
+    );
   }
 
   /// 이메일·비밀번호로 기존 계정에 로그인한다(자체가입 계정 전용).
@@ -77,27 +88,36 @@ class AuthService {
   Future<User> signInWithEmail({
     required String email,
     required String password,
-  }) async {
-    final userCredential = await FirebaseAuth.instance
-        .signInWithEmailAndPassword(email: email, password: password);
-    final user = userCredential.user;
-    if (user == null) {
-      throw StateError('Firebase 로그인에 실패했습니다.');
-    }
-    return user;
+  }) {
+    return retryAfterClearingStaleSession(
+      signOut: signOut,
+      signIn: () async {
+        final userCredential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(email: email, password: password);
+        final user = userCredential.user;
+        if (user == null) {
+          throw StateError('Firebase 로그인에 실패했습니다.');
+        }
+        return user;
+      },
+    );
   }
 
-  Future<User> signInWithKakao() async {
-    final accessToken = await _kakaoLoginClient.signIn();
-    final response = await _apiClient.exchangeKakaoAccessToken(accessToken);
-    final userCredential = await FirebaseAuth.instance.signInWithCustomToken(
-      response.firebaseToken,
+  Future<User> signInWithKakao() {
+    return retryAfterClearingStaleSession(
+      signOut: signOut,
+      signIn: () async {
+        final accessToken = await _kakaoLoginClient.signIn();
+        final response = await _apiClient.exchangeKakaoAccessToken(accessToken);
+        final userCredential = await FirebaseAuth.instance
+            .signInWithCustomToken(response.firebaseToken);
+        final user = userCredential.user;
+        if (user == null) {
+          throw StateError('Firebase 로그인에 실패했습니다.');
+        }
+        return user;
+      },
     );
-    final user = userCredential.user;
-    if (user == null) {
-      throw StateError('Firebase 로그인에 실패했습니다.');
-    }
-    return user;
   }
 
   /// 이메일로 인증코드(6자리)를 발송한다.

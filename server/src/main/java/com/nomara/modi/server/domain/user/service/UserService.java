@@ -3,6 +3,8 @@ package com.nomara.modi.server.domain.user.service;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
+import com.nomara.modi.server.domain.feedback.entity.Feedback;
+import com.nomara.modi.server.domain.feedback.repository.FeedbackRepository;
 import com.nomara.modi.server.domain.room.entity.Room;
 import com.nomara.modi.server.domain.room.repository.RoomMemberRepository;
 import com.nomara.modi.server.domain.room.service.RoomService;
@@ -32,6 +34,7 @@ public class UserService {
   private final UserRepository userRepository;
   private final RoomMemberRepository roomMemberRepository;
   private final RoomService roomService;
+  private final FeedbackRepository feedbackRepository;
   private final Optional<ObjectStorage> objectStorage;
   private final Optional<FirebaseApp> firebaseApp;
 
@@ -39,11 +42,13 @@ public class UserService {
       UserRepository userRepository,
       RoomMemberRepository roomMemberRepository,
       RoomService roomService,
+      FeedbackRepository feedbackRepository,
       Optional<ObjectStorage> objectStorage,
       Optional<FirebaseApp> firebaseApp) {
     this.userRepository = userRepository;
     this.roomMemberRepository = roomMemberRepository;
     this.roomService = roomService;
+    this.feedbackRepository = feedbackRepository;
     this.objectStorage = objectStorage;
     this.firebaseApp = firebaseApp;
   }
@@ -119,6 +124,13 @@ public class UserService {
   public void withdrawAppData(String uid) {
     for (Room room : roomMemberRepository.findRoomsByUserId(uid)) {
       roomService.leaveRoom(uid, room.getId());
+    }
+    // 피드백(#70)은 CASCADE가 아니라 SET NULL이다 — 팀이 처리해야 하는 제보라 탈퇴로 사라지면
+    // 안 된다(V30 근거). 대신 개인정보인 reply_email은 여기서 명시적으로 지운다. FK SET NULL은
+    // user_id만 비우고 다른 컬럼은 건드리지 않으므로, 이 줄이 없으면 이메일이 그대로 남는다.
+    // 유저 행 삭제 **전에** 해야 한다 — 삭제 후에는 findAllByUserId가 아무것도 못 찾는다.
+    for (Feedback feedback : feedbackRepository.findAllByUserId(uid)) {
+      feedback.clearReplyEmail();
     }
     // deleteById는 행이 없으면 예외를 던지므로(EmptyResultDataAccessException), 쓰기 API를
     // 한 번도 안 태워 User 행이 아직 없는 극단적 케이스를 위해 존재 확인 후 지운다.

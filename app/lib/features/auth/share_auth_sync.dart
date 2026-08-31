@@ -23,9 +23,18 @@ class ShareAuthSync {
         _authSubscription != null) {
       return;
     }
-    _authSubscription = FirebaseAuth.instance.idTokenChanges().listen((_) {
-      unawaited(syncCurrentSession());
-    });
+    _authSubscription = FirebaseAuth.instance.idTokenChanges().listen(
+      (_) {
+        unawaited(syncCurrentSession());
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        // 🔴 핸들러가 없으면 스트림 에러가 어디에도 안 남는다 — 이슈 #47 재현 중
+        // syncCurrentSession()의 catch 가 타입명만 찍어 원인을 못 찾았던 것과
+        // 같은 자리다. 부팅을 막지 않되 흔적은 남긴다.
+        debugPrint('iOS 공유 세션 인증 상태 스트림 오류: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      },
+    );
   }
 
   static Future<void> syncCurrentSession() async {
@@ -53,7 +62,11 @@ class ShareAuthSync {
       // present in a local build. Do not print token values or server details.
       debugPrint('iOS 공유 세션 동기화 실패: ${error.code}');
     } catch (error) {
-      debugPrint('iOS 공유 세션 동기화 실패: ${error.runtimeType}');
+      // 🔴 타입명만 남기면 안 된다(이슈 #47) — 여기서 던지는 FirebaseAuthException이
+      // 죽은 Keychain 세션의 첫 증거였는데, `runtimeType`만 찍혀 원인 추적이
+      // 오래 걸렸다. `FirebaseAuthException`은 code+message뿐이라(토큰 문자열을
+      // 담지 않음) 이 catch-all에서 메시지 전체를 찍어도 된다.
+      debugPrint('iOS 공유 세션 동기화 실패: $error');
     }
   }
 

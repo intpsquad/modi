@@ -7,8 +7,20 @@ import '../features/onboarding/intro_screen.dart';
 ///
 /// **iOS 는 앱을 삭제해도 Keychain 을 지우지 않는다.** Firebase Auth 가 세션을 거기 두므로
 /// 재설치하면 로그인 화면 없이 이전 계정으로 들어가진다(2026-08-16 실측, 이슈 #29).
-/// Firebase 버그가 아니라 iOS 의 정상 동작이고, 우리는 공유 확장과 세션을 나누려고
-/// `keychain-access-groups` 까지 써서 더 확실히 남는다.
+/// Firebase 버그가 아니라 iOS 의 정상 동작이다.
+///
+/// ⚠️ 예전엔 여기 "공유 확장과 세션을 나누려고 `keychain-access-groups` 까지 써서 더
+/// 확실히 남는다"고 적혀 있었는데 **사실이 아니다**(2026-08-30 재조사, 이슈 #47).
+/// `Auth.auth().useUserAccessGroup(...)`은 어디에도 설정돼 있지 않다 — Firebase Auth
+/// 자체 세션은 access group 을 전혀 안 쓴다. `keychain-access-groups`에 실제로 들어가는
+/// 건 `ShareSessionStore`가 다루는 파생 ID 토큰(`com.nomara.modi.share-auth`)뿐이고,
+/// Firebase SDK 가 쓰는 Keychain 항목과는 별개다. 세션 잔존은 순전히 iOS 기본 동작이며
+/// access group 유무와 무관하다.
+///
+/// 이 방어는 **부팅 때 딱 한 번**만 돈다. 그 창을 놓치면(재설치 직후 `currentUser` 가
+/// 아직 null 이었거나 [signOut] 이 던져서 실패한 경우) 사용자는 로그인 화면에서 몇 번을
+/// 다시 눌러도 영구히 갇힐 수 있다 — 그 자리에서 자가 복구하는 로직은
+/// `features/auth/stale_session_recovery.dart` 를 참고.
 ///
 /// 문제는 **폰을 넘기기 전에 앱만 지운 경우 다음 사람이 그 계정으로 들어간다**는 것이다.
 /// 로그아웃한 적이 없으니 서버 세션도 살아 있다.

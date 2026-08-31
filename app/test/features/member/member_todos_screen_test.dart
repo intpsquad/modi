@@ -2,12 +2,19 @@ import 'package:app/design/todo_checkbox.dart';
 import 'package:app/design/tokens.dart';
 import 'package:app/features/member/member_todos_screen.dart';
 import 'package:app/features/settings/my_activity_card.dart';
+import 'package:app/features/todos/todo_photo.dart';
 import 'package:app/features/todos/todos_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Future<void> pumpScreen(WidgetTester tester, _FakeMemberTodosApi api) async {
+  /// [currentUserId]가 `member-1`이면 본인 페이지, 아니면 타인 페이지다.
+  /// 기본은 타인(`me` ≠ `member-1`) — 대부분의 테스트가 타인 조회를 검증한다.
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    _FakeMemberTodosApi api, {
+    String? currentUserId = 'me',
+  }) async {
     // 프로필 행 + 캐릭터 카드 + 투두까지 한 화면에 담아 ListView 지연 생성으로
     // 투두 행이 트리에서 빠지지 않게 뷰포트를 넉넉히 잡는다.
     tester.view.devicePixelRatio = 1;
@@ -21,6 +28,7 @@ void main() {
           roomId: 3,
           api: api,
           tokenLoader: () async => 'token',
+          currentUserId: () => currentUserId,
         ),
       ),
     );
@@ -49,6 +57,24 @@ void main() {
     // 카드는 placeholder(정체불명)로 남고, 투두 리스트는 정상 렌더된다.
     expect(find.text('정체불명'), findsOneWidget);
     expect(find.text('투 포인터 정리'), findsOneWidget);
+  });
+
+  testWidgets('사진이 첨부된 투두 행 아래에 썸네일이 보인다', (tester) async {
+    // 2026-08-24 #65 — 멤버 행은 투두 탭 읽기 행과 동일 모양(specs/0006 :77③)이라 썸네일도 함께.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    expect(find.byKey(const ValueKey('todo-thumb-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('todo-thumb-1')), findsNothing);
+  });
+
+  testWidgets('썸네일을 누르면 사진을 크게 볼 수 있다', (tester) async {
+    // 2026-08-25 #65 — 읽기 전용 화면이라 보기만 된다.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    await tester.tap(find.byKey(const ValueKey('todo-thumb-3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TodoPhotoViewer), findsOneWidget);
   });
 
   testWidgets('읽기전용 — 체크 동그라미(TodoCheckbox)가 없다', (tester) async {
@@ -99,6 +125,30 @@ void main() {
     expect(api.pokeCount, 1);
     expect(find.text('콕 찔렀어요'), findsOneWidget);
   });
+
+  // ---- 본인 페이지(#68) — 홈에서 내 아바타를 탭해도 이 화면으로 들어온다 ----
+
+  testWidgets('본인 페이지에서는 찌르기 버튼이 보이지 않는다', (tester) async {
+    await pumpScreen(tester, _FakeMemberTodosApi(), currentUserId: 'member-1');
+
+    expect(find.text('찌르기'), findsNothing);
+  });
+
+  testWidgets('본인 페이지에서도 이름·완료율 문구·캐릭터 카드는 그대로 보인다', (tester) async {
+    // 캐릭터를 보는 곳이 마이페이지가 아니라 여기로 옮겨졌으므로(#68) 카드는 반드시 남는다.
+    await pumpScreen(tester, _FakeMemberTodosApi(), currentUserId: 'member-1');
+
+    expect(find.text('준'), findsWidgets);
+    expect(find.text('투두를 33% 완료했어요'), findsOneWidget);
+    expect(find.text('요즘 준님은'), findsOneWidget);
+    expect(find.text('미루기 장인'), findsOneWidget);
+  });
+
+  testWidgets('로그인 사용자를 못 읽어도(null) 타인 페이지로 취급해 찌르기가 남는다', (tester) async {
+    await pumpScreen(tester, _FakeMemberTodosApi(), currentUserId: null);
+
+    expect(find.text('찌르기'), findsOneWidget);
+  });
 }
 
 class _FakeMemberTodosApi extends MemberTodosApi {
@@ -131,7 +181,14 @@ class _FakeMemberTodosApi extends MemberTodosApi {
           categoryId: 1,
           assignees: const [],
         ),
-        TodoItem(id: 3, title: '독립 항목', completed: false, assignees: const []),
+        TodoItem(
+          id: 3,
+          title: '독립 항목',
+          completed: false,
+          assignees: const [],
+          // 2026-08-24 #65 — 행 썸네일 검증용. 스텁 HttpClient 400 → errorBuilder 폴백 렌더.
+          imageUrl: 'https://storage.test/todo-3.jpg',
+        ),
       ],
     );
   }

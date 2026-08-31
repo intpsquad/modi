@@ -35,6 +35,7 @@ import 'fakes.dart';
 
 final _storyAuthService = StoryAuthService();
 final _storySettingsApi = StorySettingsApi();
+final _storyMemberTodosApi = StoryMemberTodosApi();
 
 void main() {
   // 브라우저 리뷰/코멘트가 Flutter 전체 캔버스가 아니라 하위 컨트롤을
@@ -129,14 +130,36 @@ void main() {
                 roomSession: StoryRoomSession(),
               ),
             ),
-            _component(
-              'S-30-M 멤버 투두',
-              MemberTodosScreen(
-                userId: 'story-member-1',
-                roomId: storyActiveRoom.id,
-                api: StoryMemberTodosApi(),
-                tokenLoader: _storyAuthService.getIdToken,
-              ),
+            WidgetbookComponent(
+              name: 'S-30-M 멤버 투두',
+              useCases: [
+                WidgetbookUseCase(
+                  name: '기본',
+                  // 캐릭터별 카드 모양과 "본인 페이지(찌르기 버튼 없음)"를 knob으로
+                  // 바로 바꿔가며 확인한다(#68로 캐릭터가 이 화면으로 옮겨왔다).
+                  builder: (context) {
+                    final characterId = context.knobs.object.dropdown<String>(
+                      label: '캐릭터',
+                      options: _kCharacterIds,
+                      initialOption: _kCharacterIds.first,
+                    );
+                    final isSelf = context.knobs.boolean(
+                      label: '본인 페이지',
+                      initialValue: false,
+                    );
+                    _storyMemberTodosApi.characterId = characterId;
+                    return MemberTodosScreen(
+                      key: ValueKey('$characterId-$isSelf'),
+                      userId: 'story-member-1',
+                      roomId: storyActiveRoom.id,
+                      api: _storyMemberTodosApi,
+                      tokenLoader: _storyAuthService.getIdToken,
+                      currentUserId: () =>
+                          isSelf ? 'story-member-1' : 'story-me',
+                    );
+                  },
+                ),
+              ],
             ),
             _component(
               'S-15 투두',
@@ -185,30 +208,15 @@ void main() {
         WidgetbookCategory(
           name: '설정',
           children: [
-            WidgetbookComponent(
-              name: 'S-40 설정',
-              useCases: [
-                WidgetbookUseCase(
-                  name: '기본',
-                  // 캐릭터별로 마이페이지 카드가 어떻게 보이는지 knob으로 바로
-                  // 바꿔가며 확인할 수 있게 한다(캐릭터 배경 제거·크기 QA용).
-                  builder: (context) {
-                    final characterId = context.knobs.object.dropdown<String>(
-                      label: '캐릭터',
-                      options: _kCharacterIds,
-                      initialOption: _kCharacterIds.first,
-                    );
-                    _storySettingsApi.characterId = characterId;
-                    return SettingsScreen(
-                      key: ValueKey(characterId),
-                      currentRoom: storyActiveRoom,
-                      authService: _storyAuthService,
-                      api: _storySettingsApi,
-                      tokenLoader: _storyAuthService.getIdToken,
-                    );
-                  },
-                ),
-              ],
+            // 캐릭터 knob은 S-30-M 스토리로 옮겼다(#68 — 마이페이지에 카드가 없다).
+            _component(
+              'S-40 설정',
+              SettingsScreen(
+                currentRoom: storyActiveRoom,
+                authService: _storyAuthService,
+                api: _storySettingsApi,
+                tokenLoader: _storyAuthService.getIdToken,
+              ),
             ),
             _component(
               'S-40 프로필 수정',

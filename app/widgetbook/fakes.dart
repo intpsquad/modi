@@ -635,27 +635,13 @@ class StorySettingsApi extends SettingsApi {
   StorySettingsApi();
 
   /// 캐릭터 갤러리 스토리(S-40 설정)에서 knob으로 바꿔가며 확인할 수 있도록
-  /// 노출한 필드 — 실제 서버 응답 대신 이 id로 [fetchCharacter] 결과를 만든다.
-  String characterId = 'PROCRASTINATOR';
-
   NotificationSettings _notificationSettings = const NotificationSettings(
     allEnabled: true,
     pokeEnabled: true,
   );
 
-  @override
-  Future<MyActivitySummary> fetchCharacter(String idToken) async {
-    return MyActivitySummary(
-      characterId: characterId,
-      characterName: characterId,
-      characterQuote: '"곧 정체가 드러나요"',
-      characterDetail: '투두를 완료할수록 더 정확해져요',
-      deadlineKeptPercent: 82,
-      bestStreakDays: 12,
-      sharedCount: 4,
-      completedCount: 37,
-    );
-  }
+  // 캐릭터 카드는 2026-08-25(#68)에 마이페이지에서 빠졌다 —
+  // 캐릭터 QA용 knob은 S-30-M 스토리([StoryMemberTodosApi])로 옮겼다.
 
   @override
   Future<UserProfile> fetchProfile(String idToken) async =>
@@ -746,6 +732,28 @@ class StorySettingsApi extends SettingsApi {
 
 class StoryMemberTodosApi extends MemberTodosApi {
   StoryMemberTodosApi();
+
+  /// 노출한 필드 — 실제 서버 응답 대신 이 id로 [fetchCharacter] 결과를 만든다.
+  /// 캐릭터 카드가 마이페이지에서 이 화면으로 옮겨오면서(#68) knob도 함께 왔다.
+  String characterId = 'PROCRASTINATOR';
+
+  @override
+  Future<MyActivitySummary> fetchCharacter(
+    String idToken,
+    int roomId,
+    String userId,
+  ) async {
+    return MyActivitySummary(
+      characterId: characterId,
+      characterName: characterId,
+      characterQuote: '"곧 정체가 드러나요"',
+      characterDetail: '투두를 완료할수록 더 정확해져요',
+      deadlineKeptPercent: 82,
+      bestStreakDays: 12,
+      sharedCount: 4,
+      completedCount: 37,
+    );
+  }
 
   @override
   Future<MemberTodosData> fetchMemberTodos(

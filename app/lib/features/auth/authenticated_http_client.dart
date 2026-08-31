@@ -145,12 +145,14 @@ class AuthenticatedHttpClient {
   /// 401 재시도 시 요청을 다시 보내야 하는데 MultipartRequest는 한 번 전송하면
   /// 스트림이 소비돼 재전송이 불가하므로, [_send]의 request 클로저 안에서 바이트로부터
   /// 매 시도마다 새 요청을 빌드한다.
+  /// 파일 3종([fileField]·[bytes]·[filename])은 **선택**이다 — 셋 다 없으면 필드만 담은
+  /// multipart를 보낸다. 피드백 제출(#70)은 스크린샷 없이 보내는 경우가 더 흔하다.
   Future<http.Response> sendMultipart(
     Uri url, {
     required String idToken,
-    required String fileField,
-    required List<int> bytes,
-    required String filename,
+    String? fileField,
+    List<int>? bytes,
+    String? filename,
     Map<String, String>? fields,
     String method = 'POST',
     bool retryOnUnauthorized = true,
@@ -162,9 +164,11 @@ class AuthenticatedHttpClient {
         final req = http.MultipartRequest(method, url);
         req.headers['Authorization'] = 'Bearer $token';
         if (fields != null) req.fields.addAll(fields);
-        req.files.add(
-          http.MultipartFile.fromBytes(fileField, bytes, filename: filename),
-        );
+        if (fileField != null && bytes != null && filename != null) {
+          req.files.add(
+            http.MultipartFile.fromBytes(fileField, bytes, filename: filename),
+          );
+        }
         final streamed = await _client.send(req);
         return http.Response.fromStream(streamed);
       },

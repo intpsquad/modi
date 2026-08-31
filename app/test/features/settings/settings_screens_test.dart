@@ -63,6 +63,43 @@ void main() {
     expect(find.text('회원 탈퇴'), findsOneWidget);
   });
 
+  testWidgets('마이페이지에 협업 캐릭터 카드가 없다(#68 — 멤버 투두 화면으로 이전)', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          api: _FakeSettingsApi(),
+          tokenLoader: () async => 'token',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MyActivityCard), findsNothing);
+    expect(find.text('요즘 민네임님은'), findsNothing);
+    // placeholder 문구(정체불명/곧 정체가 드러나요)도 남지 않는다.
+    expect(find.text('정체불명'), findsNothing);
+    // 프로필 헤더와 설정 메뉴는 그대로.
+    expect(find.text('민네임'), findsOneWidget);
+    expect(find.text('로그인 계정 정보'), findsOneWidget);
+  });
+
+  testWidgets('설정 행 라벨은 16으로 렌더된다(#68 폰트 확대)', (tester) async {
+    // 2026-08-08에 13→14로 키웠던 값을 한 단계 더(14→16, AppTypography.body).
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          api: _FakeSettingsApi(),
+          tokenLoader: () async => 'token',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final label = tester.widget<Text>(find.text('로그인 계정 정보'));
+    expect(label.style?.fontSize, 16);
+    expect(label.style?.fontWeight, FontWeight.w500);
+  });
+
   testWidgets('위에서 아래로 당기면 프로필 등 정보를 다시 불러온다', (tester) async {
     final api = _FakeSettingsApi();
 
@@ -156,46 +193,36 @@ void main() {
     expect(find.text('연결됨'), findsNothing);
   });
 
-  testWidgets('문의하기는 지정된 지원 메일 작성 화면을 연다', (tester) async {
-    Uri? launchedUri;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SettingsScreen(
-          api: _FakeSettingsApi(),
-          tokenLoader: () async => 'token',
-          contactEmailLauncher: (uri) async {
-            launchedUri = uri;
-            return true;
-          },
+  testWidgets('문의하기는 메일 앱이 아니라 인앱 폼(/mypage/contact)으로 이동한다', (tester) async {
+    // 2026-08-26 #70 — mailto: 딥링크를 인앱 폼으로 교체했다. mailto는 사라진 게 아니라
+    // 그 화면의 전송 실패 폴백으로 옮겨갔다(feedback_screen_test.dart가 검증).
+    final router = GoRouter(
+      initialLocation: '/mypage',
+      routes: [
+        GoRoute(
+          path: '/mypage',
+          builder: (context, state) => SettingsScreen(
+            api: _FakeSettingsApi(),
+            tokenLoader: () async => 'token',
+          ),
+          routes: [
+            GoRoute(
+              path: 'contact',
+              builder: (context, state) =>
+                  const Scaffold(body: Center(child: Text('CONTACT_FORM'))),
+            ),
+          ],
         ),
-      ),
+      ],
     );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
     await _tapSettingsTile(tester, '문의하기');
     await tester.pumpAndSettle();
 
-    expect(launchedUri, Uri(scheme: 'mailto', path: 'modi.app.team@gmail.com'));
-  });
-
-  testWidgets('메일 앱을 열 수 없으면 지원 메일 주소를 안내한다', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SettingsScreen(
-          api: _FakeSettingsApi(),
-          tokenLoader: () async => 'token',
-          contactEmailLauncher: (_) async => false,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await _tapSettingsTile(tester, '문의하기');
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('메일 앱을 열 수 없어요'), findsOneWidget);
-    expect(find.textContaining('modi.app.team@gmail.com'), findsOneWidget);
+    expect(find.text('CONTACT_FORM'), findsOneWidget);
   });
 
   testWidgets('마지막 멤버의 방 나가기 확인창은 방 삭제를 함께 경고한다', (tester) async {
@@ -533,6 +560,7 @@ void main() {
       endDate: DateTime(2026, 8, 10),
     );
     String? shared;
+    Rect? sharedOrigin;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -541,7 +569,10 @@ void main() {
           api: api,
           tokenLoader: () async => 'token',
           currentUserId: 'me',
-          shareInvite: (text, {sharePositionOrigin}) async => shared = text,
+          shareInvite: (text, {sharePositionOrigin}) async {
+            shared = text;
+            sharedOrigin = sharePositionOrigin;
+          },
         ),
       ),
     );
@@ -554,6 +585,10 @@ void main() {
 
     expect(shared, contains('K7QP-2M9X'));
     expect(shared, contains('여름 알고리즘 스터디'));
+    // iOS 네이티브(share_plus)는 앵커 rect가 비어 있으면(CGRectZero) 시트를 띄우지 않고
+    // 에러를 돌려준다(iPhone도 해당) — 항상 비어 있지 않은 rect를 넘겨야 한다.
+    expect(sharedOrigin, isNotNull);
+    expect(sharedOrigin!.isEmpty, isFalse);
   });
 
   testWidgets('초대 공유 채널 선택 시트는 360px 화면 폭에서도 모두 보인다', (tester) async {
@@ -632,11 +667,6 @@ class _FakeSettingsApi extends SettingsApi {
     fetchProfileCallCount++;
     return const UserProfile(userId: 'minname01', nickname: '민네임');
   }
-
-  // 활동 카드는 이 테스트들의 관심사가 아니라 네트워크를 타지 않게 미제공 처리한다.
-  @override
-  Future<MyActivitySummary> fetchCharacter(String idToken) =>
-      throw UnimplementedError();
 
   @override
   Future<String> uploadProfilePhoto(

@@ -164,16 +164,28 @@ class TodosApi {
     return TodoItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// 투두 수정 — **PUT 전체 교체**라 안 실은 값은 서버가 지운다.
+  ///
+  /// 🔴 **값 인자가 전부 `required` 인 이유**(2026-08-25 #65). 예전엔 선택 인자였는데,
+  /// 생략해도 키가 빠지는 게 아니라 `null` 이 실려 나가서 **생략 = 삭제**였다. 호출부가
+  /// 값을 손으로 나열하는 구조라 나중에 추가된 `imageUrl` 이 세 곳에서 빠졌고(인라인
+  /// 제목·메모 저장 / 담당자 지정 / 카테고리 이동), 첨부 사진이 조용히 지워졌다.
+  /// 주석으로 "다시 실어 보내라"고 적어두는 방식은 이미 두 번 실패했다 — 마감일 때는
+  /// 챙겼고 사진 때는 놓쳤다. 그래서 **빠뜨리면 컴파일이 깨지게** 바꿨다.
+  ///
+  /// 필드를 새로 추가할 때도 `required` 로 넣으면 모든 호출부가 즉시 에러로 드러난다.
+  /// 값을 바꾸지 않는 호출부는 `imageUrl: todo.imageUrl` 처럼 기존 값을 그대로 넘긴다.
+  /// (`createTodo` 는 그대로 선택 인자다 — 새로 만드는 경로라 덮어쓸 기존 값이 없다.)
   Future<TodoItem> updateTodo(
     String idToken,
     int roomId,
     int todoId, {
     required String title,
-    String? detail,
-    int? categoryId,
-    List<String>? assigneeUserIds,
-    DateTime? dueDate,
-    String? imageUrl,
+    required String? detail,
+    required int? categoryId,
+    required List<String>? assigneeUserIds,
+    required DateTime? dueDate,
+    required String? imageUrl,
   }) async {
     final response = await _client.put(
       Uri.parse('$baseUrl/rooms/$roomId/todos/$todoId'),
@@ -366,6 +378,17 @@ class TodoSuggestionCandidate {
   }
 }
 
+/// `TodoItem.copyWith` 의 "이 인자는 안 넘겼다" 표시. `null` 은 "값을 비워라"라는
+/// 뜻으로 이미 쓰이고 있어서 구분자가 따로 필요하다.
+///
+/// 전용 private 클래스인 이유: `const Object()` 로 두면 Dart 가 같은 const 인스턴스를
+/// 하나로 합쳐서, 바깥에서 우연히 `const Object()` 를 넘겨도 "생략"으로 처리된다.
+class _Unchanged {
+  const _Unchanged();
+}
+
+const _Unchanged _unchanged = _Unchanged();
+
 class TodoItem {
   TodoItem({
     required this.id,
@@ -396,16 +419,35 @@ class TodoItem {
   /// 첨부된 사진(2026-08-09, docs/backend/todo-image-archive-handoff.md) — 없으면 null.
   final String? imageUrl;
 
-  TodoItem copyWith({bool? completed}) => TodoItem(
+  /// 일부만 바꾼 사본 — **지정하지 않은 값은 전부 그대로 따라온다.**
+  ///
+  /// 🔴 화면이 낙관적으로(서버 응답 전에) 목록을 갈아끼울 때 쓴다. 예전엔 화면마다
+  /// `TodoItem(...)` 을 손으로 새로 지었는데, 거기서 `imageUrl` 이 빠져 **저장하자마자
+  /// 썸네일이 사라졌다**(2026-08-25 #65). 여기 한 곳으로 모아 두면 필드가 늘어도
+  /// 사본이 알아서 들고 간다.
+  ///
+  /// `detail`·`categoryId` 만 센티널을 쓴다 — 평범한 nullable 인자로는 **"안 건드림"과
+  /// "null 로 비우기"를 구분할 수 없는데**, 메모 비우기와 "기타"(카테고리 없음)로
+  /// 옮기기가 실제로 필요한 동작이기 때문이다. 나머지는 `null` = "안 건드림"이다
+  /// (센티널은 타입 검사를 느슨하게 만들어서, 필요한 곳에만 쓴다 — 2026-08-25 리뷰).
+  TodoItem copyWith({
+    String? title,
+    bool? completed,
+    List<MemberBrief>? assignees,
+    DateTime? dueDate,
+    String? imageUrl,
+    Object? detail = _unchanged,
+    Object? categoryId = _unchanged,
+  }) => TodoItem(
     id: id,
-    title: title,
-    detail: detail,
+    title: title ?? this.title,
+    detail: detail is _Unchanged ? this.detail : detail as String?,
     completed: completed ?? this.completed,
-    categoryId: categoryId,
-    assignees: assignees,
+    categoryId: categoryId is _Unchanged ? this.categoryId : categoryId as int?,
+    assignees: assignees ?? this.assignees,
     createdAt: createdAt,
-    dueDate: dueDate,
-    imageUrl: imageUrl,
+    dueDate: dueDate ?? this.dueDate,
+    imageUrl: imageUrl ?? this.imageUrl,
   );
 
   factory TodoItem.fromJson(Map<String, dynamic> json) {

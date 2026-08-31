@@ -10,4 +10,12 @@ package com.nomara.modi.server.domain.auth.client;
 public interface EmailSender {
 
   void send(String to, String subject, String plainText, String html);
+
+  /**
+   * 팀 내부 알림 메일(피드백 제출 등, #70). {@link #send}와 <b>일부러 분리</b>했다 — 그쪽은 인증코드 템플릿용 로고를 항상 인라인하므로 재사용하면
+   * 무관한 첨부가 붙는다. 여기는 HTML도 로고도 없이 평문만 보내고, {@code attachment}가 있으면 파일로 붙인다.
+   *
+   * @param attachment 없으면 {@code null}
+   */
+  void sendNotification(String to, String subject, String plainText, EmailAttachment attachment);
 }

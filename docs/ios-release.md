@@ -260,4 +260,14 @@ chmod 600 "/secure/ios-appstore-api-key.json"
 - 🔴 **카카오 로그인** — 카카오 콘솔에 iOS 번들 ID `com.intpsquad.modi` 가 등록돼야 동작한다.
   등록 전에는 실기기에서 실패하고, **동작하지 않는 기능은 Guideline 2.1 거부 사유다.**
 - Sign in with Apple 실기기 로그인
-- 푸시 알림 수신(FCM → APNs) — `docs/fcm-setup.md`. ⚠️ `.p8` APNs 키가 아직 없다(제출은 막지 않는다).
+- 푸시 알림 수신(FCM → APNs) — `docs/fcm-setup.md`.
+  **2026-08-31: `.p8` APNs 키를 발급해 Firebase 에 등록했다**(이슈 #66). 그전까지 인앱 알림만
+  오고 푸시가 안 오던 원인이 이것이었다 — 앱은 처음부터 준비돼 있었고 보낼 열쇠가 없었다.
+  발급 시 **Environment 를 `Sandbox & Production` 으로** 골라야 한다. `Sandbox` 만 고르면
+  Xcode 로 직접 돌린 개발 빌드에만 먹히고 TestFlight·App Store 빌드는 계속 안 온다.
+  **저장 후에는 바꿀 수 없다.**
+  ⚠️ Firebase 콘솔의 Apple 앱 목록에는 옛 프로젝트 앱이 함께 보인다(`com.mara.modi.app`,
+  `com.nomara.modi.app` — 팀 ID 가 `695C73WCLD` 라 우리 것이 아니다).
+  키는 반드시 **`com.intpsquad.modi`** 앱에 올린다.
+  🔴 **수신 확인은 아직 남아 있다** — TestFlight 빌드로 콕찌르기 알림이 실제로 오는지 봐야
+  #66 을 닫는다(디버그 빌드로는 이 검증이 안 된다, 위 첫 항목 참고).

@@ -46,6 +46,14 @@ services:
       # 그래서 compose 를 실패시키지 않고 빈 기본값을 둔다. 값은 deploy/.env 에서 온다.
       DOCS_USER: ${DOCS_USER:-}
       DOCS_PASSWORD_HASH: ${DOCS_PASSWORD_HASH:-}
+      # 초대 페이지(site/join.html)의 "앱에서 열기" 버튼이 여는 URL 스킴에 들어간다.
+      # 앱 키를 **공개 저장소에 커밋하지 않으려고** 배포 시점에 주입한다 —
+      # app/env/prod.json 과 Local.xcconfig 가 .gitignore 에 있는 것과 같은 이유다.
+      # 비어 있으면 페이지가 그 버튼을 숨긴다(코드 표시·복사·앱스토어 링크는 그대로 동작).
+      #
+      # ⚠️ 환경변수 추가는 `caddy reload` 로 반영되지 않는다 — 컨테이너를 다시 만들어야 한다
+      # (README "배포" 절). 값은 deploy/.env 에서 온다.
+      KAKAO_NATIVE_APP_KEY: ${KAKAO_NATIVE_APP_KEY:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # 🔴 **살아있는 blue/green 색이 적힌 한 줄.** Caddyfile 이 `import active-upstream.conf` 로

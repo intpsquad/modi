@@ -5,6 +5,7 @@ import '../../design/option_menu.dart';
 import '../../design/tokens.dart';
 import 'assignee_avatar.dart';
 import 'assignee_picker_sheet.dart';
+import 'todo_photo.dart';
 import 'todos_api.dart';
 
 enum _DueChoice { none, today, tomorrow, weekend, custom }
@@ -16,9 +17,11 @@ enum _ImageSourceChoice { camera, gallery }
 ///
 /// 2026-08-08 리디자인: 옵션 행 + 피커 방식으로 재구성.
 /// 제목/메모 블록 → 정리(카테고리·담당자) → 날짜 및 시간(마감일·중요) → 이미지 추가 → 저장.
-/// **이미지는 2026-08-09 저장 연결 완료**(`docs/backend/todo-image-archive-handoff.md`) — 고르면
-/// 업로드 후 `imageUrl`로 저장된다. **중요는 여전히 UI만** — 백엔드 `createTodo`가 아직 지원하지
-/// 않아 저장되지 않는다(로컬 상태, `docs/backend/todo-form-handoff.md`).
+/// **이미지는 2026-08-09 저장 연결 + 2026-08-24 미리보기 표시(#65) 완료**
+/// (`docs/backend/todo-image-archive-handoff.md`) — 고르면 업로드 후 `imageUrl`로 저장되고,
+/// 첨부가 있으면 이미지 추가 박스 위에 미리보기가 뜬다. **중요는 프론트 배선만 안 됐다** —
+/// 백엔드는 `V26`으로 저장·반환을 지원하지만(specs/0006 :75) 이 폼이 `important`를
+/// 보내지 않아 로컬 상태로만 남는다(`docs/backend/todo-form-handoff.md`).
 class TodoFormSheet extends StatefulWidget {
   const TodoFormSheet({
     super.key,
@@ -369,6 +372,17 @@ class _TodoFormSheetState extends State<TodoFormSheet> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
+          // 첨부 사진 미리보기(2026-08-24 #65) — 새로 고른 파일(_image)이 있으면 그쪽
+          // 우선(_submit 의 업로드 우선순위와 동일). 상세(S-18)는 이 폼을 그대로
+          // 그리므로 여기 한 곳으로 생성 시트·상세 양쪽에 반영된다.
+          if (_image != null || _existingImageUrl != null) ...[
+            TodoPhotoPreview(
+              key: const ValueKey('todo-photo-preview'),
+              file: _image,
+              url: _existingImageUrl,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           _ImageAddBox(
             anchorKey: _imageBoxKey,
             hasImage: _image != null || _existingImageUrl != null,
