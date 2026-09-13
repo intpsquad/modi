@@ -1066,11 +1066,7 @@ class _RankBadge extends StatelessWidget {
 }
 
 class _SectionBox extends StatelessWidget {
-  const _SectionBox({
-    super.key,
-    required this.children,
-    required this.color,
-  });
+  const _SectionBox({super.key, required this.children, required this.color});
 
   final List<Widget> children;
 
