@@ -191,8 +191,8 @@ class _ActivityCapsuleBannerState extends State<ActivityCapsuleBanner> {
   }
 }
 
-/// 좌측 시각 앵커(2026-08-07 요청) — 14×14 큰 원(#FF385C→#FF7BF8 좌→우 그라데이션 @30%
-/// 불투명) 안에 작은 단색 원(#FF385C). 그라데이션 색은 primary·aiGradientEnd의 30% 알파값.
+/// 좌측 시각 앵커(2026-08-07 요청) — 14×14 큰 원(#7980F4→#FF7BF8 좌→우 그라데이션 @30%
+/// 불투명) 안에 작은 단색 원(#7980F4). 그라데이션 색은 primary·aiGradientEnd의 30% 알파값.
 class _GradientDot extends StatelessWidget {
   const _GradientDot();
 
@@ -207,7 +207,7 @@ class _GradientDot extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [Color(0x4DFF385C), Color(0x4DFF7BF8)],
+          colors: [Color(0x4D7980F4), Color(0x4DFF7BF8)],
         ),
       ),
       child: const DecoratedBox(

@@ -97,10 +97,11 @@ repo/
 > **갱신 시점**: 2026-07-23 (커밋 `18f2eda`까지 반영) + 2026-07-27 스펙 재정립. 각 항목은 실제 커밋된 코드 기준으로 체크한다 — "구현 중" 상태는 체크하지 않는다.
 > **2026-07-27**: 사용자가 원본 IA 문서 `specs/full_spec.md`/`specs/design_full_spec.md`를 뒤늦게 추가했다. 이 문서들을 `specs/`의 최상위 진실로 승격하고, 기존 파생 스펙(`design.md`, `0005`, `0006`)의 충돌(디자인 팔레트, 홈 오늘투두 "방 전체 보충" 로직)을 제거했다. 미구현 영역(온보딩 상세/방전환/일정/아카이브/멤버투두·콕찌르기/설정/종료된 방)은 `0007`~`0013` 스펙으로 문서화만 완료 — 아래 로드맵 체크 상태는 변경 없음(스펙만 생겼을 뿐 구현은 그대로).
 > **2026-07-27 (2차) — 디자인 파일 단일화**: `specs/design_full_spec.md`와 `specs/DESIGN-airbnb.md`를 삭제하고 **`specs/design.md` v4 하나로 통합**했다. 디자인 철학·팔레트를 Airbnb 기준으로 전면 교체(흰 캔버스 + Rausch `#FF385C` + 굵기 완화 + 소프트 라운드 + 단일 그림자 티어)하고, 앱 코드(`app/lib/design/tokens.dart`·`theme.dart` + 화면 17개)까지 함께 반영했다. 삭제된 화면 상세(S-01~S-40-D)는 `0004`~`0013`이 이미 커버하며, 그 문서들이 해당 화면의 진실이 됐다. 로드맵 체크 상태 변경 없음(리디자인이지 기능 추가가 아님).
+> **2026-09-13 — 강조색 교체**: `color.primary`를 Rausch `#FF385C`에서 `#7980F4`로 바꾸고 파생 토큰(`primary-active` `#6166C3`, `primary-disabled` `#E5E6FB`)을 재산출했다. 단일 진실은 `specs/design.md` §0·§2. 로드맵 체크 상태 변경 없음(리컬러이지 기능 추가가 아님).
 
 ### Phase 0 — 하네스 + 기반 (데-리스킹 우선)
 - [x] 모노레포 + CLAUDE.md + .claude/(agents·hooks) + CI(**GitHub Actions**, GitHub 저장소 — 2026-08-13 Jenkins/GitLab 에서 이관)
-- [x] Flutter 앱 부트스트랩(go_router), 디자인 토큰(design.md) → 테마 코드화 — *Riverpod는 아직 실사용 없음(ProviderScope만 존재), 화면은 StatefulWidget+setState 패턴*. **2026-08-05 빈 상태 통일**: 공용 `EmptyState` 위젯(`app/lib/design/empty_state.dart`) 신설 — 은은한 라인 아이콘 + 문구 + primary(`#FF385C`) 텍스트 버튼. 홈(내 투두·모아보기)·일정·모아보기(폴더/폴더 내 자료)·멤버 투두·검색 결과의 아웃라인 버튼/좌측정렬 빈 상태를 이 컴포넌트로 교체(문구도 "＋ ○○ 추가하기"로 간소화). "진행 중인 방이 없어요" 온보딩 게이트·라벨 카드 내부 인라인 빈 텍스트는 예외.
+- [x] Flutter 앱 부트스트랩(go_router), 디자인 토큰(design.md) → 테마 코드화 — *Riverpod는 아직 실사용 없음(ProviderScope만 존재), 화면은 StatefulWidget+setState 패턴*. **2026-08-05 빈 상태 통일**: 공용 `EmptyState` 위젯(`app/lib/design/empty_state.dart`) 신설 — 은은한 라인 아이콘 + 문구 + primary(`#7980F4`) 텍스트 버튼. 홈(내 투두·모아보기)·일정·모아보기(폴더/폴더 내 자료)·멤버 투두·검색 결과의 아웃라인 버튼/좌측정렬 빈 상태를 이 컴포넌트로 교체(문구도 "＋ ○○ 추가하기"로 간소화). "진행 중인 방이 없어요" 온보딩 게이트·라벨 카드 내부 인라인 빈 텍스트는 예외.
 - [x] Spring Boot 부트스트랩 + PostgreSQL + 마이그레이션(Flyway) 세팅
 - [x] 전역 예외 처리 인프라 — `global/exception/`(`ApiException` + 상태코드별 6개 서브클래스 + `GlobalExceptionHandler`) 도입, 기존 13개 서비스/클라이언트 파일의 산발적 `ResponseStatusException`을 도메인별 타입 예외(`domain/{feature}/exception/`)로 전량 교체. API 응답 스키마(OpenAPI)엔 변화 없음(`docs/api/openapi.json` diff 없음 확인)
 - [x] **★ 데-리스킹 스파이크: Firebase Authentication ↔ Spring Boot ID 토큰 검증 왕복** — 구글 소셜 1종, `44f6c72`+`c0f49bc`. Kakao는 에서 카카오 SDK → Spring Custom Token → Firebase 세션 교환을 추가했고, Apple은 Developer 계정 준비 후 별도 구현한다.
