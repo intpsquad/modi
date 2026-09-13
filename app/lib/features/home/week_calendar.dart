@@ -169,7 +169,7 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 흰 카드(radius 10) 안: 좌 12px → 2×18 세로 바(#FF385C) → 12px → 일정(2026-08-07 요청).
+    // 흰 카드(radius 10) 안: 좌 12px → 2×18 세로 바(#7980F4) → 12px → 일정(2026-08-07 요청).
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,

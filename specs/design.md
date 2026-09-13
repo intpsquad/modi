@@ -14,7 +14,7 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 | 항목 | v3 (Apple HIG) | v4 (Airbnb) |
 | --- | --- | --- |
 | 캔버스 | `#F5F6F8` 회색 | `#FFFFFF` 순백 |
-| 강조색 | `#4F7CFF` 파랑 | `#FF385C` Rausch |
+| 강조색 | `#4F7CFF` 파랑 | `#7980F4` 페리윙클 *(2026-09-13 변경 — v4 도입 시엔 Airbnb Rausch `#FF385C`였다)* |
 | 계층 구분 | 배경 대비(회색 캔버스 위 흰 카드) | **1px 헤어라인 + 라운드 클리핑** (흰 위의 흰) |
 | 타이포 굵기 | Display 800 / Body 700 | Display 600~700 / Body 400 — **굵기를 낮추고 여백으로 위계를 만든다** |
 | 버튼 라운드 | 12px | 16px *(2026-08-01 재확정, §4)* |
@@ -22,6 +22,8 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 | 그림자 | 전면 금지 | **단 하나의 그림자 티어**만 허용(떠 있는 요소 전용) |
 | 좋아요 색 | 별도 `color.like` | `color.primary`로 흡수 (Airbnb 하트 = 브랜드색) |
 | 위험 액션 | `#E05353` | `#C13515` — 강조색이 붉은 계열이 됐으므로 **더 어둡고 채도 높은 별도 red**로 분리 |
+
+> **2026-09-13 — 강조색 교체**: `color.primary`를 Airbnb Rausch `#FF385C`(다홍)에서 **`#7980F4`(페리윙클)**로 바꿨다. 파생 토큰도 새 primary 기준으로 다시 뽑았다 — `primary-active` `#E00B41`→`#6166C3`(새 primary에 검정 20% 블렌드), `primary-disabled` `#FFD1DA`→`#E5E6FB`(서브 컬러 `tint-lilac`과 같은 값). 옛 조합은 이 산식으로 만들어진 값이 아니었다. 앱은 `tokens.dart`만 바꾸면 따라오고, 토큰을 못 쓰는 곳은 값을 직접 미러링했다 — 안드로이드 `colors.xml`·`ShareActivity.kt`, **iOS `ShareExtension/ShareViewController.swift`의 `UIConstants`**, `primary_pin.svg`, 이메일 템플릿 2종(`docs/email/`·`server/src/main/resources/email/`), `deploy/site/*.html` 4종. 네이티브 공유 익스텐션 2개는 서로 짝이므로 **항상 같이 고친다**(한쪽만 고치면 그 플랫폼에만 옛 색이 남는다). 위험색 `#C13515`는 유지(강조색이 더는 붉지 않으므로 아래 행의 분리 사유는 역사적 근거다). 같은 날 **서브 컬러 6종(틴트)**도 도입했다 — §2 참고.
 
 ---
 
@@ -44,10 +46,25 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 
 | 토큰 | 값 | 용도 |
 | --- | --- | --- |
-| `color.primary` | `#FF385C` | 화면당 하나의 강조색 — 주요 CTA, 진행률 바/링, 활성 탭, 선택 상태, 좋아요 활성, 체크박스 채움 |
-| `color.primary-active` | `#E00B41` | Primary 눌림(pressed) 상태 |
-| `color.primary-disabled` | `#FFD1DA` | 비활성 Primary CTA 배경 (텍스트는 `on-primary` 유지) |
+| `color.primary` | `#7980F4` | 화면당 하나의 강조색 — 주요 CTA, 진행률 바/링, 활성 탭, 선택 상태, 좋아요 활성, 체크박스 채움 |
+| `color.primary-active` | `#6166C3` | Primary 눌림(pressed) 상태 |
+| `color.primary-disabled` | `#E5E6FB` | 비활성 Primary CTA 배경 (텍스트는 `on-primary` 유지) |
 | `color.on-primary` | `#FFFFFF` | Primary 배경 위 텍스트/아이콘 |
+
+### 서브 컬러 — 섹션 틴트 *(2026-09-13 추가)*
+
+거의 흰색에 가까운 파스텔 6종. **배경 면 채움 전용**이며 텍스트·아이콘·테두리 색으로는 쓰지 않는다(흰 캔버스 대비 실측 1.03~1.23:1 — `tint-mint` 1.035, `tint-cream` 1.06, `tint-aqua` 1.08, `tint-pink` 1.09, `tint-peach` 1.11, `tint-lilac` 1.23). 원칙 2의 "화면당 강조색 하나"는 그대로다 — 틴트는 강조가 아니라 **섹션을 구분하는 배경**이고, 중립 회색 `surface-soft`를 대신하는 자리에만 들어간다.
+
+| 토큰 | 값 | 용도 |
+| --- | --- | --- |
+| `color.tint-peach` | `#FEF0EB` | 홈 "내 투두" 섹션 배경 |
+| `color.tint-cream` | `#FFF7EC` | 미배정 |
+| `color.tint-aqua` | `#E1FBFC` | 미배정 |
+| `color.tint-mint` | `#F3FFE9` | 홈 "이번 주 일정" 섹션 배경 |
+| `color.tint-pink` | `#FEF1FB` | 미배정 |
+| `color.tint-lilac` | `#E5E6FB` | primary 계열 틴트. `color.primary-disabled`와 같은 값 |
+
+> 구현체는 `AppColors.tintPeach` 등(`app/lib/design/tokens.dart`). 섹션 박스는 `_SectionBox(color:)`로 받는다. 한 화면에 틴트를 2~3개 넘게 쓰지 않는다(무지개가 되면 위계가 사라진다).
 
 ### 표면
 
@@ -85,7 +102,7 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 | `color.scrim` | `#000000` @ 50% | 모달·바텀시트 dim 오버레이. 값은 base hex로 두고 렌더 시 투명도 적용 |
 
 > **캘린더 휴일 색이 `accent-danger`인 이유**(2026-08-07 사용자 확정): 달력의 빨간 날은 "위험"이 아니라 관행적 표기라
-> 의미색과는 결이 다르다. 그럼에도 `primary`(#FF385C)를 쓰지 않은 것은, 월간 그리드에서 **primary가 이미 "오늘"과
+> 의미색과는 결이 다르다. 그럼에도 `primary`(#7980F4)를 쓰지 않은 것은, 월간 그리드에서 **primary가 이미 "오늘"과
 > "선택일"이라는 조작 상태를 나타내는 색**이어서 휴일까지 같은 색을 쓰면 셋이 구분되지 않기 때문이다.
 > 색 우선순위는 **선택일(`on-primary` on `primary` 원) > 오늘(`primary` 텍스트) > 휴일(`accent-danger`) > 평일(`foreground`)**.
 > **토요일에는 색을 주지 않는다.** 구현·판정 표는 `app/lib/features/schedule/korean_holidays.dart`,
@@ -199,7 +216,7 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 | --- | --- |
 | **Primary** | `color.primary` 배경 + `on-primary` 텍스트, `radius.control`(16px), 높이 48px, 패딩 14×24, 타이포 `button`. **화면당 핵심 액션 1개.** |
 | Primary(pressed) | 배경만 `color.primary-active`로. 크기 변형·그림자 변화 없음 |
-| Primary(disabled) | 배경 `color.primary-disabled`, 텍스트는 흰색 유지 |
+| Primary(disabled) | 배경 `color.primary-disabled`, 텍스트는 흰색 유지 — **대비 1.23:1로 WCAG 미달이지만 의도된 예외**(§9) |
 | **Secondary** | `color.surface` 배경 + `color.foreground` 텍스트 + `color.foreground` 1px 테두리, `radius.control`, 높이 48px. Primary와 짝을 이루는 대안 |
 | Secondary(disabled) | 테두리 `color.border-strong`, 텍스트 `color.muted-soft` |
 | **Tertiary(텍스트)** | 배경·테두리 없음, `color.foreground` 텍스트에 밑줄. "더보기"류 |
@@ -294,7 +311,7 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 - **이미지 위 텍스트 오버레이(순백 원칙의 예외)**: 아래 세 곳에서만 이미지/그라데이션 배경 위에 흰색(`on-primary`/`white70`) 텍스트를 올리고, 가독성을 위해 스크림 그라데이션(투명→검정)을 깐다. **이 예외는 홈 히어로 · 홈 아카이브 썸네일 카드 · 자료 상세 사진 카드 세 곳 한정** — 다른 표면은 §5 flat 원칙(테두리+라운드)을 따른다.
   - **자료 상세 사진 카드(S-25-B)**: 위 "자료 상세 사진 카드" 항목 참고. *(폐지: 2026-08-02의 "항목 상세 히어로" — 투명 `SliverAppBar` 배경 이미지 위 원형 반투명 back/··· 버튼과 흰 제목, 상·하단 스크림 28%, 아래로 `radius.bodySheet`(30) 흰 시트가 덮는 구조. 2026-08-05 재디자인으로 경계 있는 180px 카드로 바뀌었다.)*
   - **홈 히어로(에지투에지)**: 홈 대시보드 최상단. 상태바까지 확장되는 커버 이미지(`rooms.cover_image`, 없으면 `color.primary`→`color.primary-active` 그라데이션 폴백) 위에 D-day(`display-dday`)·종료일·진행률 바를 올린다. 이미지 위 가독성용 **딤 그라데이션**은 상단 검정 70% → 하단 검정 40% 리니어(상단 방이름·햄버거 영역을 더 진하게). **컬랩싱 히어로 3단계**: ① 펼침 — 배경 이미지 위 방이름▾·종료일·D-day(`display-dday`)·진행률 바·완료/전체·%가 크고 선명. ② 스크롤 중 — 접힘 정도 t에 따라 D-day·진행률 바·완료/전체·%·종료일이 함께 **페이드아웃**되고, 배경 이미지는 흰색으로 덮이기 시작(D-day 별도 스케일 애니메이션은 없음). ③ 접힘 — 배경 이미지 완전히 흰색으로 사라지고 D-day·진행률 opacity 0, **상단 앱바(방이름▾ / ☰)만 흰 배경으로 고정(sticky, 텍스트는 ink)** 되고 그 아래 콘텐츠가 스크롤. 히어로 아래 **흰 바디 시트**는 상단 좌우만 `radius.bodySheet`(30px) 라운드로, 히어로 바닥의 불투명 흰 lip으로 부드럽게 이어진다(경계 갭 없음).
-  - **일정 카드**: 두 화면이 **별개 위젯**이고 치수가 다르다(같은 `color.surface` + `color.primary` 좌측 바 계열만 공유). **홈 주간달력**(`week_calendar.dart`)은 회색 `_SectionBox`(surface-soft) 안 읽기전용 미리보기 — radius 10·좌측 바 2×18·제목 `body`(16/400)·시간 우측(`caption`)·무테. **일정 탭**(`schedule_screen.dart`)은 흰 캔버스 위 본카드 — `radius.card`(16)·좌측 바 **3×34**(반경 2, 세로 중앙)·패딩 12/10·제목 `title`(16/600)·부제(기간·시간·장소, `caption`)·`border` 1px·탭하면 수정 시트. 일정 탭 카드 치수(3·34·10 등)는 Figma 실측 확정값(4px 스케일 밖, `specs/OPEN.md` 추적) — 상세는 `specs/0009-일정-탭.md`.
+  - **일정 카드**: 두 화면이 **별개 위젯**이고 치수가 다르다(같은 `color.surface` + `color.primary` 좌측 바 계열만 공유). **홈 주간달력**(`week_calendar.dart`)은 `tint-mint` `_SectionBox` 안 읽기전용 미리보기(2026-09-13 이전엔 회색 `surface-soft`였다) — radius 10·좌측 바 2×18·제목 `body`(16/400)·시간 우측(`caption`)·무테. **일정 탭**(`schedule_screen.dart`)은 흰 캔버스 위 본카드 — `radius.card`(16)·좌측 바 **3×34**(반경 2, 세로 중앙)·패딩 12/10·제목 `title`(16/600)·부제(기간·시간·장소, `caption`)·`border` 1px·탭하면 수정 시트. 일정 탭 카드 치수(3·34·10 등)는 Figma 실측 확정값(4px 스케일 밖, `specs/OPEN.md` 추적) — 상세는 `specs/0009-일정-탭.md`.
   - **공휴일 카드(`HolidayCard`, 2026-08-08 )**: 공휴일을 일정처럼 목록 상단에 보여주는 읽기전용 카드. **바와 우측 캡션("공휴일")을 `accent-danger`**로 칠해 일반 일정(primary)과 구분한다. 룩은 **놓이는 화면의 일정 카드에 맞춘다** — 일정 탭이면 위 일정 탭 카드 치수(radius 16·바 3×34·제목 `title`·테두리), 홈 미리보기면 홈 카드 치수(radius 10·바 2×18·제목 `body`·무테). 이름은 `KoreanHolidays.nameOf`(2026·2027 하드코딩 표, 음력·대체공휴일 포함). 일정 탭·홈 주간 미리보기가 공용(`bordered` 플래그로 맥락 구분).
   - **홈 아카이브 캐러셀 카드**: `radius.card`(16px) 썸네일 위에 스크림 + 제목(`title`, 흰색)을 올린 오버레이 카드(0005). 썸네일이 없으면 `surface-strong` 채움.
   - **스크림**: 이미지 위 가독성용 하단 그라데이션은 `color.scrim`(모달 dim 전용)과 별개다. 밝은 이미지일수록 짙게(히어로 ~40%, 아카이브 카드 ~60%) — 이미지 명도에 맞춘 값이라 토큰 대신 컴포넌트에 직접 둔다.
@@ -346,7 +363,9 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 - **접근성**:
   - 최소 탭 영역 44×44px (시각 크기와 무관하게 히트박스로 보장).
   - 텍스트 대비 WCAG AA 이상 — `color.foreground`(#222222) on `color.canvas`(#FFFFFF)는 15.9:1로 AAA 통과. `color.muted`(#6A6A6A) on 흰 배경은 5.7:1로 AA 통과(본문 크기까지 사용 가능), `color.muted-soft`(#929292)는 3.5:1로 **비활성 텍스트에만** 사용.
-  - `color.primary`(#FF385C) on 흰 배경은 3.9:1 — **큰 텍스트/아이콘/면 채움에만** 쓰고 본문 크기 텍스트 색으로는 쓰지 않는다. Primary 버튼은 흰 텍스트 on #FF385C(4.0:1)로 대비를 확보한다.
+  - `color.primary`(#7980F4) on 흰 배경은 3.4:1 — **큰 텍스트/아이콘/면 채움에만** 쓰고 본문 크기 텍스트 색으로는 쓰지 않는다. Primary 버튼은 흰 텍스트 on #7980F4(3.4:1, 대형 텍스트 기준 AA)로 대비를 확보하고, 눌림 상태 `primary-active`(#6166C3)는 5.0:1이다.
+  - **비활성 Primary CTA는 대비 예외다** — 흰 텍스트 on `primary-disabled`(#E5E6FB)는 1.23:1로 WCAG 미달이다. 비활성 컨트롤은 WCAG 1.4.3 대비 요구 대상이 아니라 규격 위반은 아니지만, "눌리지 않는다"를 색만으로 알리는 셈이라 **비활성 상태는 버튼을 숨기거나 사유 문구를 함께 노출**하는 쪽을 우선한다. (강조색 교체 전 `#FFD1DA` 조합도 1.37:1로 같은 성질이었다. `specs/OPEN.md` 추적)
+  - 서브 컬러 틴트는 흰 캔버스 대비 최대 1.23:1이라 **경계로 쓰지 않는다** — 섹션 구분이 필요하면 여백이나 헤어라인을 함께 쓴다.
   - 큰글씨 접근성 설정 시 `body` 이하 텍스트가 레이아웃을 깨지 않도록 `Flexible`/줄바꿈 허용.
 
 ---

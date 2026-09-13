@@ -82,16 +82,16 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 # 앱 아이콘 생성 — `dart run flutter_launcher_icons` 로 iOS/안드로이드 전 사이즈 재생성.
-# 소스: assets/icons/modi_app_icon.png(정사각 워드마크). 안드로이드 어댑티브는
-# 원형 마스크 잘림 방지를 위해 여백 버전(modi_app_icon_adaptive_fg.png)을 전경으로 쓴다.
+# 소스: assets/icons/modi_app_logo.png(정사각 워드마크). 안드로이드 어댑티브는
+# 원형 마스크 잘림 방지를 위해 여백 버전(modi_app_logo_adaptive_fg.png)을 전경으로 쓴다.
 flutter_launcher_icons:
-  image_path: "assets/icons/modi_app_icon.png"
+  image_path: "assets/icons/modi_app_logo.png"
   android: true
   ios: true
   remove_alpha_ios: true
   background_color_ios: "#FFFFFF"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/modi_app_icon_adaptive_fg.png"
+  adaptive_icon_foreground: "assets/icons/modi_app_logo_adaptive_fg.png"
   min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the

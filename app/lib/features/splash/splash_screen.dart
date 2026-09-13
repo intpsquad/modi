@@ -60,18 +60,18 @@ class _SplashScreenState extends State<SplashScreen>
                   children: [
                     // 모션 비활성화면 정적 로고, 아니면 투명도 페이드인.
                     // 공용 ModiWordmark 재사용(filterQuality.high로 선명).
-                    // width 160 ≈ height 49(비율 ≈3.26:1).
+                    // height 64 ≈ width 202(비율 ≈3.16:1, 2026-09-13 확대).
                     if (reduceMotion)
                       const ModiWordmark(
                         key: ValueKey('splash-logo'),
-                        height: 49,
+                        height: 64,
                       )
                     else
                       FadeTransition(
                         opacity: _fade,
                         child: const ModiWordmark(
                           key: ValueKey('splash-logo'),
-                          height: 49,
+                          height: 64,
                         ),
                       ),
                     if (hasError) ...[
