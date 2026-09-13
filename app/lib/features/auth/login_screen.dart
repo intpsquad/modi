@@ -250,7 +250,8 @@ class _ModiLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModiWordmark(height: 30);
+    // 2026-09-13 확대(30→40). 에셋 여백 제거와 별개로 디자이너 요청.
+    return const ModiWordmark(height: 40);
   }
 }
 
