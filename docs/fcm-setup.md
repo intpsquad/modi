@@ -8,6 +8,7 @@
 
 1. Firebase 프로젝트에 iOS 앱 `com.intpsquad.modi`을 등록합니다.
 2. Firebase 콘솔의 프로젝트 설정에서 iOS 앱에 APNs 인증 키를 업로드합니다.
+   → **아래 「APNs 인증 키는 반드시 `Sandbox & Production` 으로 발급한다」를 먼저 읽으세요.**
 3. CI가 주입하는 `GoogleService-Info.plist`와 `firebase_options.dart`가 같은 Firebase
    프로젝트를 가리키는지 확인합니다.
 
@@ -35,6 +36,56 @@
 
 🔴 **위 iOS 두 줄은 아래 「알림 배선」이 있어야 사실입니다.** 2026-09-14 이전에는 배선이
 통째로 죽어 있어서 포그라운드 배너도, 알림 탭도, 푸시 자체도 동작하지 않았습니다.
+
+### 🔴 APNs 인증 키는 반드시 `Sandbox & Production` 으로 발급한다 — 2026-09-14 (#66)
+
+Apple Developer 에서 APNs 키를 만들 때 **Environment** 를 고르는 화면이 나옵니다. 기본값이
+`Sandbox` 인데, 그대로 저장하면 **Xcode 로 직접 돌린 개발 빌드에만 먹힙니다.**
+TestFlight·App Store 빌드는 프로덕션 APNs 를 쓰므로 푸시가 하나도 안 갑니다.
+
+🔴 **Environment 는 저장 후 바꿀 수 없습니다.** 잘못 만들었으면 키를 새로 발급해야 합니다.
+
+| 항목 | 값 |
+|---|---|
+| Environment | **`Sandbox & Production`** |
+| Key Restriction | `Team Scoped (All Topics)` |
+
+#### 증상과 판별법
+
+서버 로그에 이렇게 남습니다:
+
+```
+FCM 푸시 발송 실패: Invalid APNs credential.
+```
+
+Firebase 콘솔에서 바로 확인됩니다 — 프로젝트 설정 → 클라우드 메시징 →
+**`com.intpsquad.modi`** 선택 → 「APN 인증 키」:
+
+```
+📄 개발 APNs 인증 키              ← 키가 여기에만 있으면 잘못 발급된 것
+프로덕션 APNs 인증 키가 없습니다.   ← 여기가 채워져 있어야 한다
+```
+
+2026-09-14 에 정확히 이 상태였습니다. `Sandbox` 로 저장된 키라 Firebase 가 개발용으로만
+분류했고, TestFlight 빌드에서 위 오류가 났습니다.
+
+#### ⚠️ 앱 목록에서 엉뚱한 앱을 고르지 말 것
+
+Firebase 프로젝트에 Apple 앱이 **세 개** 있습니다. 우리 것은 **`com.intpsquad.modi`** 하나입니다.
+
+| 앱 | 팀 ID |
+|---|---|
+| `com.mara.modi.app` | `695C73WCLD` — 옛 프로젝트 |
+| **`com.intpsquad.modi`** | **`89BSUAHRK7`** ← 우리 것 |
+| `com.nomara.modi.app` | 옛 프로젝트 |
+
+업로드할 때 넣는 값은 `.p8` 파일, **Key ID**(파일명 `AuthKey_XXXXXXXXXX.p8` 의 `XXXXXXXXXX`),
+**팀 ID `89BSUAHRK7`** 입니다. 옛 앱들의 삭제 버튼은 누르지 마세요 — 되돌릴 수 없습니다.
+
+#### 키만 바꿀 때는 앱을 다시 빌드하지 않는다
+
+APNs 키는 **Firebase 쪽 설정**이라 앱 바이너리와 무관합니다. 키를 새로 올리면 그 즉시
+반영되므로, 이미 나가 있는 TestFlight 빌드 그대로 다시 테스트하면 됩니다.
 
 ### 🔴 iOS 알림 배선은 AppDelegate 가 직접 깨운다 — 2026-09-14 (#66)
 
