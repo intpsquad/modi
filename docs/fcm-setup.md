@@ -33,6 +33,75 @@
 - background 또는 종료 상태에서는 FCM notification payload를 OS가 표시합니다.
 - Android foreground에서 수신한 메시지는 로컬 알림(`modi_default` 채널)으로 직접 띄웁니다.
 
+🔴 **위 iOS 두 줄은 아래 「알림 배선」이 있어야 사실입니다.** 2026-09-14 이전에는 배선이
+통째로 죽어 있어서 포그라운드 배너도, 알림 탭도, 푸시 자체도 동작하지 않았습니다.
+
+### 🔴 iOS 알림 배선은 AppDelegate 가 직접 깨운다 — 2026-09-14 (#66)
+
+`app/ios/Runner/AppDelegate.swift` 가 플러그인 등록 **직후**에 앱 실행 알림을 다시 쏩니다:
+
+```swift
+NotificationCenter.default.post(
+  name: UIApplication.didFinishLaunchingNotification,
+  object: UIApplication.shared,
+  userInfo: /* launchOptions */
+)
+```
+
+**이게 없으면 iOS 알림이 통째로 죽습니다.** 지우지 마세요 —
+`app/test/features/notifications/apns_registration_test.dart` 가 CI 에서 잡습니다(주석 처리·
+`#if` 로 감싸기·다른 함수로 옮기기까지 잡도록 만들어 뒀습니다).
+
+#### 왜 필요한가
+
+`firebase_messaging` 15.2.10 은 iOS 알림 배선 **전체**를
+`UIApplicationDidFinishLaunchingNotification` 관찰자 하나에 몰아 넣습니다
+(`FLTFirebaseMessagingPlugin.m` 의 `application_onDidFinishLaunchingNotification:`, 214-310행).
+그 안에서 여섯 가지가 일어납니다:
+
+1. 앱을 켠 알림 수집(`getInitialMessage()` 의 재료)
+2. APNs 스위즐러 설치 — **토큰이 `FIRMessaging` 에 닿는 유일한 경로**
+3. `didReceiveRemoteNotification:fetchCompletionHandler:` 도너 메서드
+4. `addApplicationDelegate:` — 플러그인을 Flutter 생명주기 델리게이트로 등록
+5. `UNUserNotificationCenter.delegate` 설정 — **포그라운드 배너와 알림 탭**
+6. `registerForRemoteNotifications` — APNs 등록 시작
+
+그 관찰자는 플러그인 `init` 에서 등록되는데, **이 앱은 UIScene 을 채택**해서
+(`Info.plist` 의 `UIApplicationSceneManifest` + `SceneDelegate`) 플러그인 등록이
+`didInitializeImplicitFlutterEngine` 에서, 즉 **그 알림이 이미 끝난 뒤에** 일어납니다.
+관찰자가 영영 안 불려 위 여섯 가지가 통째로 실행되지 않습니다.
+
+증상: `getAPNSToken()` 이 계속 nil → `getToken()` 이 `apns-token-not-set` 으로 실패 →
+서버에 토큰이 없음 → **서버 로그에 `FCM 토큰이 없어 푸시를 건너뛴다` 만 남습니다.**
+2026-09-14 실측으로 유저 44명 중 토큰 보유 8명이었습니다(그 8명이 어떤 기기인지는 확인되지
+않았습니다 — `users` 테이블에 플랫폼 구분이 없습니다).
+
+#### `registerForRemoteNotifications()` 만 부르면 안 되는 이유
+
+처음엔 그 한 줄만 넣으려 했는데 **부족합니다.** 토큰을 받을 배선(2·4·5번)이 없는 채로 등록만
+시작되고, 토큰이 `Firebase.initializeApp()`(Dart, `app/lib/main.dart`) 보다 먼저 도착하면
+**아무도 받지 않고 버려집니다.** iOS 는 디바이스 토큰을 캐시하므로 두 번째 실행부터는 콜백이
+수십 ms 만에 오는데, Dart VM 부팅 + 카카오 SDK + Firebase 채널 왕복은 보통 수백 ms 입니다.
+그리고 그렇게 놓치면 **복구 경로가 없습니다** — 앱의 재시도 사다리는 `getToken()` 만 다시
+부르지 등록을 다시 시작하지 않습니다.
+
+알림을 쏘면 플러그인이 자기 설정을 전부 마치고, Firebase 가 아직 구성되지 않았으면 토큰을
+스스로 스태시했다가 나중에 흘려보내므로 그 경합이 없습니다.
+
+⚠️ **순서가 중요합니다.** 반드시 `GeneratedPluginRegistrant.register` **뒤**여야 합니다 —
+관찰자가 있어야 알림이 의미가 있습니다.
+
+⚠️ **`launchOptions` 를 실어 보냅니다.** 안 실으면 종료 상태에서 알림을 눌러 앱을 켰을 때
+`getInitialMessage()` 가 비어서 해당 화면으로 이동하지 않습니다.
+
+#### 🧹 언제 지우나
+
+`firebase_messaging` 이 UIScene 에서 스스로 배선하게 되면 이 코드와 가드 테스트를 함께
+지웁니다. 버전 상황과 판단은 `specs/OPEN.md` 에 적어 뒀습니다 — 15.x 에는 지원이 없고,
+16.5.0 이 지원을 넣으면서 같은 증상의 회귀를 냈으며, 그 회귀 수정(flutterfire #18620)은
+2026-09-07 머지됐지만 아직 릴리스 전입니다. **업그레이드해도 실기기에서 확인하기 전에는
+이 코드를 먼저 지우지 마세요.**
+
 ### 토큰 등록 재시도 — 2026-08-31 (#66)
 
 권한 요청이나 토큰 등록 실패는 앱 부팅을 막지 않습니다. 실패하면 **2초 → 5초 → 15초 →
