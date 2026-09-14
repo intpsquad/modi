@@ -17,8 +17,9 @@ final class ShareViewController: UIViewController {
   private enum UIConstants {
     // Mirrors specs/design.md and app/lib/design/tokens.dart. Native token
     // generation is intentionally not introduced for this small extension.
-    static let primary = UIColor(red: 1, green: 56.0 / 255.0, blue: 92.0 / 255.0, alpha: 1)
-    static let primaryActive = UIColor(red: 224.0 / 255.0, green: 11.0 / 255.0, blue: 65.0 / 255.0, alpha: 1)
+    // #7980F4 / #6166C3 (2026-09-13 강조색 교체).
+    static let primary = UIColor(red: 121.0 / 255.0, green: 128.0 / 255.0, blue: 244.0 / 255.0, alpha: 1)
+    static let primaryActive = UIColor(red: 97.0 / 255.0, green: 102.0 / 255.0, blue: 195.0 / 255.0, alpha: 1)
     static let foreground = UIColor(red: 34.0 / 255.0, green: 34.0 / 255.0, blue: 34.0 / 255.0, alpha: 1)
     static let muted = UIColor(red: 106.0 / 255.0, green: 106.0 / 255.0, blue: 106.0 / 255.0, alpha: 1)
     static let border = UIColor(red: 221.0 / 255.0, green: 221.0 / 255.0, blue: 221.0 / 255.0, alpha: 1)

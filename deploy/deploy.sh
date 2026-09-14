@@ -145,6 +145,13 @@ done
 # 본다** — 호스트에서 cat 하면 새 내용인데 트래픽은 옛 색으로 가는, 찾기 어려운 실패가 된다.
 # ⚠️ 이 함정은 **Docker Desktop(Windows/macOS)에서는 재현되지 않는다**(파일 공유가 경로 기반이다,
 #    2026-08-13 실측). 로컬에서 확인하고 규칙을 지우면 운영에서만 터진다.
+#
+# 🔴 **같은 함정이 `deploy/Caddyfile` 자체에도 걸린다**(2026-08-31 #74 배포에서 실측).
+# 그쪽은 이 스크립트가 아니라 **배포 잡의 rsync 가** 임시 파일 + rename 으로 갈아치우므로,
+# Caddyfile 을 고친 배포에서는 아래 reload 가 **성공하고도 옛 설정을 다시 적용한다** —
+# 로그는 정상이고 새 경로만 404 인, "배포 성공 + 아무것도 안 바뀜" 상태가 된다.
+# 고치는 방법은 reload 가 아니라 인프라 층 재생성이다(README "배포", Caddyfile 맨 위 주석).
+#   docker compose -f deploy/docker-compose.infra.yml --env-file ~/maramodi/.env up -d
 echo "==> Caddy 를 ${next} 로 전환"
 printf 'reverse_proxy %s:8080\n' "$next" > "$ACTIVE_FILE"
 

@@ -45,6 +45,12 @@ public class PushNotifier {
     this.notificationSettingRepository = notificationSettingRepository;
     this.notificationHistoryService = notificationHistoryService;
     this.pushSender = pushSender;
+    // 발송기 유무는 firebase.credentials-path 로 정해지는 **부팅 시점 고정값**이다(FirebaseConfig).
+    // 그래서 여기서 한 번만 경고한다 — 발송할 때마다 찍으면 방 팬아웃 한 번에 멤버 수만큼 쏟아진다.
+    // CLAUDE.md 가 경계하는 "설정이 빠져 기능만 조용히 꺼지는" 사례라 흔적은 반드시 남긴다.
+    if (pushSender.isEmpty()) {
+      log.warn("푸시 발송기가 없다 — firebase.credentials-path 미설정. 푸시 알림이 전부 나가지 않는다.");
+    }
   }
 
   /**
@@ -86,7 +92,18 @@ public class PushNotifier {
   }
 
   private void send(User target, String title, String body, PushType type, Room room) {
-    if (target.getFcmToken() == null || pushSender.isEmpty()) {
+    // 🔴 **건너뛴 것도 남긴다**(2026-08-31, 이슈 #66). 예전에는 조용히 return 해서, 로그가
+    // 비어 있을 때 "발송이 성공한 것"인지 "시도조차 안 한 것"인지 구분할 방법이 없었다.
+    // 발송기는 실패할 때만 로그를 남기므로 성공도 무로그다 — 두 경우가 똑같이 보였고,
+    // 그걸 가르는 데 시간을 썼다.
+    if (pushSender.isEmpty()) {
+      return; // 부팅 때 이미 경고했다(생성자 참고). 여기서 또 찍으면 발송마다 반복된다.
+    }
+    if (target.getFcmToken() == null) {
+      // 앱이 토큰을 아직 못 올린 사용자다. 인앱 알림은 이미 기록됐고 푸시만 건너뛴다.
+      // 클라이언트가 토큰을 제대로 등록하게 되면 드물어져야 하는 줄이다 — 계속 쏟아지면
+      // 앱 쪽 등록 경로를 다시 본다(그게 #66 이었다).
+      log.info("FCM 토큰이 없어 푸시를 건너뛴다: target={}", target.getId());
       return;
     }
     try {

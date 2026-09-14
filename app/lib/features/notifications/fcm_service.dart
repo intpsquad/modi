@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../config/env.dart';
@@ -49,15 +50,25 @@ class FirebaseMessagingClient implements FcmMessagingClient {
     };
   }
 
+  /// iOS는 APNs 토큰이 등록된 뒤에야 FCM 토큰을 받을 수 있다. 그 전에 부르면 예외가 난다.
+  ///
+  /// 🔴 예전에는 2초(10회 × 200ms)였는데 **실기기에서 그 안에 안 왔다** — 권한 승인
+  /// 2.028초 뒤 정확히 예외로 죽는 것을 기기 로그로 확인했다(2026-08-31, 이슈 #66).
+  /// 그래서 여유를 줬지만, **여기를 늘리는 것이 해결책은 아니다.** 진짜 안전망은
+  /// [FcmService.tokenRetryDelays] 의 재시도다 — 여기만 키우면 첫 호출이 오래 매달릴 뿐,
+  /// 그 한 번을 놓친 사용자는 여전히 영구히 토큰이 없다.
+  static const _apnsTokenMaxWait = Duration(seconds: 5);
+  static const _apnsTokenPollInterval = Duration(milliseconds: 200);
+
   @override
   Future<String?> getToken() async {
-    // iOS는 APNs 토큰이 등록된 뒤에 FCM 토큰을 요청해야 한다. 실기기 부팅
-    // 직후의 짧은 등록 지연만 흡수하고, 시뮬레이터/실패 상황은 상위에서
-    // 앱 부팅을 막지 않도록 처리한다.
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      for (var attempt = 0; attempt < 10; attempt++) {
+      final attempts =
+          _apnsTokenMaxWait.inMilliseconds ~/
+          _apnsTokenPollInterval.inMilliseconds;
+      for (var attempt = 0; attempt < attempts; attempt++) {
         if (await _messaging.getAPNSToken() != null) break;
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await Future<void>.delayed(_apnsTokenPollInterval);
       }
     }
 
@@ -108,8 +119,9 @@ class ApiFcmTokenRegistrar implements FcmTokenRegistrar {
 
 /// 앱 시작 시 권한을 확인하고, 로그인된 사용자의 FCM 토큰을 서버에 등록한다.
 ///
-/// 권한 요청이나 토큰 등록 실패는 핵심 화면 진입을 막지 않는다. 다음 부팅,
-/// 인증 상태 변경 또는 FCM 토큰 갱신 시 다시 시도한다.
+/// 권한 요청이나 토큰 등록 실패는 핵심 화면 진입을 막지 않는다. 실패하면
+/// [tokenRetryDelays] 로 다시 시도하고, 그 예산을 다 써도 **앱이 다시 앞으로 나올 때마다**
+/// 처음부터 다시 시도한다([onAppResumed]).
 class FcmService {
   FcmService({
     FcmMessagingClient? messaging,
@@ -118,6 +130,7 @@ class FcmService {
     this.supportedPlatform,
     this.registerBackgroundHandler = true,
     this.listenToMessages = true,
+    this.listenToLifecycle = true,
   }) : _messaging = messaging ?? FirebaseMessagingClient(),
        _authSession = authSession ?? FirebaseAuthSessionProvider(),
        _tokenRegistrar = tokenRegistrar ?? ApiFcmTokenRegistrar();
@@ -130,6 +143,10 @@ class FcmService {
   final bool registerBackgroundHandler;
   final bool listenToMessages;
 
+  /// 앱 생명주기(포그라운드 복귀)를 구독할지. 테스트는 끄고 [onAppResumed] 를 직접 부른다
+  /// — `AppLifecycleListener` 는 위젯 바인딩을 요구한다.
+  final bool listenToLifecycle;
+
   /// 안드로이드 포그라운드 알림을 직접 띄우기 위한 로컬 알림 플러그인.
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -141,6 +158,19 @@ class FcmService {
     importance: Importance.high,
   );
 
+  /// 토큰 등록이 실패했을 때 다시 시도하는 간격. 5회, 합쳐서 약 1분 52초.
+  ///
+  /// 실패의 대부분은 iOS 가 APNs 토큰을 아직 안 준 것이라 **초반은 촘촘하게**, 그래도 안 되면
+  /// 네트워크 쪽일 수 있으니 **뒤로 갈수록 길게** 잡는다. 성공하면 즉시 멈춘다.
+  /// 테스트가 이 값을 그대로 참조한다(`AppSession.splashMinimumDuration` 과 같은 방식).
+  static const tokenRetryDelays = <Duration>[
+    Duration(seconds: 2),
+    Duration(seconds: 5),
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+    Duration(seconds: 60),
+  ];
+
   StreamSubscription<AuthUserSnapshot?>? _authSubscription;
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _messageSubscription;
@@ -150,6 +180,21 @@ class FcmService {
   bool _backgroundHandlerRegistered = false;
   bool _syncInProgress = false;
   bool _syncRequested = false;
+  Timer? _retryTimer;
+  int _retryAttempt = 0;
+  bool _disposed = false;
+  bool _freshSyncRequested = false;
+  AppLifecycleListener? _lifecycleListener;
+
+  /// 재시도가 예약돼 있는지. **테스트가 "실패"와 "아직 할 때가 아님"을 구분하기 위한 창구다** —
+  /// 그 구분이 이 클래스의 핵심 판단인데 밖에서 볼 수 있는 것이 없으면 테스트로 고정되지 않는다
+  /// (2026-08-31 리뷰: 그 구분을 뒤집는 뮤테이션이 전부 통과했다).
+  @visibleForTesting
+  bool get hasPendingTokenRetry => _retryTimer?.isActive ?? false;
+
+  /// 지금까지 쓴 재시도 횟수. 성공하거나 새 트리거가 오면 0으로 돌아간다.
+  @visibleForTesting
+  int get tokenRetryAttempt => _retryAttempt;
 
   FcmAuthorizationStatus? get authorizationStatus => _authorizationStatus;
 
@@ -220,6 +265,16 @@ class FcmService {
       _latestToken = token;
       unawaited(_syncToken());
     });
+    // 🔴 **여기서 던지면 아래 권한 요청이 통째로 안 나간다** — 이 파일이 2026-08-16 에
+    // 배운 바로 그 함정이다(메시지 수신 배선 주석 참고). `AppLifecycleListener` 는 위젯
+    // 바인딩을 요구해서 실제로 던질 수 있으므로 삼키지 말고 남기고 계속 간다.
+    if (listenToLifecycle) {
+      try {
+        _lifecycleListener = AppLifecycleListener(onResume: onAppResumed);
+      } catch (error) {
+        debugPrint('FCM 생명주기 구독 실패(권한 요청은 계속한다): ${_describeError(error)}');
+      }
+    }
 
     try {
       await _messaging.configureForegroundPresentation();
@@ -297,53 +352,166 @@ class FcmService {
     );
   }
 
-  Future<void> _syncToken() async {
+  /// 🔴 **앱이 다시 앞으로 나오면 토큰 등록을 처음부터 다시 시도한다**(2026-08-31 리뷰 반영).
+  ///
+  /// [tokenRetryDelays] 예산(약 112초)을 다 쓰고도 실패한 기기는 그 예산을 되돌릴 경로가
+  /// 없었다 — 토큰을 한 번도 못 받았으면 `onTokenRefresh` 가 안 오고, 로그인 상태가 유지되면
+  /// `authStateChanges` 도 안 온다. iOS 는 사용자가 앱을 강제 종료하는 일이 드물어서
+  /// "다음 앱 실행"이 며칠 뒤일 수 있다. **그러면 2초짜리 창을 112초로 넓혔을 뿐 #66 과
+  /// 같은 영구 침묵이 남는다.** 포그라운드 복귀가 그 되돌림 지점이다.
+  void onAppResumed() {
+    if (_disposed || !_isSupported) return;
+    unawaited(_syncToken());
+  }
+
+  /// [isRetry]가 아니면 예약된 재시도를 취소하고 횟수를 처음부터 센다 — 로그인이나 토큰
+  /// 갱신 같은 새 트리거는 옛 재시도 사슬을 이어받는 게 아니라 새로 시작하는 것이다.
+  Future<void> _syncToken({bool isRetry = false}) async {
     if (_syncInProgress) {
       _syncRequested = true;
+      // 진행 중인 동기화에 합류할 때 **retry 였는지 fresh 였는지를 기억해 둔다.** 안 그러면
+      // 느린 망에서 재시도 도중 로그인한 사용자가 예산을 리셋받지 못한다(2026-08-31 리뷰).
+      _freshSyncRequested = _freshSyncRequested || !isRetry;
       return;
     }
+    if (!isRetry) _cancelRetry();
     _syncInProgress = true;
     try {
+      _SyncOutcome outcome;
       do {
         _syncRequested = false;
-        await _syncTokenOnce();
+        if (_freshSyncRequested) {
+          _freshSyncRequested = false;
+          _cancelRetry();
+        }
+        outcome = await _syncTokenOnce();
+        // 합류가 있었다면 **마지막 결과만** 재시도 판단에 쓴다. 앞이 실패고 뒤가 notReady 인
+        // 유일한 실제 경로는 "실패 직후 로그아웃"이고, 그때는 재시도하지 않는 것이 맞다.
       } while (_syncRequested);
+      switch (outcome) {
+        case _SyncOutcome.ok:
+          _cancelRetry();
+        case _SyncOutcome.failed:
+          _scheduleRetry();
+        // 권한이 없거나 로그인 전이면 "실패"가 아니라 "아직 할 때가 아님"이다.
+        // 각각 권한 요청과 authStateChanges 가 이미 트리거를 갖고 있으므로 재시도하지 않는다.
+        case _SyncOutcome.notReady:
+          break;
+      }
     } finally {
       _syncInProgress = false;
     }
   }
 
-  Future<void> _syncTokenOnce() async {
+  /// 🔴 **실패하면 반드시 다시 시도한다**(2026-08-31, 이슈 #66).
+  ///
+  /// 예전에는 부팅 때 딱 한 번이었다. iOS 는 APNs 등록이 끝나야 FCM 토큰을 주는데 그게
+  /// 늦으면 첫 시도가 예외로 죽었고, **그 뒤로 아무도 다시 부르지 않아** 그 사용자는 영구히
+  /// 푸시를 못 받았다(`authStateChanges` 는 권한 설정 전에 이미 발화했고, `onTokenRefresh`
+  /// 는 토큰을 못 받았으니 오지 않는다). 운영 DB 에 그 결과가 그대로 있었다 —
+  /// **유저 40명 중 토큰 보유 8명.**
+  void _scheduleRetry() {
+    if (_disposed) return;
+    if (_retryAttempt >= tokenRetryDelays.length) {
+      debugPrint(
+        'FCM 토큰 등록을 ${tokenRetryDelays.length}회 재시도했지만 실패했다 — '
+        '다음 앱 실행이나 로그인 때 다시 시도한다.',
+      );
+      return;
+    }
+    final delay = tokenRetryDelays[_retryAttempt];
+    _retryAttempt++;
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () => unawaited(_syncToken(isRetry: true)));
+    debugPrint('FCM 토큰 등록 재시도 예약: $_retryAttempt번째, ${delay.inSeconds}초 뒤');
+  }
+
+  void _cancelRetry() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryAttempt = 0;
+  }
+
+  Future<_SyncOutcome> _syncTokenOnce() async {
+    if (_disposed) return _SyncOutcome.notReady;
     final permission = _authorizationStatus;
     if (permission != FcmAuthorizationStatus.authorized &&
         permission != FcmAuthorizationStatus.provisional) {
-      return;
+      return _SyncOutcome.notReady;
     }
 
     final user = _authSession.currentUser;
-    if (user == null) return;
+    if (user == null) return _SyncOutcome.notReady;
 
     try {
       final token = _latestToken ??= await _messaging.getToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        // 🔴 예전에는 여기서 **로그 한 줄 없이** 끝났다. 그래서 "푸시가 안 온다"를
+        // 신고받고도 기기 로그에 아무 흔적이 없어 원인을 좁힐 수 없었다.
+        debugPrint('FCM 토큰을 받지 못했다(비어 있음) — iOS 는 APNs 등록이 끝나야 토큰을 준다.');
+        return _SyncOutcome.failed;
+      }
 
       final idToken = await _authSession.getIdToken();
-      if (idToken == null || idToken.isEmpty) return;
+      if (idToken == null || idToken.isEmpty) {
+        debugPrint('FCM 토큰 등록 보류 — ID 토큰을 아직 못 받았다.');
+        return _SyncOutcome.failed;
+      }
 
       await _tokenRegistrar.register(idToken: idToken, fcmToken: token);
+      return _SyncOutcome.ok;
     } catch (error, stackTrace) {
-      // 토큰 등록 실패는 로그인/화면 진입을 막지 않고 다음 이벤트에서 재시도한다.
-      debugPrint('FCM 토큰 서버 등록 실패: ${error.runtimeType}');
-      debugPrintStack(stackTrace: stackTrace);
+      // 토큰 등록 실패는 로그인/화면 진입을 막지 않는다. 위 _scheduleRetry 가 되살린다.
+      _logRegistrationFailure(error, stackTrace);
+      return _SyncOutcome.failed;
     }
   }
 
+  /// 🔴 **로그가 던져도 재시도 판단을 막지 않게 감싼다**(2026-08-31 리뷰 후 실측으로 발견).
+  ///
+  /// `debugPrintStack` 이 실제로 던지는 것을 확인했다 —
+  /// `Got a stack frame from package:stack_trace, where a vm or web frame was expected`.
+  /// 그러면 그 예외가 catch 블록 자체를 빠져나가 `_syncToken` 의 switch 를 건너뛰고,
+  /// **실패했는데 재시도가 예약되지 않는다.** 서버 등록이 실패하는 경로(HTTP 5xx·망 끊김)가
+  /// 통째로 재시도 대상에서 빠져 있었다.
+  ///
+  /// 이 파일이 이미 두 번 겪은 것과 같은 계열이다 — 진단용 한 줄이 본 동작을 죽이는 것.
+  /// 진단은 "있으면 좋은 것"이고 재시도는 "없으면 기능이 죽는 것"이라 순서를 이렇게 둔다.
+  static void _logRegistrationFailure(Object error, StackTrace stackTrace) {
+    try {
+      debugPrint('FCM 토큰 서버 등록 실패: ${_describeError(error)}');
+      debugPrintStack(stackTrace: stackTrace);
+    } catch (_) {
+      // 로그가 실패해도 호출자는 재시도를 예약해야 한다.
+    }
+  }
+
+  /// 🔴 **타입 이름만 남기지 않는다.** 예전에는 `${error.runtimeType}` 뿐이라 로그에
+  /// `FirebaseException` 한 단어만 찍혔고, 그것만으로는 APNs 문제인지 네트워크인지
+  /// 권한인지 구분할 수 없었다(2026-08-31 진단이 길어진 이유의 절반).
+  ///
+  /// ⚠️ **토큰 값은 절대 찍지 않는다** — 기기 식별자다. 코드와 메시지만 남긴다.
+  static String _describeError(Object error) => switch (error) {
+    FirebaseException(:final code, :final message) =>
+      '[$code] ${message ?? error}',
+    _ => '${error.runtimeType}: $error',
+  };
+
   Future<void> dispose() async {
+    _disposed = true;
+    _cancelRetry();
+    _lifecycleListener?.dispose();
+    _lifecycleListener = null;
     await _authSubscription?.cancel();
     await _tokenRefreshSubscription?.cancel();
     await _messageSubscription?.cancel();
   }
 }
+
+/// [FcmService._syncTokenOnce] 의 결과. **"실패"와 "아직 할 때가 아님"을 가른다** —
+/// 재시도해야 하는 것은 앞쪽뿐이다. 권한이 없거나 로그인 전인 상태를 실패로 보고 재시도하면
+/// 로그인도 안 한 사용자에게 타이머만 돌게 된다.
+enum _SyncOutcome { ok, failed, notReady }
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {

@@ -55,6 +55,12 @@ services:
       # (README "배포" 절). 값은 deploy/.env 에서 온다.
       KAKAO_NATIVE_APP_KEY: ${KAKAO_NATIVE_APP_KEY:-}
     volumes:
+      # 🔴 **단일 파일 bind-mount 라 inode 가 묶인다.** 배포의 rsync 가 이 파일을
+      # 임시 파일 + rename 으로 갈아치우면 컨테이너는 **옛 파일을 계속 본다** —
+      # 호스트에서 cat 하면 새 내용인데 Caddy 는 옛 설정으로 도는 상태가 된다.
+      # 그래서 **Caddyfile 을 고친 배포는 `caddy reload` 로 반영되지 않고**,
+      # 이 인프라 층을 `up -d` 로 다시 만들어야 한다(2026-08-31 #74 배포에서 실측).
+      # 자세한 재현과 로그는 Caddyfile 맨 위 주석에 적어 뒀다.
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # 🔴 **살아있는 blue/green 색이 적힌 한 줄.** Caddyfile 이 `import active-upstream.conf` 로
       # 읽는다. 배포가 이 파일을 바꾸고 `caddy reload` 해서 트래픽을 새 색으로 돌린다.

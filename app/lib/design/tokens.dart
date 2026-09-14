@@ -5,10 +5,20 @@ class AppColors {
   AppColors._();
 
   // 브랜드 / 강조 — 화면당 강조색은 primary 하나만.
-  static const primary = Color(0xFFFF385C);
-  static const primaryActive = Color(0xFFE00B41);
-  static const primaryDisabled = Color(0xFFFFD1DA);
+  static const primary = Color(0xFF7980F4);
+  static const primaryActive = Color(0xFF6166C3);
+  static const primaryDisabled = tintLilac;
   static const onPrimary = Color(0xFFFFFFFF);
+
+  // 서브 컬러(섹션 틴트) — 2026-09-13 디자이너 지정. **배경 면 채움 전용**이며
+  // 텍스트/아이콘 색으로 쓰지 않는다(흰색에 가까워 대비가 안 나온다).
+  // 섹션 박스가 중립 회색(surfaceSoft) 대신 이 틴트를 쓸 수 있다.
+  static const tintPeach = Color(0xFFFEF0EB); // 내 투두
+  static const tintCream = Color(0xFFFFF7EC);
+  static const tintAqua = Color(0xFFE1FBFC);
+  static const tintMint = Color(0xFFF3FFE9); // 이번 주 일정
+  static const tintPink = Color(0xFFFEF1FB);
+  static const tintLilac = Color(0xFFE5E6FB); // primary 계열 틴트 = primaryDisabled
 
   // 표면 — canvas와 surface가 같은 흰색이므로 계층은 border 헤어라인으로만 만든다.
   static const canvas = Color(0xFFFFFFFF);

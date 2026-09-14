@@ -547,7 +547,7 @@ class ShareActivity : AppCompatActivity() {
  * ShareViewController의 UIConstants와 짝. [ShareActivity]의 커스텀 다이얼로그 뷰들이 쓴다.
  */
 private object ShareTokens {
-    val primary = 0xFFFF385C.toInt()
+    val primary = 0xFF7980F4.toInt()
     val onPrimary = 0xFFFFFFFF.toInt()
     val foreground = 0xFF222222.toInt()
     val muted = 0xFF6A6A6A.toInt()

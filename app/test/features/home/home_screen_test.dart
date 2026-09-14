@@ -10,6 +10,7 @@ import 'package:app/features/room/room_session.dart';
 import 'package:app/features/todos/todo_sync.dart';
 import 'package:app/features/todos/todos_api.dart'
     show TodoNotAssigneeException;
+import 'package:app/design/tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -940,5 +941,47 @@ void main() {
 
       expect(find.text('TODOS_TAB'), findsOneWidget);
     });
+  });
+
+  // design.md §2 서브 컬러 — 섹션 배경이 회색으로 되돌아가는 걸 CI가 잡게 한다(2026-09-13).
+  testWidgets('"이번 주 일정"은 tint-mint, "내 투두"는 tint-peach 배경을 쓴다', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          api: _FakeHomeApi(
+            dashboard: _dashboard(
+              todayTodos: [TodoBrief(id: 1, title: '투두1', completed: false)],
+            ),
+          ),
+          authService: _FakeAuthService(),
+          roomSession: RoomSession(roomApi: _FakeRoomApi()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 트리 모양에 기대지 않도록 섹션 키로 직접 찾는다 — 조상/자손 탐색은 위에
+    // 래퍼가 하나만 끼어도 조용히 엉뚱한 위젯을 검사하게 된다(2026-09-13 리뷰).
+    // _SectionBox의 루트가 배경을 칠하는 Container라 first가 곧 그 박스다.
+    Color sectionColorOf(String sectionKey) {
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byKey(ValueKey(sectionKey)),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      return (container.decoration! as BoxDecoration).color!;
+    }
+
+    // 키가 실제로 붙어 있는지부터 확인(오타로 0개를 찾아 통과하는 일 방지).
+    expect(find.byKey(const ValueKey('home-section-week')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-section-todos')), findsOneWidget);
+
+    expect(sectionColorOf('home-section-week'), AppColors.tintMint);
+    expect(sectionColorOf('home-section-todos'), AppColors.tintPeach);
   });
 }

@@ -600,6 +600,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.content),
       child: _SectionBox(
+        key: const ValueKey('home-section-week'),
+        color: AppColors.tintMint,
         children: [
           _BoxHeader(title: '이번 주 일정', onMore: () => _goToBranch(context, 2)),
           const SizedBox(height: AppSpacing.cardGap),
@@ -613,6 +615,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.content),
       child: _SectionBox(
+        key: const ValueKey('home-section-todos'),
+        color: AppColors.tintPeach,
         children: [
           _BoxHeader(title: '내 투두', onMore: () => _goToBranch(context, 1)),
           const SizedBox(height: AppSpacing.cardGap),
@@ -1062,9 +1066,14 @@ class _RankBadge extends StatelessWidget {
 }
 
 class _SectionBox extends StatelessWidget {
-  const _SectionBox({required this.children});
+  const _SectionBox({super.key, required this.children, required this.color});
 
   final List<Widget> children;
+
+  /// 섹션 배경 — design.md §2 서브 컬러 틴트. 기본값을 두지 않는 건 의도다:
+  /// 세 번째 섹션이 생겼을 때 색을 안 정한 채 조용히 회색으로 새지 않도록
+  /// 호출부가 매번 고르게 강제한다(2026-09-13).
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -1072,7 +1081,7 @@ class _SectionBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.base),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
+        color: color,
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
