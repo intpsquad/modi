@@ -78,7 +78,9 @@ class SettingsApi {
       bytes: imageBytes,
       filename: imageBytes == null ? null : 'screenshot',
     );
-    _checkOk(response, '문의 전송');
+    // 🔴 서버는 201 Created 다(`@ResponseStatus(CREATED)`). 200 으로 보면 저장·메일이
+    // 끝난 뒤에 실패 문구가 뜬다 — #97 에서 실제로 그랬다.
+    _checkOk(response, '문의 전송', expect: 201);
   }
 
   // 협업 캐릭터 조회(`GET /me/character`)는 2026-08-25(#68)에 여기서 제거했다 —
@@ -248,8 +250,17 @@ class SettingsApi {
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
 
-  void _checkOk(http.Response response, String operation) {
-    if (response.statusCode != 200) {
+  /// 기대한 상태 코드가 아니면 예외로 올린다.
+  ///
+  /// ⚠️ **범위(2xx)가 아니라 정확한 코드로 본다** — 이 앱의 관행이다
+  /// (`schedule_api` 의 `!= 201`·`!= 204`, `room_api` 의 `!= 201`, 아래 방 나가기·탈퇴의
+  /// `!= 204`). 범위로 느슨하게 풀면 본문이 없는 204 가 와도 통과한 뒤 JSON 파싱에서
+  /// 엉뚱하게 터진다.
+  ///
+  /// [expect] 기본값이 200 인 이유: 이 헬퍼를 쓰는 12곳 중 11곳이 조회·저장(200)이고
+  /// `POST /feedback` 하나만 201 이다(`docs/api/openapi.json` 전수 대조, #97).
+  void _checkOk(http.Response response, String operation, {int expect = 200}) {
+    if (response.statusCode != expect) {
       throw StateError('$operation 실패 (${response.statusCode})');
     }
   }
