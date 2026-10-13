@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../design/confirm_dialog.dart';
 import '../../design/option_menu.dart';
 import '../../design/tokens.dart';
 import '../auth/auth_service.dart';
@@ -65,6 +67,9 @@ class ArchiveCommentsSheet extends StatefulWidget {
 
 class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
   final TextEditingController _controller = TextEditingController();
+
+  /// 입력란이 비었는지 — 전송 버튼 상태를 가른다(#112).
+  bool _composerEmpty = true;
   final ScrollController _scrollController = ScrollController();
 
   bool _loading = true;
@@ -82,6 +87,12 @@ class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
   @override
   void initState() {
     super.initState();
+    // 🔴 글자마다 setState 하지 않는다 — **비었는지 여부가 바뀔 때만** 다시 그린다.
+    // 긴 댓글에서 타이핑마다 트리를 다시 만드는 낭비를 피한다.
+    _controller.addListener(() {
+      final empty = _controller.text.trim().isEmpty;
+      if (empty != _composerEmpty) setState(() => _composerEmpty = empty);
+    });
     _load();
     _loadMe();
   }
@@ -254,10 +265,12 @@ class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
             c.author?.userId != null &&
             c.author!.userId == widget.authService.currentUserId;
         final key = mine ? (_menuKeys[c.id] ??= GlobalKey()) : null;
+        // 롱프레스와 ⋯ 는 **같은 메뉴**를 연다. 메뉴를 두 벌 만들지 않는다(#112).
+        void openMenu() => _openCommentMenu(c, key!);
         return _CommentRow(
           comment: c,
           menuAnchorKey: key,
-          onMenu: mine ? () => _openCommentMenu(c, key!) : null,
+          onMenu: mine ? openMenu : null,
         );
       },
     );
@@ -320,21 +333,16 @@ class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
   }
 
   Future<void> _deleteComment(ArchiveComment comment) async {
-    final ok = await showDialog<bool>(
+    // 공용 확인 다이얼로그를 쓴다(#112). 여기만 민짜 AlertDialog 라 혼자 밋밋했다 —
+    // 설정·초대코드 입장·방 참여·자료 상세는 이미 이걸 쓰고 있었다.
+    final ok = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('댓글을 삭제할까요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline,
+      title: '댓글을 삭제할까요?',
+      message: '삭제한 댓글은 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      cancelLabel: '취소',
+      accent: AppColors.accentDanger,
     );
     if (ok != true || !mounted) return;
     try {
@@ -406,6 +414,16 @@ class _ArchiveCommentsSheetState extends State<ArchiveCommentsSheet> {
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.content,
                       vertical: AppSpacing.md,
+                    ),
+                    suffixIcon: _SendButton(
+                      visible: !_composerEmpty,
+                      enabled: !_composerEmpty && !_sending,
+                      onTap: _send,
+                    ),
+                    // 기본 48 보다 좁게 잡아야 알약 입력창 안에 버튼이 꽉 차지 않는다.
+                    suffixIconConstraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -489,6 +507,71 @@ class _CommentEditDialogState extends State<_CommentEditDialog> {
   }
 }
 
+/// 댓글 입력창 안 오른쪽의 전송 버튼(#112) — **B안: 없다가 들어온다.**
+///
+/// 비어 있으면 아예 없고, 글자를 적으면 페이드+슬라이드로 들어온다.
+class _SendButton extends StatelessWidget {
+  const _SendButton({
+    required this.visible,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  /// 🔴 임시값 — 모션 토큰이 없다(`specs/OPEN.md`「모션/애니메이션 토큰 부재」).
+  static const _enterDuration = Duration(milliseconds: 150);
+
+  final bool visible;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: _enterDuration,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          // 🔴 **아래에서 위로** 올라온다(가로로 밀려 들어오지 않는다).
+          // 위로 보내는 ↑ 아이콘과 결이 맞고, 옆에서 튀어나오는 것보다 덜 요란하다.
+          position: Tween(
+            begin: const Offset(0, 0.4),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: visible
+          ? Padding(
+              key: const ValueKey('send-visible'),
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: Semantics(
+                button: true,
+                enabled: enabled,
+                label: '댓글 보내기',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: enabled ? onTap : null,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_upward,
+                      size: 16,
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : const SizedBox(key: ValueKey('send-hidden'), width: 0, height: 0),
+    );
+  }
+}
+
 class _CommentRow extends StatelessWidget {
   const _CommentRow({required this.comment, this.menuAnchorKey, this.onMenu});
 
@@ -501,7 +584,7 @@ class _CommentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final author = comment.author;
-    return Row(
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ArchiveAuthorAvatar(
@@ -547,6 +630,22 @@ class _CommentRow extends StatelessWidget {
             ),
           ),
       ],
+    );
+
+    // 내 댓글이 아니면 그대로 — 남의 댓글은 길게 눌러도 아무 일 없다.
+    if (onMenu == null) return row;
+
+    // 꾹 눌러도 같은 메뉴가 열린다(#112). ⋯ 는 **그대로 둔다** — 롱프레스는 지름길을
+    // 하나 더 주는 것이지 대체가 아니다. 숨은 제스처만 남기면 발견성이 떨어진다.
+    return GestureDetector(
+      // opaque 라야 글자 사이 빈 곳에서도 먹는다. 세로 스크롤은 ListView 가 계속 가져간다
+      // (롱프레스는 길게 누르는 제스처라 드래그와 경쟁하지 않는다).
+      behavior: HitTestBehavior.opaque,
+      onLongPress: () {
+        HapticFeedback.selectionClick();
+        onMenu!();
+      },
+      child: row,
     );
   }
 }
