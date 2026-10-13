@@ -91,6 +91,49 @@ void main() {
     expect(api.withdraw('token'), throwsStateError);
   });
 
+  test('문의 전송은 서버가 주는 201을 성공으로 받는다', () async {
+    // 🔴 #97 — 서버 FeedbackController 가 @ResponseStatus(CREATED) 라 201 을 준다.
+    // 앱이 200 만 성공으로 보면, 저장·메일이 끝난 뒤에 실패 문구가 뜬다.
+    // openapi.json 도 `POST /feedback → ['201']` 하나만 정의한다.
+    //
+    // ⚠️ 다만 운영에서 그 증상이 나온 적은 없다 — 서버가 먼저 500 이었다(#99).
+    // 두 버그가 직렬이라 #99 를 고쳐야 비로소 이 201 이 표면에 드러난다.
+    final client = MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url.path, '/feedback');
+      return http.Response(jsonEncode({'id': 1}), 201);
+    });
+    final api = SettingsApi(
+      baseUrl: 'https://api.test',
+      client: AuthenticatedHttpClient(
+        client: client,
+        tokenProvider: _FakeTokenProvider(),
+      ),
+    );
+
+    await expectLater(
+      api.submitFeedback('token', type: 'QUESTION', content: '내용'),
+      completes,
+    );
+  });
+
+  test('문의 전송이 실제로 실패하면(4xx·5xx) 예외를 던진다', () async {
+    // 201 을 받아들이면서 진짜 실패까지 삼키면 안 된다.
+    final client = MockClient((request) async => http.Response('nope', 500));
+    final api = SettingsApi(
+      baseUrl: 'https://api.test',
+      client: AuthenticatedHttpClient(
+        client: client,
+        tokenProvider: _FakeTokenProvider(),
+      ),
+    );
+
+    await expectLater(
+      api.submitFeedback('token', type: 'QUESTION', content: '내용'),
+      throwsStateError,
+    );
+  });
+
   test('방 목록 응답의 대표 이미지와 상세 목표를 설정 프리필용으로 보존한다', () {
     final room = RoomSummary.fromMap({
       'id': 7,
