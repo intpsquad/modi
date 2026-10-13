@@ -543,6 +543,9 @@ class _PokeButtonState extends State<_PokeButton>
   /// 🔴 임시값 — 모션 토큰이 없다(`specs/OPEN.md`「모션/애니메이션 토큰 부재」).
   static const _reactionDuration = Duration(milliseconds: 320);
 
+  /// 색이 "뿅" 바뀌는 시간. 짧아야 톡 치는 느낌이 난다.
+  static const _colorDuration = Duration(milliseconds: 140);
+
   late final AnimationController _reaction = AnimationController(
     vsync: this,
     duration: _reactionDuration,
@@ -583,7 +586,17 @@ class _PokeButtonState extends State<_PokeButton>
           return Transform.translate(offset: Offset(shake, 0), child: child);
         },
         child: Material(
-          color: AppColors.primary,
+          // 결과에 따라 색이 **살짝 뿅** 바뀐다. Material 이 색 전환을 스스로
+          // 애니메이션하므로(animationDuration) 따로 컨트롤러를 두지 않는다.
+          //
+          // 둘 다 기존 토큰이다 — 새 색을 만들지 않는다. 실패에 `accentDanger` 를 쓰는 건
+          // design.md §2 가 허용하는 **의미 전용** 사용이다(강조 용도 혼용이 아니다).
+          color: switch (feedback) {
+            _PokeFeedback.none => AppColors.primary,
+            _PokeFeedback.sent => AppColors.primaryActive,
+            _PokeFeedback.failed => AppColors.accentDanger,
+          },
+          animationDuration: _colorDuration,
           borderRadius: BorderRadius.circular(AppRadius.pill),
           child: InkWell(
             onTap: widget.loading ? null : widget.onTap,

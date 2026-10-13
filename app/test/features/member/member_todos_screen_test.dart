@@ -177,6 +177,45 @@ void main() {
     expect(after, before, reason: '결과 라벨로 바뀌어도 버튼 폭은 그대로여야 한다');
   });
 
+  testWidgets('결과에 따라 버튼 색이 바뀐다', (tester) async {
+    // 글자만 바뀌면 변화가 약하다는 피드백 — 색도 살짝 바뀌어야 한다.
+    // 둘 다 기존 토큰이다(새 색을 만들지 않는다).
+    Color colorOf(String label) => tester
+        .widget<Material>(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(Material))
+              .first,
+        )
+        .color!;
+
+    await pumpScreen(tester, _FakeMemberTodosApi());
+    expect(colorOf('찌르기'), AppColors.primary);
+
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+
+    expect(colorOf('찔렀어요'), AppColors.primaryActive, reason: '성공하면 한 톤 깊어진다');
+  });
+
+  testWidgets('실패하면 위험색으로 바뀐다', (tester) async {
+    final api = _FakeMemberTodosApi()..pokeFails = true;
+    await pumpScreen(tester, api);
+
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+
+    final material = tester.widget<Material>(
+      find
+          .ancestor(of: find.text('안 됐어요'), matching: find.byType(Material))
+          .first,
+    );
+    expect(
+      material.color,
+      AppColors.accentDanger,
+      reason: '성공과 같은 색이면 둘을 구분할 수 없다',
+    );
+  });
+
   testWidgets('실패하면 안 됐어요로 알린다', (tester) async {
     // 성공과 대칭 — 실패도 같은 자리(버튼 안)에서 알린다.
     final api = _FakeMemberTodosApi()..pokeFails = true;
