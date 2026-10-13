@@ -126,6 +126,49 @@ void main() {
     expect(find.text('콕 찔렀어요'), findsOneWidget);
   });
 
+  // ---- 피드백 모양(#105) — 하단 기본 스낵바에서 버튼 위 토스트로 ----
+
+  testWidgets('피드백이 하단 스낵바가 아니다', (tester) async {
+    // 되돌아가는 회귀를 잡는 가드. "AI티 난다"는 지적의 핵심이 Material 기본 스낵바였다.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('토스트가 찌르기 버튼보다 위에 뜬다', (tester) async {
+    // 이 작업의 요점 자체다 — 누른 자리에서 결과를 본다. 문구 존재만 보면
+    // 화면 아무 데나 떠도 통과하므로 좌표로 검사한다.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+
+    final toastBottom = tester.getBottomLeft(find.text('콕 찔렀어요')).dy;
+    final buttonTop = tester.getTopLeft(find.text('찌르기')).dy;
+    expect(
+      toastBottom,
+      lessThanOrEqualTo(buttonTop),
+      reason: '토스트는 버튼 위에 떠야 한다',
+    );
+  });
+
+  testWidgets('토스트는 잠시 뒤 스스로 사라진다', (tester) async {
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+    expect(find.text('콕 찔렀어요'), findsOneWidget);
+
+    // 유지(Timer) + 퇴장 애니메이션이 모두 끝날 만큼 넉넉히.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('콕 찔렀어요'), findsNothing);
+  });
+
   // ---- 본인 페이지(#68) — 홈에서 내 아바타를 탭해도 이 화면으로 들어온다 ----
 
   testWidgets('본인 페이지에서는 찌르기 버튼이 보이지 않는다', (tester) async {

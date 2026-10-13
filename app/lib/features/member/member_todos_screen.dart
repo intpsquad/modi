@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/env.dart';
 import '../../design/empty_state.dart';
+import '../../design/float_toast.dart';
 import '../../design/tokens.dart';
 import '../auth/authenticated_http_client.dart';
 import '../auth/auth_service.dart';
@@ -161,6 +162,9 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
   String? _error;
   bool _poking = false;
 
+  /// 콕찌르기 토스트를 **이 버튼 위**에 띄우기 위한 앵커(#105).
+  final _pokeButtonLink = LayerLink();
+
   /// 카테고리 접힘/펼침 상태 — key는 categoryId(미분류는 null). 기본 펼침.
   final Map<int?, bool> _expanded = {};
 
@@ -214,17 +218,12 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
     try {
       final token = await widget.tokenLoader();
       await widget.api.poke(token, roomId, widget.userId);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('콕 찔렀어요')));
-      }
+      if (mounted) showFloatToast(context, _pokeButtonLink, '콕 찔렀어요');
     } catch (_) {
-      // 성공(콕 찔렀어요)과 대칭으로 실패도 상단 CTA 근처에서 보이도록 SnackBar로.
+      // 성공(콕 찔렀어요)과 **대칭**으로 실패도 같은 토스트로 띄운다. 한쪽만 바꾸면
+      // "누른 자리에서 결과를 본다"는 의도가 절반만 지켜진다(#105).
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('콕 찌르지 못했어요')));
+        showFloatToast(context, _pokeButtonLink, '콕 찌르지 못했어요');
       }
     } finally {
       if (mounted) setState(() => _poking = false);
@@ -317,7 +316,10 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
           ),
           if (!isSelf) ...[
             const SizedBox(width: AppSpacing.sm),
-            _PokeButton(loading: _poking, onTap: _poke),
+            CompositedTransformTarget(
+              link: _pokeButtonLink,
+              child: _PokeButton(loading: _poking, onTap: _poke),
+            ),
           ],
         ],
       ),
