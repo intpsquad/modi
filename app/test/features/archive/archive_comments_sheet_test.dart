@@ -1,4 +1,6 @@
+import 'package:app/design/confirm_dialog.dart';
 import 'package:app/design/theme.dart';
+import 'package:app/design/tokens.dart';
 import 'package:app/features/archive/archive_api.dart';
 import 'package:app/features/archive/archive_comments_sheet.dart';
 import 'package:app/features/auth/auth_service.dart';
@@ -37,6 +39,7 @@ class _FakeArchiveApi extends ArchiveApi {
 
   final List<int> deletedIds = [];
   final List<(int, String)> updated = [];
+  final List<String> createdBodies = [];
 
   @override
   Future<List<ArchiveComment>> fetchComments(
@@ -60,6 +63,18 @@ class _FakeArchiveApi extends ArchiveApi {
     if (failMutations) throw StateError('서버 오류');
     updated.add((commentId, body));
     return _comment(id: commentId, body: body, authorId: _myUid);
+  }
+
+  @override
+  Future<ArchiveComment> createComment(
+    String idToken,
+    int roomId,
+    int itemId,
+    String body,
+  ) async {
+    if (failMutations) throw StateError('서버 오류');
+    createdBodies.add(body);
+    return _comment(id: 999, body: body, authorId: _myUid);
   }
 
   @override
@@ -207,7 +222,7 @@ void main() {
     expect(find.text('댓글을 삭제할까요?'), findsOneWidget);
     expect(api.deletedIds, isEmpty);
 
-    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.tap(find.widgetWithText(AppDialogButton, '삭제'));
     await tester.pumpAndSettle();
 
     expect(api.deletedIds, [7]);
@@ -228,7 +243,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('삭제'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, '취소'));
+    await tester.tap(find.widgetWithText(AppDialogButton, '취소'));
     await tester.pumpAndSettle();
 
     expect(api.deletedIds, isEmpty);
@@ -246,10 +261,127 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('삭제'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.tap(find.widgetWithText(AppDialogButton, '삭제'));
     await tester.pumpAndSettle();
 
     expect(find.text('댓글 삭제에 실패했어요'), findsOneWidget);
     expect(find.text('살아남을 댓글'), findsOneWidget);
+  });
+
+  // ---- 전송 버튼 · 꾹 눌러 메뉴 (#112) ----
+
+  testWidgets('비었을 때는 전송 버튼이 없고, 글자를 적으면 나타난다', (tester) async {
+    await pump(tester, comments: const []);
+
+    expect(find.byIcon(Icons.arrow_upward), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('archive-comment-field')),
+      '좋은 자료네요',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+  });
+
+  testWidgets('지우면 전송 버튼이 다시 사라진다', (tester) async {
+    await pump(tester, comments: const []);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('archive-comment-field')),
+      '좋은 자료네요',
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('archive-comment-field')),
+      '   ',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byIcon(Icons.arrow_upward),
+      findsNothing,
+      reason: '공백만 남아도 보낼 게 없다',
+    );
+  });
+
+  testWidgets('전송 버튼은 아래에서 위로 올라온다', (tester) async {
+    // 옆에서 밀려 들어오면 ↑ 아이콘과 결이 어긋나고 더 요란하다.
+    // 방향이 조용히 가로로 바뀌어도 잡히도록 시작 오프셋을 직접 본다.
+    await pump(tester, comments: const []);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('archive-comment-field')),
+      '좋은 자료네요',
+    );
+    await tester.pump();
+
+    // 바텀시트 자체도 SlideTransition 을 쓴다 — **버튼에서 가장 가까운** 것을 집는다.
+    final slide = tester.widget<SlideTransition>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.arrow_upward),
+            matching: find.byType(SlideTransition),
+          )
+          .first,
+    );
+    // 애니메이션 도중: 아직 제자리(0)보다 **아래**에 있고, 가로로는 안 밀려 있다.
+    expect(slide.position.value.dy, greaterThan(0), reason: '아래에서 올라와야 한다');
+    expect(slide.position.value.dx, 0, reason: '가로로 밀려 들어오면 안 된다');
+  });
+
+  testWidgets('전송 버튼을 누르면 댓글이 올라간다', (tester) async {
+    final api = await pump(tester, comments: const []);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('archive-comment-field')),
+      '좋은 자료네요',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_upward));
+    await tester.pumpAndSettle();
+
+    expect(api.createdBodies, ['좋은 자료네요']);
+  });
+
+  testWidgets('내 댓글을 꾹 누르면 ⋯ 와 같은 메뉴가 열린다', (tester) async {
+    await pump(
+      tester,
+      comments: [_comment(id: 7, body: '내 댓글', authorId: _myUid)],
+    );
+
+    await tester.longPress(find.text('내 댓글'));
+    await tester.pumpAndSettle();
+
+    // ⋯ 가 여는 것과 같은 메뉴다 — 메뉴를 두 벌 만들지 않는다.
+    expect(find.text('수정'), findsOneWidget);
+    expect(find.text('삭제'), findsOneWidget);
+  });
+
+  testWidgets('남의 댓글은 꾹 눌러도 아무 일 없다', (tester) async {
+    await pump(
+      tester,
+      comments: [_comment(id: 8, body: '남의 댓글', authorId: 'uid-other')],
+    );
+
+    await tester.longPress(find.text('남의 댓글'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('삭제'), findsNothing);
+  });
+
+  testWidgets('⋯ 도 그대로 동작한다 — 롱프레스가 기존 길을 막지 않는다', (tester) async {
+    await pump(
+      tester,
+      comments: [_comment(id: 7, body: '내 댓글', authorId: _myUid)],
+    );
+
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    expect(find.text('수정'), findsOneWidget);
+    expect(find.text('삭제'), findsOneWidget);
   });
 }
