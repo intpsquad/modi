@@ -32,7 +32,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 #
 # ⚠️ **빌드 8 을 심사에 쓰지 않는다** — iOS 가 APNs 등록을 시작하지 않아 푸시가 하나도 오지
 # 않는 빌드다(#66). 심사에 넣을 것은 그걸 고친 빌드 9 다.
-version: 1.1.0+9
+version: 1.1.1+10
 
 environment:
   sdk: ^3.12.2
