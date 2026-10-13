@@ -79,7 +79,11 @@ class SettingsApi {
       filename: imageBytes == null ? null : 'screenshot',
     );
     // 🔴 서버는 201 Created 다(`@ResponseStatus(CREATED)`). 200 으로 보면 저장·메일이
-    // 끝난 뒤에 실패 문구가 뜬다 — #97 에서 실제로 그랬다.
+    // 끝난 뒤에 실패 문구가 뜬다.
+    //
+    // ⚠️ 그 일이 운영에서 *실제로* 벌어진 적은 없다 — 서버가 그 앞에서 500 으로 터지고
+    // 있었기 때문이다(#99, 인증 필터에 `/feedback` 누락). #97 의 최초 진단은 틀렸다.
+    // 두 버그가 직렬이라 #99 를 고치면 그다음 이 201 이 앞을 막는다.
     _checkOk(response, '문의 전송', expect: 201);
   }
 

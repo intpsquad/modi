@@ -93,8 +93,11 @@ void main() {
 
   test('문의 전송은 서버가 주는 201을 성공으로 받는다', () async {
     // 🔴 #97 — 서버 FeedbackController 가 @ResponseStatus(CREATED) 라 201 을 준다.
-    // 앱이 200 만 성공으로 보던 탓에, DB 저장·메일 발송이 끝난 뒤에 실패 문구가 떴다.
+    // 앱이 200 만 성공으로 보면, 저장·메일이 끝난 뒤에 실패 문구가 뜬다.
     // openapi.json 도 `POST /feedback → ['201']` 하나만 정의한다.
+    //
+    // ⚠️ 다만 운영에서 그 증상이 나온 적은 없다 — 서버가 먼저 500 이었다(#99).
+    // 두 버그가 직렬이라 #99 를 고쳐야 비로소 이 201 이 표면에 드러난다.
     final client = MockClient((request) async {
       expect(request.method, 'POST');
       expect(request.url.path, '/feedback');
