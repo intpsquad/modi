@@ -42,7 +42,11 @@ public class FirebaseConfig {
   public FilterRegistrationBean<FirebaseAuthFilter> firebaseAuthFilterRegistration() {
     FilterRegistrationBean<FirebaseAuthFilter> registration =
         new FilterRegistrationBean<>(new FirebaseAuthFilter());
-    registration.addUrlPatterns("/me", "/me/*", "/rooms", "/rooms/*", "/invite-codes/*");
+    // 🔴 보호가 필요한 경로는 **여기가 단일 진실**이다. 빠뜨리면 그 경로는 조용히 인증 없이 열린다 —
+    // #99 에서 "/feedback" 이 빠져 운영 문의가 전부 500 이었고(uid 가 null 로 서비스까지 흘렀다),
+    // 그 500 이 인증 구멍을 가리고 있었다. 누락은 AuthFilterCoverageTest 가 잡는다.
+    registration.addUrlPatterns(
+        "/me", "/me/*", "/rooms", "/rooms/*", "/invite-codes/*", "/feedback");
     registration.setName("firebaseAuthFilter");
     return registration;
   }

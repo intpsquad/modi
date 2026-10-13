@@ -15,9 +15,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * {@code Authorization: Bearer <Firebase ID 토큰>}을 Firebase Admin SDK로 검증해 uid/email/name을 request
- * attribute로 노출한다. {@link com.nomara.modi.server.global.config.FirebaseConfig}의
- * FilterRegistrationBean이 이 필터를 등록하는 경로에만 적용된다(현재 "/me", "/me/*", "/rooms", "/rooms/*",
- * "/invite-codes/*").
+ * attribute로 노출한다.
+ *
+ * <p><b>어느 경로에 붙는지는 여기 적지 않는다.</b> 단일 진실은 {@link
+ * com.nomara.modi.server.global.config.FirebaseConfig}의 FilterRegistrationBean 하나이고, 이 필터는 거기 등록된
+ * 경로에만 적용된다. 예전에는 이 Javadoc이 경로 목록을 베껴 적고 있었는데, 목록이 두 군데가 되자 실제 등록에서 {@code /feedback}이 빠진 것을 아무도
+ * 눈치채지 못했다(#99 — 운영 문의가 전부 500, 동시에 인증 구멍).
+ *
+ * <p>누락은 사람이 아니라 {@code AuthFilterCoverageTest}가 잡는다 — 모든 API 경로가 이 필터에 덮이거나, 공개가 의도라면 그 테스트의
+ * 화이트리스트에 이유와 함께 올라 있어야 한다.
  */
 public class FirebaseAuthFilter extends OncePerRequestFilter {
 
