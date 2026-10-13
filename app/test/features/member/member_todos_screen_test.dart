@@ -123,50 +123,70 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.pokeCount, 1);
-    expect(find.text('콕 찔렀어요'), findsOneWidget);
+    // 결과는 **버튼 안에서** 보여준다(#105).
+    expect(find.text('찔렀어요'), findsOneWidget);
   });
 
-  // ---- 피드백 모양(#105) — 하단 기본 스낵바에서 버튼 위 토스트로 ----
+  // ---- 피드백 모양(#105) — 하단 기본 스낵바에서 버튼 자체로 ----
 
-  testWidgets('피드백이 하단 스낵바가 아니다', (tester) async {
-    // 되돌아가는 회귀를 잡는 가드. "AI티 난다"는 지적의 핵심이 Material 기본 스낵바였다.
+  testWidgets('떠오르는 알림 없이 버튼 안에서만 알린다', (tester) async {
+    // 되돌아가는 회귀 가드. "AI티 난다"는 지적의 핵심이 Material 기본 스낵바였고,
+    // 버튼 위 말풍선 안도 "덧붙인 느낌"이라 접었다 — 뜨는 요소가 아예 없어야 한다.
     await pumpScreen(tester, _FakeMemberTodosApi());
 
     await tester.tap(find.text('찌르기'));
     await tester.pumpAndSettle();
 
     expect(find.byType(SnackBar), findsNothing);
+    expect(find.byType(OverlayEntry), findsNothing);
   });
 
-  testWidgets('토스트가 찌르기 버튼보다 위에 뜬다', (tester) async {
-    // 이 작업의 요점 자체다 — 누른 자리에서 결과를 본다. 문구 존재만 보면
-    // 화면 아무 데나 떠도 통과하므로 좌표로 검사한다.
+  testWidgets('잠시 뒤 라벨이 찌르기로 돌아온다', (tester) async {
     await pumpScreen(tester, _FakeMemberTodosApi());
 
     await tester.tap(find.text('찌르기'));
     await tester.pumpAndSettle();
+    expect(find.text('찔렀어요'), findsOneWidget);
 
-    final toastBottom = tester.getBottomLeft(find.text('콕 찔렀어요')).dy;
-    final buttonTop = tester.getTopLeft(find.text('찌르기')).dy;
-    expect(
-      toastBottom,
-      lessThanOrEqualTo(buttonTop),
-      reason: '토스트는 버튼 위에 떠야 한다',
-    );
-  });
-
-  testWidgets('토스트는 잠시 뒤 스스로 사라진다', (tester) async {
-    await pumpScreen(tester, _FakeMemberTodosApi());
-
-    await tester.tap(find.text('찌르기'));
-    await tester.pumpAndSettle();
-    expect(find.text('콕 찔렀어요'), findsOneWidget);
-
-    // 유지(Timer) + 퇴장 애니메이션이 모두 끝날 만큼 넉넉히.
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
-    expect(find.text('콕 찔렀어요'), findsNothing);
+    expect(find.text('찔렀어요'), findsNothing);
+    expect(find.text('찌르기'), findsOneWidget);
+  });
+
+  testWidgets('라벨이 바뀌어도 버튼 폭이 변하지 않는다', (tester) async {
+    // 같은 Row 에서 Expanded 로 이름·완료율을 쥔 칸이 있어, 버튼이 넓어지면 그쪽 글자가
+    // 말줄임으로 흔들린다. 가장 긴 문구만큼 자리를 미리 잡아 두는 이유다.
+    await pumpScreen(tester, _FakeMemberTodosApi());
+
+    // 라벨을 기준으로 **버튼 자체**를 집어 잰다.
+    // (`find.byType(Material).last` 처럼 대충 집으면 엉뚱한 위젯을 재서 검사가 헛돈다 —
+    //  폭 예약을 빼도 통과하는 걸 실제로 겪었다.)
+    double widthOf(String label) => tester
+        .getSize(
+          find.ancestor(of: find.text(label), matching: find.byType(InkWell)),
+        )
+        .width;
+
+    final before = widthOf('찌르기');
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+    final after = widthOf('찔렀어요');
+
+    expect(after, before, reason: '결과 라벨로 바뀌어도 버튼 폭은 그대로여야 한다');
+  });
+
+  testWidgets('실패하면 안 됐어요로 알린다', (tester) async {
+    // 성공과 대칭 — 실패도 같은 자리(버튼 안)에서 알린다.
+    final api = _FakeMemberTodosApi()..pokeFails = true;
+    await pumpScreen(tester, api);
+
+    await tester.tap(find.text('찌르기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('안 됐어요'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
   });
 
   // ---- 본인 페이지(#68) — 홈에서 내 아바타를 탭해도 이 화면으로 들어온다 ----
@@ -196,6 +216,9 @@ void main() {
 
 class _FakeMemberTodosApi extends MemberTodosApi {
   int pokeCount = 0;
+
+  /// true 면 poke 가 던진다 — 실패 피드백 검증용(#105).
+  bool pokeFails = false;
 
   @override
   Future<MemberTodosData> fetchMemberTodos(
@@ -239,6 +262,7 @@ class _FakeMemberTodosApi extends MemberTodosApi {
   @override
   Future<void> poke(String idToken, int roomId, String userId) async {
     pokeCount++;
+    if (pokeFails) throw StateError('poke 실패');
   }
 
   @override

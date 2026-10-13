@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../config/env.dart';
 import '../../design/empty_state.dart';
-import '../../design/float_toast.dart';
 import '../../design/tokens.dart';
 import '../auth/authenticated_http_client.dart';
 import '../auth/auth_service.dart';
@@ -162,8 +164,15 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
   String? _error;
   bool _poking = false;
 
-  /// 콕찌르기 토스트를 **이 버튼 위**에 띄우기 위한 앵커(#105).
-  final _pokeButtonLink = LayerLink();
+  /// 콕찌르기 결과를 **버튼 안에서** 보여준다(#105). 따로 뜨는 요소는 없다.
+  _PokeFeedback _pokeFeedback = _PokeFeedback.none;
+  Timer? _pokeFeedbackReset;
+
+  /// 결과 라벨을 보여주는 시간.
+  ///
+  /// 🔴 임시값이다 — `specs/design.md`에 모션(duration·easing) 절이 아예 없다
+  /// (`specs/OPEN.md`「모션/애니메이션 토큰 부재」). 토큰이 생기면 여기를 바꾼다.
+  static const _pokeFeedbackDuration = Duration(milliseconds: 1200);
 
   /// 카테고리 접힘/펼침 상태 — key는 categoryId(미분류는 null). 기본 펼침.
   final Map<int?, bool> _expanded = {};
@@ -173,6 +182,14 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
     super.initState();
     _load();
     _loadCharacter();
+  }
+
+  @override
+  void dispose() {
+    // 🔴 반드시 취소한다. 남겨두면 화면을 떠난 뒤 setState 가 불리고, 위젯 테스트에서는
+    // "A Timer is still pending…" 으로 **무관한 테스트까지** 깨진다.
+    _pokeFeedbackReset?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCharacter() async {
@@ -218,16 +235,29 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
     try {
       final token = await widget.tokenLoader();
       await widget.api.poke(token, roomId, widget.userId);
-      if (mounted) showFloatToast(context, _pokeButtonLink, '콕 찔렀어요');
+      if (mounted) _showPokeFeedback(_PokeFeedback.sent);
     } catch (_) {
-      // 성공(콕 찔렀어요)과 **대칭**으로 실패도 같은 토스트로 띄운다. 한쪽만 바꾸면
+      // 성공과 **대칭**으로 실패도 같은 자리(버튼 안)에서 알린다. 한쪽만 바꾸면
       // "누른 자리에서 결과를 본다"는 의도가 절반만 지켜진다(#105).
-      if (mounted) {
-        showFloatToast(context, _pokeButtonLink, '콕 찌르지 못했어요');
-      }
+      if (mounted) _showPokeFeedback(_PokeFeedback.failed);
     } finally {
       if (mounted) setState(() => _poking = false);
     }
+  }
+
+  /// 결과를 버튼 안에 잠깐 띄웠다가 원래 라벨로 되돌린다.
+  void _showPokeFeedback(_PokeFeedback feedback) {
+    // 연속으로 누르면(30초당 10회까지 허용된다) 이전 타이머가 남아 먼저 꺼버린다.
+    _pokeFeedbackReset?.cancel();
+    setState(() => _pokeFeedback = feedback);
+    unawaited(
+      feedback == _PokeFeedback.sent
+          ? HapticFeedback.lightImpact()
+          : HapticFeedback.heavyImpact(),
+    );
+    _pokeFeedbackReset = Timer(_pokeFeedbackDuration, () {
+      if (mounted) setState(() => _pokeFeedback = _PokeFeedback.none);
+    });
   }
 
   @override
@@ -316,9 +346,10 @@ class _MemberTodosScreenState extends State<MemberTodosScreen> {
           ),
           if (!isSelf) ...[
             const SizedBox(width: AppSpacing.sm),
-            CompositedTransformTarget(
-              link: _pokeButtonLink,
-              child: _PokeButton(loading: _poking, onTap: _poke),
+            _PokeButton(
+              loading: _poking,
+              feedback: _pokeFeedback,
+              onTap: _poke,
             ),
           ],
         ],
@@ -472,61 +503,168 @@ class _MemberAvatar extends StatelessWidget {
 }
 
 /// "찌르기" 버튼 — primary pill(패딩 10/16), 흰 16px + 번개 아이콘(gap 6). S-30-M 즉시 실행.
-class _PokeButton extends StatelessWidget {
-  const _PokeButton({required this.loading, required this.onTap});
+/// 콕찌르기 결과 — **버튼 안에서** 알린다(#105).
+enum _PokeFeedback {
+  none('찌르기'),
+  sent('찔렀어요'),
+  failed('안 됐어요');
+
+  const _PokeFeedback(this.label);
+
+  final String label;
+}
+
+/// 찌르기 버튼. **결과를 버튼 자신이 보여준다** — 따로 뜨는 토스트·스낵바가 없다(#105).
+///
+/// 원래는 화면 맨 아래 기본 [SnackBar]였다. 버튼은 프로필 행 오른쪽(화면 위쪽)인데 반응은 맨
+/// 아래에 떠서 눈이 따라가야 했고, 모양도 프레임워크 기본값이라 톤이 튀었다. 버튼 위에 말풍선을
+/// 띄우는 안도 만들어 봤지만 "덧붙인 느낌"이 남아 접었다.
+///
+/// 지금 방식은 누른 그 자리에서 라벨이 잠깐 바뀌는 것뿐이다 — 페이스북 콕찌르기·링크드인 연결
+/// 요청·듀오링고 응원이 쓰는 방식이고, NN/g 도 버튼을 누른 뒤의 상태 변화를 "시스템 상태 보이기"의
+/// 대표적인 형태로 든다.
+class _PokeButton extends StatefulWidget {
+  const _PokeButton({
+    required this.loading,
+    required this.feedback,
+    required this.onTap,
+  });
 
   final bool loading;
+  final _PokeFeedback feedback;
   final VoidCallback onTap;
 
   @override
+  State<_PokeButton> createState() => _PokeButtonState();
+}
+
+class _PokeButtonState extends State<_PokeButton>
+    with SingleTickerProviderStateMixin {
+  /// 🔴 임시값 — 모션 토큰이 없다(`specs/OPEN.md`「모션/애니메이션 토큰 부재」).
+  static const _reactionDuration = Duration(milliseconds: 320);
+
+  late final AnimationController _reaction = AnimationController(
+    vsync: this,
+    duration: _reactionDuration,
+  );
+
+  @override
+  void didUpdateWidget(_PokeButton old) {
+    super.didUpdateWidget(old);
+    // 결과가 막 도착한 순간에만 반응한다. 되돌아갈 때(→ none)는 조용히 바뀐다.
+    if (widget.feedback != old.feedback &&
+        widget.feedback != _PokeFeedback.none) {
+      _reaction.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _reaction.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final feedback = widget.feedback;
     return Semantics(
       button: true,
-      label: '찌르기',
-      child: Material(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: InkWell(
-          onTap: loading ? null : onTap,
+      // 결과가 나오면 스크린리더에도 그대로 읽힌다 — 화면과 같은 것을 말한다.
+      label: feedback.label,
+      child: AnimatedBuilder(
+        animation: _reaction,
+        builder: (context, child) {
+          // 실패는 짧게 좌우로 흔든다. 성공과 글자만 다르면 1.2초 깜빡임 사이에 놓치기 쉽다.
+          final shake = feedback == _PokeFeedback.failed
+              ? math.sin(_reaction.value * math.pi * 3) *
+                    4 *
+                    (1 - _reaction.value)
+              : 0.0;
+          return Transform.translate(offset: Offset(shake, 0), child: child);
+        },
+        child: Material(
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(AppRadius.pill),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (loading)
-                  const SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.onPrimary,
-                    ),
-                  )
-                else
-                  Image.asset(
-                    'assets/icons/icon_light.png',
-                    width: 16,
-                    height: 16,
-                    color: AppColors.onPrimary,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Icons.bolt,
-                      size: 16,
-                      color: AppColors.onPrimary,
-                    ),
-                  ),
-                const SizedBox(width: 6),
-                Text(
-                  '찌르기',
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.onPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          child: InkWell(
+            onTap: widget.loading ? null : widget.onTap,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [_icon(), const SizedBox(width: 6), _label(context)],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _icon() {
+    if (widget.loading) {
+      return const SizedBox.square(
+        dimension: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.onPrimary,
+        ),
+      );
+    }
+    final icon = Image.asset(
+      'assets/icons/icon_light.png',
+      width: 16,
+      height: 16,
+      color: AppColors.onPrimary,
+      errorBuilder: (_, _, _) =>
+          const Icon(Icons.bolt, size: 16, color: AppColors.onPrimary),
+    );
+    if (widget.feedback != _PokeFeedback.sent) return icon;
+    // 성공하면 아이콘이 위로 살짝 튀었다 내려앉는다.
+    return AnimatedBuilder(
+      animation: _reaction,
+      builder: (context, child) {
+        final t = math.sin(_reaction.value * math.pi);
+        return Transform.translate(
+          offset: Offset(0, -3 * t),
+          child: Transform.scale(scale: 1 + 0.25 * t, child: child),
+        );
+      },
+      child: icon,
+    );
+  }
+
+  /// 라벨은 **가장 긴 문구만큼 자리를 미리 잡아 둔다.**
+  ///
+  /// 안 그러면 "찌르기" → "안 됐어요" 로 바뀔 때 버튼이 넓어지고, 같은 Row 안에서 Expanded 로
+  /// 이름·완료율을 쥐고 있는 칸이 그만큼 줄어 **글자가 말줄임으로 흔들린다.**
+  ///
+  /// 숨긴 Text 를 겹쳐 두는 방법도 있지만, 그러면 같은 글자가 트리에 둘이 되어 `find.text` 가
+  /// 두 개를 잡는다(테스트에서 실제로 걸렸다). 그래서 폭을 직접 재고 Text 는 하나만 둔다.
+  Widget _label(BuildContext context) {
+    final style = AppTypography.body.copyWith(
+      color: AppColors.onPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+    );
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final widest = _PokeFeedback.values
+        .map((f) {
+          final painter = TextPainter(
+            text: TextSpan(text: f.label, style: style),
+            textDirection: direction,
+            textScaler: scaler,
+          )..layout();
+          return painter.width;
+        })
+        .reduce(math.max);
+    return SizedBox(
+      width: widest,
+      child: Text(
+        widget.feedback.label,
+        style: style,
+        textAlign: TextAlign.center,
       ),
     );
   }
