@@ -100,6 +100,14 @@ feedback:
   # 저장되고 알림만 건너뛴다(FeedbackNotifier) — 제출을 잃지 않는 것이 우선이다.
   notify-to: ${FEEDBACK_NOTIFY_TO:modi.app.team@gmail.com}
 
+  # 디스코드 #문의 채널 알림(#114). **메일을 대체하지 않고 함께 간다** — 메일은 회신 주소가
+  # 찍혀 있어 답장 창구이고, 디스코드는 팀이 상주하는 곳이라 놓치지 않기 위한 알림이다.
+  #
+  # 기본값은 빈 문자열이다. 비면 DiscordWebhookNotifier 가 빈 구현처럼 동작하고(isConfigured
+  # == false) 피드백은 그대로 저장된다 — 로컬·CI 에서 아무 일도 일어나지 않게 하려는 것이다.
+  # 🔴 이 URL 자체가 비밀번호다(아는 사람은 누구나 그 채널에 글을 쓴다). 값은 서버 .env 에만 둔다.
+  discord-webhook-url: ${FEEDBACK_DISCORD_WEBHOOK_URL:}
+
 minio:
   # 프로필 사진 등 이미지 업로드.
   #
