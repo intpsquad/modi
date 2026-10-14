@@ -1,21 +1,42 @@
-# iOS 릴리스 (TestFlight) — Mac 에서 사람이 돌린다
+# iOS 빌드 · TestFlight · App Store 제출 — Mac 에서 사람이 돌린다
 
-> 📌 **2026-08-14 첫 제출을 준비하는 중이라면 [](./ios-submission-handoff.md)
-> 를 먼저 읽을 것** — 지금 어디까지 됐고 무엇이 남았는지, 그리고 이번엔  대신
-> **Xcode 자동 서명**으로 간다는 결정이 거기 있다.
+> 첫 App Store 제출 당시의 상태와 판단 기록은
+> [`ios-submission-handoff.md`](./ios-submission-handoff.md)에 보관한다. 반복 빌드·업로드는
+> 현재 절차인 이 문서를 따른다.
 
 **출시 대상은 iOS 하나다**(2026-08-13 확정). 안드로이드 코드(`app/android/`)는 저장소에 남아
 있지만 **CI 도 릴리스 경로도 없다** — 되살리려면 그 경로를 새로 만들어야 한다.
 
-## 왜 자동화하지 않았나
+## 버전과 빌드 번호
+
+버전 정책과 출시 시점의 단일 진실은 `CONTRIBUTING.md` §6·§8이다. 이 문서는 거기서 결정한
+버전을 실제 IPA 로 만들어 TestFlight 와 App Store 에 올리는 방법을 설명한다.
+
+빌드 전에 `app/pubspec.yaml` 을 확인한다.
+
+```yaml
+version: 1.1.1+10
+```
+
+- `1.1.1`: App Store 에 표시되는 앱 버전
+- `10`: 같은 앱 버전의 TestFlight 빌드를 구분하는 빌드 번호
+
+같은 버전의 수정 빌드를 다시 올릴 때는 `1.1.1` 을 유지하고 빌드 번호만 올린다. TestFlight 가
+번호를 자동으로 올려주지 않으므로 현재는 빌드 전에 직접 수정한다.
+
+```text
+1.1.1+10 → 1.1.1+11
+```
+
+## 왜 아직 자동화하지 않았나
 
 옛 Jenkins 에는 macOS 에이전트를 붙인 `iOS: TestFlight` 스테이지가 있었다. GitHub Actions 로
 옮길 때 **일부러 안 옮겼다**:
 
-1. 저장소가 **프라이빗**이라 GitHub 제공 macOS 러너는 분수를 **10배**로 소모한다. 20분짜리
-   빌드 한 번이 무료 분수 200분이다 — 월 열 번이 한계다.
-2. 팀의 **Apple Developer 계정이 아직 없다.** 계정·번들 ID·인증서가 없으면 자동화를 만들어도
-   한 번도 돌려볼 수 없고, 돌려보지 않은 CI 는 있으나 마나다.
+처음 GitHub Actions 로 옮길 때는 저장소가 비공개라 macOS 러너 비용이 컸고 Apple Developer
+계정도 준비되지 않아 수동 절차를 유지했다. 지금은 저장소가 공개이고 Apple 계정도 있지만,
+과거 배포 빌드에서 서명·entitlements 가 빠진 사고가 있어 검증된 로컬 스크립트와 Transporter
+경로를 먼저 유지한다. 빌드 번호 자동화와 TestFlight 자동 업로드는 별도 이슈로 단계적으로 진행한다.
 
 나중에 자동화할 때는 팀 Mac 을 **self-hosted 러너**로 붙이는 쪽이 맞다(분수 소모 0, 옛 상주
 macOS 에이전트 구성의 자연한 연장). 그때 이 문서의 절차를 워크플로로 옮기면 된다.
@@ -28,7 +49,9 @@ macOS 에이전트 구성의 자연한 연장). 그때 이 문서의 절차를 �
 | Firebase iOS 앱 | 위 번들 ID 가 Firebase 프로젝트에 등록돼 있어야 한다 |
 | Mac 에 필요한 것 | Xcode · CocoaPods · **Flutter(`app/.fvmrc` 값 = 3.44.8)** |
 | App Store Connect | 앱 레코드가 있어야 한다 |
-| 서명 | 키체인의 **`Apple Distribution: … (89BSUAHRK7)`** 인증서 하나면 된다. 프로파일은 빌드 때 Xcode 가 만든다 |
+| Apple 계정 | Xcode → Settings → Accounts 에 팀 계정으로 로그인 |
+| 서명 | 키체인에 같은 팀의 `Apple Development`·`Apple Distribution` 인증서가 모두 있어야 한다 |
+| 개발용 프로파일 | 등록된 실기기 최소 1대 또는 이미 생성된 개발용 프로파일이 필요하다 |
 
 > ⚠️ **`fastlane match` 는 쓰지 않는다**(2026-08-13 확정). `app/fastlane/Matchfile`·`Fastfile` 이
 > 아직 match 전제로 남아 있지만 **그 서명 저장소가 존재하지 않는다**(옛 계정과 함께 사라졌다).
@@ -67,6 +90,15 @@ MODI_DEVELOPMENT_TEAM = <Apple Team ID>
 (`API_BASE_URL=https://api.maramodi.cloud` 등, gitignore 됨).
 
 ## 3. IPA 빌드 — `scripts/build-ios-ipa.sh` 를 쓴다
+
+먼저 **커밋되지 않은 변경이 없는지 확인하고 빌드할 커밋을 기록한다.** 스크립트는 현재 폴더의
+내용을 그대로 빌드하므로, 작업 트리가 더러우면 기록한 SHA와 실제 IPA가 달라져 같은 빌드를
+재현할 수 없다.
+
+```sh
+git status --porcelain    # 아무것도 출력되지 않아야 한다
+git rev-parse HEAD        # 이 SHA를 릴리스 PR과 TestFlight 확인 기록에 남긴다
+```
 
 ```sh
 ./scripts/build-ios-ipa.sh          # 산출물: app/build/ios/ipa/MODI.ipa
@@ -177,8 +209,8 @@ Organizer 목록에서 같은 버전이 둘로 보여 헷갈린다** — 업로�
 
 - 업로드 후 Apple 의 processing(5~15분)이 끝나야 테스터에게 보인다.
 - 내부 테스트는 심사가 없다. **기기 UDID 등록도 필요 없다** — TestFlight 앱으로 설치한다.
-- 빌드 번호는 `app/pubspec.yaml` 의 `version: 1.0.0+N` 에서 온다. 같은 번호는 재업로드가 안 되므로
-  올릴 때마다 `+N` 을 올린다.
+- 빌드 번호는 `app/pubspec.yaml` 의 `version: 1.0.0+N` 에서 온다. TestFlight 가 자동으로
+  증가시키지 않으므로 새 빌드를 만들기 전에 직접 확인한다.
 - 🔴 **오류처럼 보이는 메시지가 사실은 경고이고, 그 빌드는 이미 접수돼 번호를 소모한다**
   (2026-08-14 실측). `1.0.0 (2)` 를 올렸을 때 확장 버전 불일치가 이렇게 떴다:
 
@@ -198,8 +230,18 @@ Organizer 목록에서 같은 버전이 둘로 보여 헷갈린다** — 업로�
   전송됨 · 내부 테스트 준비 완료"* 로 남아 있었다. **90473 은 거절이 아니라 경고였고 빌드는
   접수된 것이다.**
 
-  **판단 기준은 Transporter 의 전송 기록이다.** 메시지 문구가 아니라 그 목록에 올라갔는지를
-  본다. 올라갔다면 그 번호는 끝난 것이므로 재시도 시 `+N` 을 한 칸 더 올린다.
+  **판단 기준은 Transporter 와 App Store Connect 의 최종 상태다.** 메시지 문구만 보고 판단하지
+  않는다.
+
+  | 최종 상태 | 같은 빌드 번호 재사용 |
+  |---|---|
+  | `Processing` | 결과가 나올 때까지 기다린다 |
+  | `Complete` | 불가 |
+  | 경고가 있는 `Complete` | 불가 |
+  | `Failed` | 원인을 고친 뒤 재사용 가능 |
+
+  당시 `1.0.0 (2)` 는 실패가 아니라 **경고가 있는 `Complete`** 였기 때문에 번호가 이미 접수됐다.
+  모든 실패가 번호를 소모하는 것은 아니다.
 
   ⚠️ 경고로 통과한 빌드는 **테스터에게는 보이지만 심사에는 쓰지 않는다** — 경고의 원인이
   그대로 남아 있다. 고친 빌드를 새 번호로 올려 그걸 쓴다.
