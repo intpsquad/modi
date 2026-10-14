@@ -127,6 +127,8 @@ x-spring: &spring
     SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
     SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
     SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+    # 피드백 디스코드 알림(#114). 비면 알림만 건너뛴다 — 저장은 그대로다.
+    FEEDBACK_DISCORD_WEBHOOK_URL: ${FEEDBACK_DISCORD_WEBHOOK_URL:-}
     # FirebaseConfig 는 클래스패스가 아니라 **파일 경로**를 읽는다. 아래 볼륨과 짝이다.
     FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-service-account.json
     # MinIO 는 **공개 도메인**으로 준다(http://minio:9000 이 아니다). MinioClient 가 이 값으로
