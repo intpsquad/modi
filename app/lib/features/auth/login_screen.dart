@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../design/modi_wordmark.dart';
 import '../../design/tokens.dart';
 import '../../routing/app_session.dart';
+import 'auth_diagnostics.dart';
 import 'auth_service.dart';
 
 const _socialLoginButtonHeight = 52.0;
@@ -84,6 +85,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // 🔴 예외를 삼키지 않는다. 여기가 `catch (_)` 였던 탓에 배포 빌드의 Apple 로그인이
       // 왜 죽는지 알 수 없었고(2026-08-15), 서버 로그와 IPA 서명까지 해부하고서야
       // entitlements 누락이라는 것을 찾았다. 구글·카카오와 같은 모양으로 맞춘다.
+      //
+      // `logAuthFailure` 가 코드·메시지에 더해 **그 시점의 세션 유무**를 남긴다 —
+      // #47 의 실패 지점(`completeSignIn`)이 맞다면 `session=none` 이어야 한다.
+      logAuthFailure('apple.aborted', e);
       debugPrint('Apple 로그인 실패: $e');
       if (mounted) {
         setState(() => _errorText = 'Apple 로그인에 실패했어요. 다시 시도해 주세요');
