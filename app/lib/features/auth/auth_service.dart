@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../config/env.dart';
 import 'api_client.dart';
+import 'auth_diagnostics.dart';
 import 'stale_session_recovery.dart';
 
 /// 소셜 로그인과 이메일 회원가입을 Firebase Authentication 세션으로 교환한다.
@@ -24,6 +25,7 @@ class AuthService {
 
   Future<User> signInWithGoogle() {
     return retryAfterClearingStaleSession(
+      label: 'google',
       signOut: signOut,
       signIn: () async {
         final googleUser = await _googleSignIn.signIn();
@@ -56,12 +58,24 @@ class AuthService {
   /// Apple의 네이티브 인증 결과를 Firebase Authentication 세션으로 교환한다.
   /// Apple은 첫 승인 때만 이름과 이메일을 제공할 수 있으므로, 신규 사용자일 때
   /// Firebase 프로필을 서버 users 행에 한 번 동기화한다.
+  ///
+  /// ⚠️ `signInWithProvider` 라는 이름 때문에 "Firebase 서버가 Apple 과 직접
+  /// 교환한다"고 읽기 쉬운데 **아니다.** iOS 에서 FlutterFire 는 네이티브
+  /// `ASAuthorizationAppleIDProvider` 를 띄우고 그 `identityToken` 으로
+  /// `signInWithCredential` 을 부른다 — 카카오·구글과 같은 계열이고, 웹 핸들러
+  /// (`__/auth/handler`)를 타지 않는다. #47 이 이 오독 위에서 원인을 잘못
+  /// 확정했었다.
+  ///
+  /// 🔴 다른 셋과 달리 [clearStaleSessionWithoutRetry] 를 쓴다 — 자동 재시도가
+  /// Apple 인증 시트를 말없이 두 번 띄우면서 정작 고치지는 못한다(#47).
   Future<User> signInWithApple() async {
     if (kIsWeb) {
       throw StateError('애플 로그인은 현재 모바일 앱에서만 지원합니다.');
     }
 
-    return retryAfterClearingStaleSession(
+    logAuthStep('apple.start', fields: {'session': describeFirebaseSession()});
+    return clearStaleSessionWithoutRetry(
+      label: 'apple',
       signOut: signOut,
       signIn: () async {
         final appleProvider = AppleAuthProvider()
@@ -75,8 +89,15 @@ class AuthService {
           throw StateError('Firebase 로그인에 실패했습니다.');
         }
 
-        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+        logAuthStep('apple.firebase.ok', fields: {'isNewUser': isNewUser});
+
+        if (isNewUser) {
+          // 여기서 실패하면 Firebase 계정은 생겼는데 서버 users 행은 없다.
+          // 「Firebase 11개 vs 서버 APPLE 8개」의 유력한 설명이라 따로 찍는다.
+          logAuthStep('apple.profileSync.start');
           await _syncOAuthProfile(user);
+          logAuthStep('apple.profileSync.ok');
         }
         return user;
       },
@@ -90,6 +111,7 @@ class AuthService {
     required String password,
   }) {
     return retryAfterClearingStaleSession(
+      label: 'email',
       signOut: signOut,
       signIn: () async {
         final userCredential = await FirebaseAuth.instance
@@ -105,6 +127,7 @@ class AuthService {
 
   Future<User> signInWithKakao() {
     return retryAfterClearingStaleSession(
+      label: 'kakao',
       signOut: signOut,
       signIn: () async {
         final accessToken = await _kakaoLoginClient.signIn();
