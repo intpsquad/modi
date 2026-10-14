@@ -2,12 +2,18 @@ import 'package:app/features/auth/auth_service.dart';
 import 'package:app/features/auth/signup_screen.dart';
 import 'package:app/features/legal/legal_content.dart';
 import 'package:app/features/legal/legal_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 class _FakeAuthService extends AuthService {
+  _FakeAuthService({this.signUpError});
+
+  /// 설정하면 `signUpWithEmail`이 이 예외를 던진다 — 안내 문구 검증용.
+  final Object? signUpError;
+
   String? lastEmail;
   String? lastCode;
   String? nickname;
@@ -40,6 +46,7 @@ class _FakeAuthService extends AuthService {
     lastEmail = email;
     this.nickname = nickname;
     this.password = password;
+    if (signUpError != null) throw signUpError!;
   }
 }
 
@@ -345,6 +352,33 @@ void main() {
     expect(authService.nickname, '모디모디');
     expect(authService.password, 'Modi1234!');
     expect(completed, isTrue);
+  });
+
+  testWidgets('이미 가입된 이메일이면 기존 수단으로 로그인하라고 안내한다 (#122)', (tester) async {
+    // 🔴 이 프로젝트는 Firebase 의 「동일한 이메일을 사용하는 계정 연결」이 켜져 있다.
+    // 그래서 email-already-in-use 는 "이 이메일을 못 쓴다" 가 아니라 **"그 이메일로
+    // 이미 본인 계정이 있다"** 는 뜻이다. 옛 문구("다른 이메일을 사용해 주세요")는
+    // 멀쩡한 계정을 두고 중복 계정을 만들라고 떠밀었다.
+    final authService = _FakeAuthService(
+      signUpError: FirebaseAuthException(code: 'email-already-in-use'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: SignupScreen(authService: authService)),
+    );
+    await _goToProfileStep(tester);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('signup-nickname')),
+      '모디모디',
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('MODI 시작하기'));
+    await tester.pump();
+
+    expect(find.textContaining('기존에 쓰던 방법'), findsOneWidget);
+    expect(find.textContaining('다른 이메일을 사용'), findsNothing);
   });
 
   testWidgets('비밀번호 화면에서 뒤로 가면 인증코드 화면으로 돌아간다', (tester) async {

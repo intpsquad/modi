@@ -290,7 +290,14 @@ class _SignupScreenState extends State<SignupScreen> {
   String _messageFor(Object e) {
     if (e is FirebaseAuthException) {
       return switch (e.code) {
-        'email-already-in-use' => '이미 가입된 이메일이에요. 다른 이메일을 사용해 주세요',
+        // 🔴 "다른 이메일을 쓰세요" 라고 하면 안 된다. 이 프로젝트는 Firebase 의
+        // 「동일한 이메일을 사용하는 계정 연결」이 켜져 있어서, 이 오류는 **그 이메일로
+        // 이미 본인 계정이 있다**는 뜻이다(구글·Apple·이메일 중 하나로 가입했다).
+        // 옛 문구는 멀쩡한 계정을 두고 중복 계정을 만들라고 떠밀었다.
+        // 어느 수단으로 가입했는지는 알려주지 않는다 — 계정 존재 여부를 흘리지 않기 위해
+        // Firebase 가 조회를 막아두었고, 우리도 굳이 뚫지 않는다.
+        'email-already-in-use' =>
+          '이미 가입된 이메일이에요. 기존에 쓰던 방법(구글·Apple·이메일)으로 로그인해 주세요',
         'invalid-email' => '이메일 형식이 올바르지 않아요',
         'weak-password' => '비밀번호가 보안 기준에 맞지 않아요',
         'network-request-failed' => '네트워크를 확인하고 다시 시도해 주세요',
