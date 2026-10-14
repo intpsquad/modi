@@ -2,6 +2,12 @@
 > 규칙: 명세에 없거나 모순되는 결정이 새로 생기면 여기에 적고, 구현 전에 AskUserQuestion으로 확정한 뒤 해당 spec에 반영한다.
 
 ## 남은 항목
+- [ ] **카카오만 계정 연결 체계 밖에 있다 — 같은 이메일이어도 항상 별도 계정** *(2026-10-14 신규, #47 조사 중 발견)* — Firebase 프로젝트는 **「동일한 이메일을 사용하는 계정 연결」**이 켜져 있어 Apple·구글·이메일 셋은 같은 이메일이면 한 계정으로 모인다(#47 에서 실측 확인: `apple.firebase.ok isNewUser=false` 로 기존 구글 계정에 붙었다). 그런데 **카카오는 서버가 커스텀 토큰용 UID 를 직접 만들어서**(`KakaoAuthService`) 제공업체 연결 로직을 아예 타지 않는다 → 같은 사람이 같은 이메일로 들어와도 **무조건 새 계정**이다.
+  → 🔴 **가설이 아니라 실제로 일어났다**: 운영 DB 에 같은 이메일로 계정이 둘인 사용자가 있다(한쪽 데이터 0, 다른 쪽에 방·투두·자료 전부). #47 로 Apple 이 막히자 카카오로 갈아탄 결과다.
+  → 되돌릴 수단도 없다 — `linkWithCredential` 사용처 **0건**. 사용자가 스스로 수단을 붙일 수 없고 서버 수동 이관뿐이다.
+  → **2026-10-14 사용자 확정**: 지금은 **안내 문구만 고친다**(#122). 통합은 하지 않는다.
+  → 통합(A안)을 하려면 선행 조건이 있다: ⓐ `KakaoUserProfile` 이 **`is_email_verified` 를 받아오지 않는다** — 미검증 이메일로 합치면 **남의 계정을 가로챌 수 있다** ⓑ 이미 갈라진 계정들의 데이터 이관 설계 ⓒ 인증 코드 변경이라 **사람 최종 확인 대상**(CLAUDE.md).
+  → 함께 볼 것: `account-exists-with-different-credential` 처리가 **0건**이다. IdP 이메일이 미검증이면 Firebase 가 자동 연결 대신 이 오류를 던지는데 앱이 일반 실패 문구로 떨어뜨린다 — #47 을 두 달간 오진하게 만든 것과 **같은 구조**(진짜 이유가 사용자에게도 로그에도 안 드러남).
 - [ ] **Sign in with Apple 토큰 폐기(revoke)를 구현할 것인가 — ~~로그인 경로를 갈아야 한다~~ 콘솔 Apple 설정 전환이 선행 조건이다** *(2026-08-16 신규, 심사 리스크 점검 중 조사)* — Apple Guideline 5.1.1(v)는 계정 삭제 시 애플에 **토큰 폐기**를 알리라고 요구한다. 계정 삭제 자체는 있다(`DELETE /me` → `UserService.withdraw`). 저장소에 `revoke` 문자열은 **0건**이다.
   → 🔴 **2026-10-14 정정 — 아래 ⓐ~ⓓ 추정은 틀렸다.** "앱이 애플 authorization code 를 받지 못한다"고 적었는데 **받는다.** FlutterFire 는 네이티브 `ASAuthorizationAppleIDCredential` 에서 코드를 꺼내 `userCredential.additionalUserInfo.authorizationCode` 로 노출하고, `firebase_auth` 5.7.0 에는 `FirebaseAuth.instance.revokeTokenWithAuthorizationCode(code)` 가 **이미 있다**(`firebase_auth.dart:818`). 즉 **패키지 교체도, 서버 토큰 교환도, 신규 컬럼도 필요 없다** — 탈퇴 직전 재인증해서 받은 코드를 그 함수에 넘기면 Firebase 가 애플에 폐기를 알린다.
   → ⚠️ 다만 **Firebase 콘솔의 Apple 설정(Services ID·팀 ID·`.p8`)이 현재 팀 것이어야 한다** — 그 교환을 Firebase 가 대신하기 때문이다. 지금은 옛 팀(`695C73WCLD`) 것이라 **그 전환이 이 작업의 선행 조건**이고, 전환은 기존 Apple 사용자 11명의 Firebase UID 를 끊는다(이슈 #47 「분리한 것」). 거기가 진짜 병목이다.
