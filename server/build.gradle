@@ -56,6 +56,20 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 🔴 Spring 테스트 컨텍스트 캐시 한계를 기본값 32 에서 올린다.
+	//
+	// 이 저장소의 테스트는 대부분 **같은 인메모리 DB**(`jdbc:h2:mem:server-test`)를 쓰면서
+	// 각자 `ddl-auto=create-drop` 을 건다. 캐시가 가득 차 컨텍스트 하나가 LRU 로 닫히면
+	// 그 순간 create-drop 이 **공용 DB 의 테이블을 통째로 지우고**, 뒤따르는 테스트가
+	// `Table "ROOMS" not found (this database is empty)` 로 무더기로 깨진다.
+	//
+	// 2026-10-13 실측: 테스트 클래스를 하나 추가했을 뿐인데(#99 FeedbackSubmitRoundTripTest)
+	// 한계를 넘겨 무관한 테스트 2개가 깨졌다. 64 로 올리니 전부 통과했다.
+	//
+	// ⚠️ 이건 증상 억제다. 근본 원인은 "여러 컨텍스트가 DB 이름 하나를 공유하는 것"이고,
+	// 테스트가 더 늘면 64 도 언젠가 넘는다. 제대로 고치려면 create-drop 을 쓰는 테스트마다
+	// 전용 DB 이름을 주어야 한다(이 PR 의 FeedbackSubmitRoundTripTest 가 그 예다).
+	systemProperty 'spring.test.context.cache.maxSize', '64'
 	// Testcontainers/Docker 네트워킹이 가끔 끊기면서 통과해야 할 테스트가 드물게 실패한다
 	// (예: ArchiveCrawlRetryQueryTest, 2026-08-07 로컬 15회 중 3회·Jenkins에서 재현·둘 다 커넥션
 	// 리셋 동반 — 코드가 아니라 인프라 문제로 확인됨). 실패한 테스트만 최대 2회 재시도하고,

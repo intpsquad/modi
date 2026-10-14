@@ -260,14 +260,13 @@ chmod 600 "/secure/ios-appstore-api-key.json"
 - 🔴 **카카오 로그인** — 카카오 콘솔에 iOS 번들 ID `com.intpsquad.modi` 가 등록돼야 동작한다.
   등록 전에는 실기기에서 실패하고, **동작하지 않는 기능은 Guideline 2.1 거부 사유다.**
 - Sign in with Apple 실기기 로그인
-- 푸시 알림 수신(FCM → APNs) — `docs/fcm-setup.md`.
-  **2026-08-31: `.p8` APNs 키를 발급해 Firebase 에 등록했다**(이슈 #66). 그전까지 인앱 알림만
-  오고 푸시가 안 오던 원인이 이것이었다 — 앱은 처음부터 준비돼 있었고 보낼 열쇠가 없었다.
-  발급 시 **Environment 를 `Sandbox & Production` 으로** 골라야 한다. `Sandbox` 만 고르면
-  Xcode 로 직접 돌린 개발 빌드에만 먹히고 TestFlight·App Store 빌드는 계속 안 온다.
-  **저장 후에는 바꿀 수 없다.**
-  ⚠️ Firebase 콘솔의 Apple 앱 목록에는 옛 프로젝트 앱이 함께 보인다(`com.mara.modi.app`,
-  `com.nomara.modi.app` — 팀 ID 가 `695C73WCLD` 라 우리 것이 아니다).
-  키는 반드시 **`com.intpsquad.modi`** 앱에 올린다.
-  🔴 **수신 확인은 아직 남아 있다** — TestFlight 빌드로 콕찌르기 알림이 실제로 오는지 봐야
-  #66 을 닫는다(디버그 빌드로는 이 검증이 안 된다, 위 첫 항목 참고).
+- ✅ ~~**푸시 알림 수신(FCM → APNs)**~~ — **2026-09-14 빌드 `1.1.0 (9)` 실기기 확인 완료**(이슈 #66).
+  푸시 도착·배너 탭 이동·포그라운드 배너·앱 종료 상태에서 진입까지 전부 동작한다.
+  원인이 **네 겹**이었고 상세는 `docs/fcm-setup.md` 에 있다. 요약:
+  ① APNs 인증 키가 Firebase 에 없었다(8/31 등록)
+  ② **앱이 토큰을 못 받았다** — UIScene 때문에 iOS 알림 배선이 통째로 실행되지 않았다
+  ③ 서버가 발송을 시도조차 안 했다(②의 결과. 그 사실을 로그로 남기게 고친 것이 진단의 열쇠였다)
+  ④ **APNs 키가 개발용이었다** — `Sandbox` 로 발급돼 TestFlight 빌드에서 `Invalid APNs credential`
+  ⚠️ 키를 새로 발급할 때는 **Environment 를 `Sandbox & Production` 으로** 고르고
+  **`com.intpsquad.modi`** 앱에 올린다. 둘 다 틀리기 쉬운 지점이라 `docs/fcm-setup.md` 에
+  판별법까지 적어 뒀다.
