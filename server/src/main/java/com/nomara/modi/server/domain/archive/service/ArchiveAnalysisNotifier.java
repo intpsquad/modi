@@ -5,8 +5,6 @@ import com.nomara.modi.server.domain.user.entity.User;
 import com.nomara.modi.server.domain.user.repository.UserRepository;
 import com.nomara.modi.server.global.notification.PushNotifier;
 import com.nomara.modi.server.global.notification.PushType;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,13 +12,17 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 모아둔 분석 결과를 <b>사람당 한 번씩</b> 알린다(2026-08-06).
+ * 분석이 끝나면 <b>등록한 사람에게</b> 알린다(2026-08-06, 2026-10-18 개정).
  *
  * <p>🔴 <b>왜 이 알림이 필요한가.</b> 자료 등록이 양쪽 경로(인앱 S-25-C · 공유 S-25-D) 모두 비동기가 되면서, "언제 분석이 끝났는지"를 알 방법이
  * 앱을 다시 여는 것뿐이 됐다. 등록 직후 신호(스낵바 · "분석 중 N건")는 등록됐다는 것만 말해 준다.
  *
- * <p><b>왜 묶어 보내나</b>(사용자 확정 2026-08-06): 공유로 5건을 연달아 넣으면 알림도 5개가 온다. 마지막 확정 뒤 {@link #QUIET_PERIOD}
- * 동안 조용하면 그때 한 번만 보낸다.
+ * <p>🔴 <b>묶지 않고 바로 보낸다</b>(2026-10-18 사용자 확정, #110). 처음(2026-08-06)에는 "공유로 5건을 연달아 넣으면 알림도 5개가
+ * 온다"는 이유로 마지막 확정 뒤 1분간 조용해야 보냈는데, 30초 주기까지 더해 <b>분석이 끝나고 1~1.5분 뒤에야</b> 알림이 왔다(분석 자체는 등록 뒤 약 13초면
+ * 끝난다). 사용자가 "늦다"고 했고, 5건이면 5번 울리는 쪽을 택했다. 이제 다음 tick(최대 5초)에 보낸다.
+ *
+ * <p>⚠️ 같은 tick 사이(5초 안)에 여러 건이 끝나면 그 몫은 여전히 한 알림("자료 N건 정리 완료")으로 나간다 — 버퍼를 사람 단위로 비우기 때문이다. 일부러
+ * 묶는 것이 아니라 주기의 부산물이고, 드물다.
  *
  * <p><b>받는 사람은 등록한 본인뿐이다.</b> 방 전체에 보내면 남이 올린 링크의 분석 알림까지 오게 된다.
  *
@@ -31,14 +33,6 @@ import org.springframework.stereotype.Component;
 public class ArchiveAnalysisNotifier {
 
   private static final Logger log = LoggerFactory.getLogger(ArchiveAnalysisNotifier.class);
-
-  /**
-   * 마지막 확정 뒤 이만큼 조용하면 보낸다.
-   *
-   * <p>짧으면 묶는 의미가 없고(연달아 넣는 동안 여러 번 나간다), 길면 "끝났다"를 늦게 안다. 크롤링 한 건이 보통 수 초~수십 초라 1분이면 연속 등록을 대부분 한
-   * 묶음으로 담는다. ⚠️ 실측이 아니라 추정값이다 — 실제 사용 패턴을 보고 고칠 것.
-   */
-  private static final Duration QUIET_PERIOD = Duration.ofMinutes(1);
 
   /** 한 tick 에 알릴 최대 인원 — 한꺼번에 몰릴 때 FCM 호출이 폭주하지 않게. */
   private static final int MAX_PER_TICK = 50;
@@ -57,32 +51,29 @@ public class ArchiveAnalysisNotifier {
   }
 
   /**
-   * 30초마다 훑는다 — 조용해진 사람만 골라 보낸다.
+   * 5초마다 훑어 기다리는 사람 모두에게 보낸다. 분석이 끝나고 알림이 가기까지의 최대 대기가 이 주기다.
+   *
+   * <p>대기자가 없으면 Redis 집합 하나만 읽고 끝나서 짧게 돌려도 부담이 없다.
    *
    * <p>주기를 프로퍼티로 뺀 이유는 <b>테스트 격리</b>다({@code ArchiveCrawlRetryScheduler} 와 같은 사정). {@code
    * fixedDelay} 는 컨텍스트가 뜨자마자 한 번 돌고 계속 도는데, 스프링 컨텍스트는 테스트 사이에 캐시된다.
    */
-  @Scheduled(fixedDelayString = "${modi.archive.analysis-notify-interval:30000}")
-  public void flushQuietBuffers() {
+  @Scheduled(fixedDelayString = "${modi.archive.analysis-notify-interval:5000}")
+  public void flushPendingBuffers() {
     Set<String> pending = buffer.pendingUsers();
     if (pending.isEmpty()) {
       return;
     }
-    long quietBefore = Instant.now().minus(QUIET_PERIOD).toEpochMilli();
     int sent = 0;
     for (String uid : pending) {
       if (sent >= MAX_PER_TICK) {
         log.info("분석 알림 한 tick 상한({})에 걸렸다 — 남은 사람은 다음 tick 에 보낸다", MAX_PER_TICK);
         break;
       }
-      long last = buffer.lastConfirmedAt(uid);
-      if (last == 0) {
+      if (buffer.lastConfirmedAt(uid) == 0) {
         // 카운터는 없는데 목록에만 남은 경우(TTL 만료 등) — 정리하고 넘어간다.
         buffer.clear(uid);
         continue;
-      }
-      if (last > quietBefore) {
-        continue; // 아직 처리 중이다. 다음 tick 에 다시 본다.
       }
       if (flushOne(uid)) {
         sent++;
