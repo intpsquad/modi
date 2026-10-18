@@ -3,6 +3,7 @@ package com.nomara.modi.server.domain.notification.service;
 import com.nomara.modi.server.domain.notification.dto.NotificationResponse;
 import com.nomara.modi.server.domain.notification.dto.UnreadCountResponse;
 import com.nomara.modi.server.domain.notification.entity.Notification;
+import com.nomara.modi.server.domain.notification.exception.NotificationNotFoundException;
 import com.nomara.modi.server.domain.notification.repository.NotificationRepository;
 import com.nomara.modi.server.domain.room.entity.Room;
 import com.nomara.modi.server.domain.user.entity.User;
@@ -15,7 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 알림 내역(specs/0017-알림-내역.md, S-41) — 기록·조회·읽음 처리. */
+/** 알림 내역(specs/0017-알림-내역.md, S-41) — 기록·조회·읽음 처리·삭제. */
 @Service
 public class NotificationHistoryService {
 
@@ -60,5 +61,19 @@ public class NotificationHistoryService {
   @Transactional
   public void markAllRead(String userId) {
     notificationRepository.markAllRead(userId, Instant.now());
+  }
+
+  /** 알림 한 건 삭제(#111). 남의 알림이면 없는 것과 같은 404 — 있는지조차 알려주지 않는다. */
+  @Transactional
+  public void delete(String userId, Long notificationId) {
+    if (notificationRepository.deleteByIdAndUserId(notificationId, userId) == 0) {
+      throw new NotificationNotFoundException();
+    }
+  }
+
+  /** 알림 전체 삭제(#111). 지울 것이 없어도 성공이다. */
+  @Transactional
+  public void deleteAll(String userId) {
+    notificationRepository.deleteAllByUserId(userId);
   }
 }
