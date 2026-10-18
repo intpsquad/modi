@@ -58,7 +58,6 @@ class ArchiveCrawlProcessorNotifyTest {
           urlCrawler,
           Optional.empty(),
           new ArchiveSummarizer(Optional.empty()),
-          new ArchiveEmbedder(Optional.empty()),
           buffer);
 
   private final User writer = new User(UID, "닉네임", null);

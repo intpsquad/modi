@@ -7,17 +7,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * 자료 하나에 <b>요약을 채우고 그 요약으로 벡터를 다시 만든다.</b>
+ * 자료 하나에 <b>요약을 채운다.</b>
  *
  * <p>{@code ArchiveSummaryBackfiller.fillOne} 에 있던 것을 꺼냈다(2026-08-06). 꺼낸 이유는 <b>같은 일을 사용자가 버튼으로도
  * 요청하게 됐기 때문</b>이다 — 텍스트 등록은 자동 요약을 하지 않고, 필요한 사람이 자료 상세에서 만든다({@code
  * ArchiveItemService.summarizeItem}). 백필과 버튼이 같은 규칙을 쓰려면 한 곳에 있어야 한다.
  *
- * <p>⚠️ <b>요약만 채우면 안 된다 — 벡터도 다시 만들어야 한다.</b> {@link ArchiveEmbedder} 는 <b>요약이 있으면 요약을, 없으면 본문을</b>
- * 임베딩한다. 요약만 채우면 한 방 안에 "요약으로 만든 벡터"와 "본문으로 만든 벡터"가 섞여, 추천의 유사도 축이 서로 다른 잣대로 만든 벡터를 비교하게 된다.
- *
- * <p><b>재임베딩이 실패해도 요약은 저장한다.</b> 요약이 있는 편이 없는 편보다 낫고(추천 프롬프트가 수만 자에서 수백 자로 준다), 벡터는 기존 본문 기반 값이 남아
- * 유사도 축이 죽지는 않는다.
+ * <p>(2026-10-18 까지는 요약으로 벡터도 다시 만들었다 — #129 로 임베딩을 만들지 않게 되어 그 부분을 지웠다. 요약은 그대로 값이 있다: 추천 프롬프트가 수만
+ * 자에서 수백 자로 준다.)
  */
 @Component
 public class ArchiveSummaryFiller {
@@ -26,15 +23,11 @@ public class ArchiveSummaryFiller {
 
   private final ArchiveItemRepository archiveItemRepository;
   private final ArchiveSummarizer archiveSummarizer;
-  private final ArchiveEmbedder archiveEmbedder;
 
   public ArchiveSummaryFiller(
-      ArchiveItemRepository archiveItemRepository,
-      ArchiveSummarizer archiveSummarizer,
-      ArchiveEmbedder archiveEmbedder) {
+      ArchiveItemRepository archiveItemRepository, ArchiveSummarizer archiveSummarizer) {
     this.archiveItemRepository = archiveItemRepository;
     this.archiveSummarizer = archiveSummarizer;
-    this.archiveEmbedder = archiveEmbedder;
   }
 
   /**
@@ -55,14 +48,6 @@ public class ArchiveSummaryFiller {
         return false;
       }
       item.applySummary(summary);
-
-      float[] embedding = archiveEmbedder.embed(item.getSummary(), bodyText);
-      if (embedding == null) {
-        log.warn("요약은 채웠지만 재임베딩에 실패했습니다 — 벡터는 본문 기반으로 남습니다: itemId={}", item.getId());
-      } else {
-        item.applyEmbedding(embedding);
-      }
-
       archiveItemRepository.save(item);
       return true;
     } catch (Exception e) {

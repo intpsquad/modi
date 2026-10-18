@@ -62,16 +62,13 @@ public class TodoSuggestionService {
     long finishedAt = System.nanoTime();
 
     log.info(
-        "추천 구간(room={}): 페이로드 {}초 · AI 왕복 {}초 · 노출기록 {}초 · 합계 {}초"
-            + " (자료 {}건 · 벡터 {}개 ≈ {}KB · 제외 {}건 · 후보 {}개)",
+        "추천 구간(room={}): 페이로드 {}초 · AI 왕복 {}초 · 노출기록 {}초 · 합계 {}초" + " (자료 {}건 · 제외 {}건 · 후보 {}개)",
         roomId,
         seconds(startedAt, loadedAt),
         seconds(loadedAt, suggestedAt),
         seconds(suggestedAt, finishedAt),
         seconds(startedAt, finishedAt),
         payload.archive().size(),
-        vectorCount(payload),
-        estimatedVectorKilobytes(payload),
         payload.excludedTodos().size(),
         candidates.size());
 
@@ -80,26 +77,6 @@ public class TodoSuggestionService {
 
   private static String seconds(long fromNanos, long toNanos) {
     return String.format("%.2f", (toNanos - fromNanos) / 1_000_000_000.0);
-  }
-
-  private static long vectorCount(AiSuggestPayload payload) {
-    return payload.archive().stream().filter(a -> a.embedding() != null).count();
-  }
-
-  /**
-   * 임베딩이 JSON 으로 나갈 때 차지하는 대략 크기. <b>정확한 바디 크기가 아니라 자릿수를 보려는 것</b>이다 — 진짜로 재려면 한 번 더 직렬화해야 하고, 그
-   * 비용이 재려는 대상보다 클 수 있다.
-   *
-   * <p>가설: 자료가 늘면 이 값이 선형으로 커져 직렬화·전송·pydantic 검증이 지연을 만든다. {@code AiSuggestPayload.ArchiveInfo}
-   * javadoc 이 "자료 18건에 약 390KB"라고 적어둔 그 숫자다. float 하나가 소수점 표기로 대략 12바이트를 먹는다고 본다.
-   */
-  private static long estimatedVectorKilobytes(AiSuggestPayload payload) {
-    long floats =
-        payload.archive().stream()
-            .filter(a -> a.embedding() != null)
-            .mapToLong(a -> a.embedding().length)
-            .sum();
-    return floats * 12 / 1024;
   }
 
   /**

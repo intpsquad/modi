@@ -104,16 +104,11 @@ x-spring: &spring
     # 안 들어가고, 유튜브 링크만 전부 등록에 실패한다.** 운영 서버는 데이터센터 IP 라
     # youtube.com HTML 이 구글 CAPTCHA 에 막힌다 — Data API 가 유일한 경로다(폴백 없음).
     YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
-    # 기존 자료에 임베딩을 채운다. **기본 꺼짐** — 자료 1건당 LLM 호출 1회라 돈이 나가고
-    # 한 번만 필요한 작업이다. 여기 변수를 통과시켜 두는 이유는, 없으면 켜려는 운영자가
-    # 배포가 덮어쓰는 이 파일을 손으로 고쳐야 하기 때문이다.
-    # 켜는 법: 서버의 .env 에 ARCHIVE_BACKFILL_EMBEDDINGS=true 를 넣고 재기동 → 로그의
-    # "임베딩 백필 완료" 확인 → 다시 지우고 재기동.
-    ARCHIVE_BACKFILL_EMBEDDINGS: ${ARCHIVE_BACKFILL_EMBEDDINGS:-false}
-    # 요약 없이 등록된 기존 자료에 요약을 채우고 **그 요약으로 벡터를 다시 만든다**
-    # **기본 꺼짐** — 자료 1건당 LLM 호출 2회다. 켜고 끄는 법은 위와 같다.
-    # ⚠️ 위 ARCHIVE_BACKFILL_EMBEDDINGS 로는 이 문제를 못 고친다 — 그쪽은 벡터가 NULL 인 것만
-    # 찾는데, 요약 없이 등록된 자료는 이미 '본문으로 만든' 벡터가 있어 건너뛴다.
+    # (2026-10-18: ARCHIVE_BACKFILL_EMBEDDINGS 를 뺐다 — 자료 임베딩을 만들지 않는다, #129.)
+    # 요약 없이 등록된 기존 자료에 요약을 채운다. **기본 꺼짐** — 자료 1건당 LLM 호출 1회라 돈이 나가고
+    # 한 번만 필요한 작업이다. 여기 변수를 통과시켜 두는 이유는, 없으면 켜려는 운영자가 배포가 덮어쓰는
+    # 이 파일을 손으로 고쳐야 하기 때문이다.
+    # 켜는 법: 서버의 .env 에 ARCHIVE_BACKFILL_SUMMARIES=true 를 넣고 재기동 → 로그 확인 → 다시 지우고 재기동.
     ARCHIVE_BACKFILL_SUMMARIES: ${ARCHIVE_BACKFILL_SUMMARIES:-false}
     # 이미 노출한 후보를 다음 추천에서 제외할 것인가. **기본 false — 껐다**
     # (2026-08-10 확정, 회차마다 후보가 줄어 "매번 6~8개"를 못 맞췄다). 되켜려면 서버 .env 에
