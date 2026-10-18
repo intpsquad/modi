@@ -30,7 +30,7 @@
 | 등록 경로 | 기존 `POST /rooms/{roomId}/archive/folders/{folderId}/items`를 그대로 쓴다. `CreateArchiveItemRequest`에 `imageUrl`(업로드로 받은 공개 URL)·`title`(선택, 이미지 자료 전용) 필드 추가 |
 | 제목 | 사용자가 비우면 서버가 `"사진"`으로 기본값을 채운다(링크가 URL로 프리필되는 것과 같은 원칙) |
 | 폴더 스코프 | 등록한 폴더에만 속한다(링크/텍스트와 동일) — 투두 첨부 이미지(방 전체 피드)와 스코프가 다르다는 점이 핵심 차이 |
-| AI 태깅/요약/임베딩 | 대상 아님 — `imageUrl`이 채워지면 `dispatchCrawl`을 아예 호출하지 않는다 |
+| AI 태깅/요약(임베딩은 #129 로 전체 중단) | 대상 아님 — `imageUrl`이 채워지면 `dispatchCrawl`을 아예 호출하지 않는다 |
 | 핀/삭제/폴더이동/댓글/태그 | 링크/텍스트 자료와 완전히 동일한 엔드포인트(`/rooms/{roomId}/archive/items/{itemId}/...`)를 그대로 쓴다 — 별도 API 없음 |
 
 ## API
