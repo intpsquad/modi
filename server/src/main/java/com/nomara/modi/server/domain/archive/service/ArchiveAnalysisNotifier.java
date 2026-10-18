@@ -22,12 +22,13 @@ import org.springframework.stereotype.Component;
  * 끝난다). 사용자가 "늦다"고 했고, 5건이면 5번 울리는 쪽을 택했다. 이제 다음 tick(최대 5초)에 보낸다.
  *
  * <p>⚠️ 같은 tick 사이(5초 안)에 여러 건이 끝나면 그 몫은 여전히 한 알림("자료 N건 정리 완료")으로 나간다 — 버퍼를 사람 단위로 비우기 때문이다. 일부러
- * 묶는 것이 아니라 주기의 부산물이고, 드물다.
+ * 묶는 것이 아니라 주기의 부산물이다. 크롤링 실행기가 2개를 동시에 돌려(`AsyncConfig`) 연달아 공유하면 가끔 생긴다(빈도는 재지 않았다).
  *
  * <p><b>받는 사람은 등록한 본인뿐이다.</b> 방 전체에 보내면 남이 올린 링크의 분석 알림까지 오게 된다.
  *
  * <p>⚠️ <b>단일 인스턴스 전제다.</b> 여럿이면 같은 사용자 몫을 둘이 집어 알림이 두 번 갈 수 있다 — {@code
- * ArchiveCrawlRetryScheduler} 와 같은 한계이고, 지금은 단일 EC2 · 단일 컨테이너다.
+ * ArchiveCrawlRetryScheduler} 와 같은 한계다. 지금은 서버 하나지만 blue/green 배포 중 잠깐 두 컨테이너가
+ * 겹친다(`deploy/deploy.sh`).
  */
 @Component
 public class ArchiveAnalysisNotifier {

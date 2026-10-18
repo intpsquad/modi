@@ -25,7 +25,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 /**
  * 모아둔 것을 <b>언제 · 어떤 문구로</b> 보내는지 잰다. 2026-10-18(#110)부터 "언제"는 "다음 tick 에 바로"다.
  *
- * <p>스프링을 띄우지 않는다 — 버퍼는 목이고, 여기서 재는 것은 조용해졌는지 판정과 문구 조립이다.
+ * <p>스프링을 띄우지 않는다 — 버퍼는 목이고, 여기서 재는 것은 보낼지 판정과 문구 조립이다.
  */
 class ArchiveAnalysisNotifierTest {
 

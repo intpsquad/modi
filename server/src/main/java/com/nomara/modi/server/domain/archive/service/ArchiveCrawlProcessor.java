@@ -231,7 +231,7 @@ public class ArchiveCrawlProcessor {
   }
 
   /**
-   * 분석이 끝났다고 버퍼에 센다 — 실제 발송은 {@code ArchiveAnalysisNotifier} 가 모아서 한다.
+   * 분석이 끝났다고 버퍼에 센다 — 실제 발송은 {@code ArchiveAnalysisNotifier} 가 다음 tick(최대 5초)에 한다.
    *
    * <p>제목을 함께 넘기는 이유: 1건뿐이면 개수 대신 제목을 그대로 쓴다("「강릉 여행 코스」 분석이 끝났어요").
    */
