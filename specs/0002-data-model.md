@@ -191,6 +191,7 @@
 - 기록 지점은 `global.notification.PushNotifier.notify/notifyEach` 한 곳 — 개별 채널 게이트(`isEnabled`)를 통과하면 **FCM 발송 성공 여부와 무관하게** 기록한다(토큰 없음·FCM 실패여도 기록은 남음 — "알림 대상이었다"는 사실 기록이지 "기기에 도착했다"는 기록이 아니다).
 - `user_id`는 개인 기록이라 탈퇴 시 `ON DELETE CASCADE`(`user_activity`와 같은 근거). `room_id`는 방이 나중에 삭제돼도 알림 기록 자체는 남겨야 하므로 `ON DELETE SET NULL`.
 - **보존 90일** — `NotificationRetentionScheduler`가 매일 배치로 90일 지난 행을 삭제(`user_activity`와 동일 패턴, 시간대는 기존 배치와 안 겹치게 조율).
+- **사용자 삭제**(2026-10-17 #111) — 수신자 본인이 한 건 또는 전부를 지울 수 있다(행을 지운다, 소프트 삭제 없음 — 스키마 변경 없음). 남의 행은 지울 수 없다(`user_id` 조건).
 - 인덱스: `(user_id, created_at DESC)`(목록 조회), `(user_id) WHERE read_at IS NULL`(안읽음 배지 카운트).
 - 상세는 `specs/0017-알림-내역.md`.
 

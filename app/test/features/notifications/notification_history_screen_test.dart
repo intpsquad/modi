@@ -106,15 +106,169 @@ void main() {
 
     expect(find.text('이미 없어진 방이에요'), findsOneWidget);
   });
+
+  // --- 삭제(#111) ---
+
+  NotificationHistoryItem item(int id, String title) => NotificationHistoryItem(
+    id: id,
+    type: 'POKE',
+    title: title,
+    body: '본문 $id',
+    roomId: null,
+    read: true,
+    createdAt: DateTime.now(),
+  );
+
+  Future<_FakeNotificationsApi> pumpWith(
+    WidgetTester tester,
+    List<NotificationHistoryItem> items, {
+    bool failDelete = false,
+  }) async {
+    final api = _FakeNotificationsApi(items: items, failDelete: failDelete);
+    await tester.pumpWidget(
+      host(
+        NotificationHistoryScreen(
+          api: api,
+          tokenLoader: () async => 'token',
+          roomSession: RoomSession(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return api;
+  }
+
+  /// 행을 왼쪽으로 [dx]만큼 민다. 투두 테스트의 `swipeLeft` 와 같은 이유로 드래그 도중 pump 가
+  /// 필요하다 — 그래야 끝까지 당겼을 때 DismissiblePane 이 붙어 "끝까지 당겨 삭제"가 된다.
+  Future<void> swipeLeft(WidgetTester tester, Finder finder, double dx) async {
+    final gesture = await tester.startGesture(tester.getCenter(finder));
+    await gesture.moveBy(Offset(-dx / 2, 0));
+    await tester.pump();
+    await gesture.moveBy(Offset(-dx / 2, 0));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('전체 삭제는 확인 모달을 거쳐 내 알림을 모두 지운다', (tester) async {
+    final api = await pumpWith(tester, [item(1, '첫 알림'), item(2, '둘째 알림')]);
+
+    await tester.tap(find.byKey(const Key('notification-delete-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('알림을 모두 삭제할까요?'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('notification-delete-all-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(api.deleteAllCallCount, 1);
+    expect(find.text('첫 알림'), findsNothing);
+    expect(find.text('아직 받은 알림이 없어요'), findsOneWidget);
+    // 지울 것이 없으면 버튼도 없다.
+    expect(find.byKey(const Key('notification-delete-all')), findsNothing);
+  });
+
+  testWidgets('전체 삭제 확인 모달에서 취소하면 아무것도 지우지 않는다', (tester) async {
+    final api = await pumpWith(tester, [item(1, '첫 알림')]);
+
+    await tester.tap(find.byKey(const Key('notification-delete-all')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notification-delete-all-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(api.deleteAllCallCount, 0);
+    expect(find.text('첫 알림'), findsOneWidget);
+  });
+
+  testWidgets('알림이 없으면 전체 삭제 버튼을 보이지 않는다', (tester) async {
+    await pumpWith(tester, []);
+
+    expect(find.byKey(const Key('notification-delete-all')), findsNothing);
+  });
+
+  testWidgets('전체 삭제가 실패하면 목록을 되살리고 안내한다', (tester) async {
+    await pumpWith(tester, [item(1, '첫 알림')], failDelete: true);
+
+    await tester.tap(find.byKey(const Key('notification-delete-all')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notification-delete-all-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('첫 알림'), findsOneWidget);
+    expect(find.text('삭제에 실패했어요. 다시 시도해 주세요'), findsOneWidget);
+  });
+
+  testWidgets('행을 왼쪽으로 밀면 휴지통 버튼이 나오고, 누르면 그 알림만 바로 지운다', (tester) async {
+    final api = await pumpWith(tester, [item(1, '첫 알림'), item(2, '둘째 알림')]);
+
+    await swipeLeft(tester, find.text('첫 알림'), 80);
+    final trash = find.byKey(const ValueKey('notification-delete-1'));
+    expect(trash, findsOneWidget);
+    expect(
+      find.descendant(of: trash, matching: find.byIcon(Icons.delete_outline)),
+      findsOneWidget,
+    );
+
+    await tester.tap(trash);
+    await tester.pumpAndSettle();
+
+    expect(api.deletedIds, [1]);
+    expect(find.text('첫 알림'), findsNothing);
+    expect(find.text('둘째 알림'), findsOneWidget);
+  });
+
+  testWidgets('끝까지 밀면 버튼을 누르지 않아도 바로 지운다', (tester) async {
+    final api = await pumpWith(tester, [item(1, '첫 알림'), item(2, '둘째 알림')]);
+
+    await swipeLeft(tester, find.text('둘째 알림'), 500);
+
+    expect(api.deletedIds, [2]);
+    expect(find.text('둘째 알림'), findsNothing);
+    expect(find.text('첫 알림'), findsOneWidget);
+  });
+
+  testWidgets('한 건 삭제가 실패하면 그 알림을 제자리에 되살리고 안내한다', (tester) async {
+    await pumpWith(tester, [
+      item(1, '첫 알림'),
+      item(2, '둘째 알림'),
+      item(3, '셋째 알림'),
+    ], failDelete: true);
+
+    await swipeLeft(tester, find.text('둘째 알림'), 500);
+
+    expect(find.text('둘째 알림'), findsOneWidget);
+    expect(find.text('삭제에 실패했어요. 다시 시도해 주세요'), findsOneWidget);
+    // 제자리 — 첫 알림과 셋째 알림 사이.
+    double y(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(y('첫 알림') < y('둘째 알림') && y('둘째 알림') < y('셋째 알림'), isTrue);
+  });
 }
 
 class _FakeNotificationsApi extends NotificationsApi {
-  _FakeNotificationsApi({required this.items, this.shouldFailFirst = false});
+  _FakeNotificationsApi({
+    required this.items,
+    this.shouldFailFirst = false,
+    this.failDelete = false,
+  });
 
   final List<NotificationHistoryItem> items;
   final bool shouldFailFirst;
+  final bool failDelete;
   int _fetchCallCount = 0;
   int markAllReadCallCount = 0;
+  int deleteAllCallCount = 0;
+  final List<int> deletedIds = [];
+
+  @override
+  Future<void> deleteNotification(String idToken, int id) async {
+    if (failDelete) throw StateError('알림 삭제 실패');
+    deletedIds.add(id);
+  }
+
+  @override
+  Future<void> deleteAll(String idToken) async {
+    if (failDelete) throw StateError('알림 전체 삭제 실패');
+    deleteAllCallCount++;
+  }
 
   @override
   Future<List<NotificationHistoryItem>> fetchHistory(String idToken) async {
