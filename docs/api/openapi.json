@@ -2337,6 +2337,15 @@
             }
           }
         }
+      },
+      "delete" : {
+        "tags" : [ "notification-history-controller" ],
+        "operationId" : "deleteAllNotifications",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
       }
     },
     "/me/notifications/unread-count" : {
@@ -2407,6 +2416,26 @@
         "operationId" : "leaveRoom",
         "parameters" : [ {
           "name" : "roomId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/me/notifications/{notificationId}" : {
+      "delete" : {
+        "tags" : [ "notification-history-controller" ],
+        "operationId" : "deleteNotification",
+        "parameters" : [ {
+          "name" : "notificationId",
           "in" : "path",
           "required" : true,
           "schema" : {

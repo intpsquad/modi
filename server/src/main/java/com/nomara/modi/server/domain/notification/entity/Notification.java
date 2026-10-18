@@ -26,7 +26,8 @@ import org.hibernate.annotations.CreationTimestamp;
  * 문구를 유지해야 하므로, 구조화된 필드로 재구성하지 않는다.
  *
  * <p>append-only라 수정 메서드가 없다({@code UserActivity}와 같은 패턴). 읽음 처리는 이 엔티티가 아니라 리포지토리의 벌크 UPDATE로 한다
- * (전체 읽음 처리 한 번에 여러 행을 바꾸는 것이 목적이라 단건 더티체킹보다 명확하다).
+ * (전체 읽음 처리 한 번에 여러 행을 바꾸는 것이 목적이라 단건 더티체킹보다 명확하다). 사용자가 지우는 것(#111, 한 건·전체)도 리포지토리의 벌크 DELETE 로 한다
+ * — 본인 것만 지우도록 조건에 {@code user_id} 를 함께 건다.
  */
 @Entity
 @Table(name = "notifications")

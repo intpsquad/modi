@@ -1,13 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../../design/notice_banner.dart';
 import '../../design/ai_sparkle_button.dart';
 import '../../design/todo_checkbox.dart';
 import '../../design/tokens.dart';
 import '../../design/segmented_toggle.dart';
+import '../../design/swipe_action_row.dart';
 import '../../design/tab_header.dart';
 import '../auth/auth_service.dart';
 import '../room/room_session.dart';
@@ -37,11 +37,7 @@ const double _kHeaderH = 48; // 카테고리/기타 헤더 높이 — 투두 행
 const double _kTopBarH = TabHeader.height; // 56 — 4개 탭 공용 헤더 높이
 const double _kRowH = 44; // 투두·추가 행 높이
 const double _kRowGap = 8; // 행 사이 수직 간격
-// 좌측 스와이프로 드러나는 액션 버튼(수정/삭제) — 시각 크기 50×28, 버튼 사이 간격 4px(요청).
-// 오른쪽 끝은 전역 좌우 여백(_kHMargin)에 정렬되고, 행과의 간격도 _kActionGap이다.
-const double _kActionBtnW = 50;
-const double _kActionBtnH = 28;
-const double _kActionGap = 4;
+// 좌측 스와이프로 드러나는 액션 버튼(삭제) 규격은 공용 부품으로 옮겼다(`design/swipe_action_row.dart`).
 const Color _kInk = Color(0xFF111111); // 제목·본문 진한 텍스트
 const Color _kMutedInk = Color(0xFF636366); // 기타/셰브론/뱃지 텍스트
 const Color _kCircleBorder = Color(0xFFC7C7CC); // 체크/점선 원 테두리
@@ -211,7 +207,7 @@ class TodosScreenState extends State<TodosScreen> {
 
   // 좌측 스와이프 액션 패널은 화면에 하나만 열려 있는다(요청). 행/헤더가 자기 컨트롤러를
   // 여기 등록하고, 다른 상호작용이 시작되면 _closeSwipeActions()로 전부 되돌린다.
-  final _SlidableGroup _slidableGroup = _SlidableGroup();
+  final SlidableGroup _slidableGroup = SlidableGroup();
 
   /// 완료 체크를 2초 붙잡아 두는 대기열 — 그 사이 다시 누르면 취소된다(요청 3).
   late final PendingCompletions _pendingCompletions = PendingCompletions(
@@ -1334,7 +1330,7 @@ class TodosScreenState extends State<TodosScreen> {
   Widget _buildCategoryHeaderRow(Category category) {
     final expanded = _expandedCategories[category.id] ?? true;
     // 헤더 박스 전체가 토글 영역(요청 7). 롱프레스는 이름수정/삭제 유지, 쉐브론은 표시용.
-    final header = _PressableBox(
+    final header = PressableBox(
       key: ValueKey('category-toggle-${category.id}'),
       onTap: () {
         _closeSwipeActions();
@@ -1371,12 +1367,12 @@ class TodosScreenState extends State<TodosScreen> {
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-      child: _SwipeActionRow(
+      child: SwipeActionRow(
         key: ValueKey('category-slidable-${category.id}'),
         group: _slidableGroup,
         // onDismissed 없음 — 끝까지 당겨도 즉시 삭제되지 않는다(확인 모달 필수).
         actions: [
-          _RowActionButton(
+          SwipeActionButton(
             key: ValueKey('category-delete-${category.id}'),
             label: '삭제',
             background: AppColors.accentDanger,
@@ -1405,7 +1401,7 @@ class TodosScreenState extends State<TodosScreen> {
   Widget _buildEtcHeaderRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-      child: _PressableBox(
+      child: PressableBox(
         key: const ValueKey('category-toggle-etc'),
         onTap: () {
           _closeSwipeActions();
@@ -1513,7 +1509,7 @@ class TodosScreenState extends State<TodosScreen> {
             );
           case _FlatKind.add:
             // ReorderableListView는 모든 항목에 최상단 키를 요구한다 —
-            // add-todo-* 키는 탭 대상(_PressableBox)에 있으므로 여기서 따로 감싼다.
+            // add-todo-* 키는 탭 대상(PressableBox)에 있으므로 여기서 따로 감싼다.
             return _CollapsibleFlatRow(
               key: ValueKey('flat-collapse-add-${item.categoryId ?? 'etc'}'),
               hidden: item.hidden,
@@ -1759,7 +1755,7 @@ class TodosScreenState extends State<TodosScreen> {
   Widget _buildAddAffordance({int? categoryId}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-      child: _PressableBox(
+      child: PressableBox(
         key: ValueKey('add-todo-${categoryId ?? 'etc'}'),
         onTap: () {
           _openCreateTodoSheet(categoryId: categoryId);
@@ -1802,7 +1798,7 @@ class _TodoListRow extends StatefulWidget {
   });
 
   final TodoItem todo;
-  final _SlidableGroup slidableGroup; // 열린 액션 패널을 하나로 유지하는 그룹
+  final SlidableGroup slidableGroup; // 열린 액션 패널을 하나로 유지하는 그룹
   final VoidCallback onToggle; // 체크 원 탭 = 완료 토글
   final VoidCallback onEdit; // information 아이콘 탭 = 상세/수정 시트(2026-08-09)
   final VoidCallback onDelete; // 좌측 스와이프 = 삭제
@@ -1934,7 +1930,7 @@ class _TodoListRowState extends State<_TodoListRow> {
         padding: const EdgeInsets.only(bottom: _kRowGap),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-          child: _PressableBox(
+          child: PressableBox(
             onTap: widget.onSelectToggle,
             // 일반 행과 동일한 상단 정렬·세로 여백 — 항목 선택 모드로 들어가도 제목이 위아래로
             // 튀지 않게(2026-08-09 상단 정렬 통일).
@@ -2154,12 +2150,12 @@ class _TodoListRowState extends State<_TodoListRow> {
       padding: const EdgeInsets.only(bottom: _kRowGap),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: _kHMargin),
-        child: _SwipeActionRow(
+        child: SwipeActionRow(
           key: ValueKey('todo-slidable-${todo.id}'),
           group: widget.slidableGroup,
           onDismissed: widget.onDelete,
           actions: [
-            _RowActionButton(
+            SwipeActionButton(
               key: ValueKey('todo-delete-${todo.id}'),
               label: '삭제',
               background: AppColors.accentDanger,
@@ -2170,318 +2166,6 @@ class _TodoListRowState extends State<_TodoListRow> {
           child: row,
         ),
       ),
-    );
-  }
-}
-
-/// 열린 스와이프 액션 패널을 화면에 **하나만** 유지하기 위한 컨트롤러 모음(요청).
-/// 행/헤더가 만든 [SlidableController]를 등록해두고, 다른 동작이 시작되면 전부 닫는다.
-/// 패키지의 `SlidableAutoCloseBehavior`를 쓰지 않는 이유: 열린 상태의 탭을 AbsorbPointer로
-/// 먹어버려서 "닫고 그 동작도 바로 실행"(사용자 확정)이 불가능하다.
-class _SlidableGroup {
-  final List<SlidableController> _controllers = [];
-
-  void register(SlidableController controller) => _controllers.add(controller);
-
-  void unregister(SlidableController controller) =>
-      _controllers.remove(controller);
-
-  /// 열려 있는 패널을 모두 닫는다. [except]는 방금 열리는 중인 자신을 제외할 때 쓴다.
-  void closeAll({SlidableController? except}) {
-    // close()가 리스너를 통해 목록을 건드릴 수 있어 사본을 순회한다.
-    for (final controller in List.of(_controllers)) {
-      if (controller == except || controller.closing) continue;
-      if (controller.ratio != 0) controller.close();
-    }
-  }
-}
-
-/// 눌림(pressed) 배경을 직접 그리는 탭 영역 — `InkWell` 대체.
-/// InkWell을 쓰지 않는 이유: ① 스플래시가 남아 좌우로 슬라이드하는 동안 행에 배경색이
-/// 깔려 보인다(요청: 슬라이드 중엔 투명), ② 리플이 박스를 넘어 번진다.
-/// 수평 드래그가 제스처 아레나를 가져가면 onTapCancel이 즉시 떨어져 배경이 사라진다.
-class _PressableBox extends StatefulWidget {
-  const _PressableBox({
-    super.key,
-    required this.child,
-    this.onTap,
-    this.onLongPress,
-  });
-
-  final Widget child;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-
-  @override
-  State<_PressableBox> createState() => _PressableBoxState();
-}
-
-class _PressableBoxState extends State<_PressableBox> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (_pressed != value && mounted) setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          // 눌리지 않은 상태는 투명 — 슬라이드 중에도 배경색이 생기지 않는다.
-          color: _pressed ? AppColors.surfaceStrong : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.control),
-        ),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-/// 스와이프 액션 버튼 — 시각 크기 50×28(라운드 8)이지만 **히트박스는 행 높이 전체**로
-/// 넓힌다(design.md §6: 탭 영역 최소 44×44 — 파괴적인 [삭제]가 [수정] 옆 4px에 붙어 있어
-/// 오터치 위험이 특히 크다). 탭하면 자기 패널을 닫고 콜백을 실행한다.
-class _RowActionButton extends StatelessWidget {
-  const _RowActionButton({
-    super.key,
-    required this.label,
-    required this.background,
-    required this.foreground,
-    required this.onPressed,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-  final VoidCallback onPressed;
-
-  /// 끝까지 당겨 삭제되는 구간에서 쓸 **배경만 좌우로 늘어난** 버전(요청 2).
-  /// 높이(28)와 라벨은 그대로 두고 폭만 주어진 공간을 채운다 — 패널이 커질수록 배경이 넓어진다.
-  Widget stretched() => _StretchedRowAction(
-    label: label,
-    background: background,
-    foreground: foreground,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          Slidable.of(context)?.close();
-          onPressed();
-        },
-        child: SizedBox(
-          width: _kActionBtnW,
-          height: _kRowH, // 히트박스(44) — 시각 박스는 아래 28
-          child: Center(
-            child: Container(
-              width: _kActionBtnW,
-              height: _kActionBtnH,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: background,
-                borderRadius: BorderRadius.circular(AppRadius.small),
-              ),
-              child: Text(
-                label,
-                style: AppTypography.caption.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: foreground,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// `DismissiblePane`의 모션. 이 위젯은 **한 번 마운트되면 계속 남는다**(패키지가
-/// `isDismissibleReady`를 되돌리지 않는다) — 그래서 스스로 두 모습을 오간다:
-///  · 열린 상태(패널 폭 이내) → 평소의 버튼 배치
-///  · 더 당긴 상태(삭제 확정 구간) → 배경이 좌우로 넓어진 버전
-/// 이걸 구분하지 않고 늘어난 버전만 주면, 손을 떼고 패널이 닫힌 뒤에도 늘어난 채로 남는다.
-class _DismissMotion extends StatelessWidget {
-  const _DismissMotion({required this.actionsRow, required this.stretched});
-
-  final Widget actionsRow;
-  final Widget stretched;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = Slidable.of(context);
-    final extentRatio = ActionPane.of(context)?.extentRatio;
-    if (controller == null || extentRatio == null) return actionsRow;
-    return AnimatedBuilder(
-      animation: controller.animation,
-      builder: (context, _) {
-        // 부동소수 오차로 경계에서 깜빡이지 않게 아주 작은 여유를 둔다.
-        final past = controller.ratio.abs() > extentRatio + 0.001;
-        return past ? stretched : actionsRow;
-      },
-    );
-  }
-}
-
-/// 끝까지 당기는 동안(=삭제 확정 구간) 보여주는 액션 — 같은 색·높이의 배경이 **좌우로 꽉 찬다**.
-/// 라벨은 오른쪽(원래 버튼이 있던 자리)에 남겨 무엇이 일어나는지 알 수 있게 한다.
-/// 탭 대상이 아니다(손을 떼는 순간 삭제된다).
-class _StretchedRowAction extends StatelessWidget {
-  const _StretchedRowAction({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        height: _kActionBtnH,
-        width: double.infinity,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(AppRadius.small),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.caption.copyWith(
-            fontWeight: FontWeight.w600,
-            color: foreground,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 좌측 스와이프로 [actions](50×28, 사이 4px)를 드러내는 행 래퍼.
-/// 자기 [SlidableController]를 [group]에 등록해, 열리는 순간 다른 패널을 모두 닫는다.
-/// [onDismissed]를 주면 끝까지 당겼을 때 그대로 실행된다(투두 삭제). 확인 모달이 필요한
-/// 카테고리 삭제는 null로 둬서 전체 스와이프 즉시 실행을 막는다.
-class _SwipeActionRow extends StatefulWidget {
-  const _SwipeActionRow({
-    super.key,
-    required this.group,
-    required this.actions,
-    required this.child,
-    this.onDismissed,
-  });
-
-  final _SlidableGroup group;
-
-  /// 드러날 액션 버튼들. `_RowActionButton` 으로 타입을 좁혀 둔 이유는, 끝까지 당기는 구간에서
-  /// 마지막 액션의 "배경만 늘어난" 버전(`stretched()`)이 필요하기 때문이다.
-  final List<_RowActionButton> actions;
-  final Widget child;
-  final VoidCallback? onDismissed;
-
-  @override
-  State<_SwipeActionRow> createState() => _SwipeActionRowState();
-}
-
-class _SwipeActionRowState extends State<_SwipeActionRow>
-    with TickerProviderStateMixin {
-  late final SlidableController _controller = SlidableController(this);
-  // DismissiblePane은 Slidable에 key를 요구한다(리스트에서 제거될 때 상태가 다음 항목으로
-  // 밀리지 않도록). 이 위젯은 호출자에게서 키를 받으니, 내부 Slidable엔 State와 1:1인 키를 준다.
-  final Key _slidableKey = UniqueKey();
-  bool _wasOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.group.register(_controller);
-    _controller.animation.addListener(_handleSlide);
-  }
-
-  @override
-  void dispose() {
-    _controller.animation.removeListener(_handleSlide);
-    widget.group.unregister(_controller);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  /// 닫힘→열림으로 넘어가는 순간에만 다른 패널을 닫는다(매 프레임 호출 방지).
-  void _handleSlide() {
-    final open = _controller.ratio != 0;
-    if (open && !_wasOpen) widget.group.closeAll(except: _controller);
-    _wasOpen = open;
-  }
-
-  /// 드러날 폭 = [행과의 간격 4] + 버튼들(50) + [버튼 사이 간격 4].
-  /// 버튼 크기를 픽셀로 고정해야 해서 실제 행 폭으로 나눠 비율(extentRatio)로 환산한다.
-  double get _actionsExtent {
-    final count = widget.actions.length;
-    return _kActionGap + count * _kActionBtnW + (count - 1) * _kActionGap;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final extentRatio = (_actionsExtent / constraints.maxWidth).clamp(
-          0.05,
-          0.9,
-        );
-        final onDismissed = widget.onDismissed;
-        // 평소(패널이 열린 상태)의 버튼 배치 — BehindMotion 과 DismissiblePane 이 함께 쓴다.
-        final actionsRow = Align(
-          alignment: Alignment.centerRight,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var i = 0; i < widget.actions.length; i++) ...[
-                if (i > 0) const SizedBox(width: _kActionGap),
-                widget.actions[i],
-              ],
-            ],
-          ),
-        );
-        return Slidable(
-          key: _slidableKey,
-          controller: _controller,
-          // BehindMotion — StretchMotion은 고정 폭 버튼을 찌그러뜨린다(버튼 크기 고정 요청).
-          endActionPane: ActionPane(
-            motion: const BehindMotion(),
-            extentRatio: extentRatio,
-            // 끝까지(60% 이상) 당기면 그대로 실행(투두 삭제만). 그 구간에는 버튼 대신
-            // **배경이 좌우로 넓어지는** 버전을 보여준다(요청 2) — 패널이 커질수록 같이 넓어진다.
-            dismissible: onDismissed == null
-                ? null
-                : DismissiblePane(
-                    onDismissed: onDismissed,
-                    dismissThreshold: 0.6,
-                    motion: _DismissMotion(
-                      actionsRow: actionsRow,
-                      stretched: widget.actions.last.stretched(),
-                    ),
-                  ),
-            children: [Expanded(child: actionsRow)],
-          ),
-          child: widget.child,
-        );
-      },
     );
   }
 }

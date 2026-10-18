@@ -1,8 +1,10 @@
 package com.nomara.modi.server.domain.notification.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.nomara.modi.server.domain.notification.dto.NotificationResponse;
+import com.nomara.modi.server.domain.notification.exception.NotificationNotFoundException;
 import com.nomara.modi.server.domain.notification.repository.NotificationRepository;
 import com.nomara.modi.server.domain.room.entity.Room;
 import com.nomara.modi.server.domain.room.repository.RoomRepository;
@@ -136,6 +138,76 @@ class NotificationHistoryServiceTest {
     notificationHistoryService.markAllRead(target.getId());
 
     assertThat(notificationHistoryService.unreadCount(other.getId()).count()).isEqualTo(1);
+  }
+
+  // --- 삭제(#111) ---
+
+  @Test
+  void deleteRemovesOnlyThatNotification() {
+    Room room = room();
+    User target = user("uid-noti-delete-one");
+    notificationHistoryService.record(target, PushType.POKE, room, "지울 것", "본문");
+    notificationHistoryService.record(target, PushType.POKE, room, "남길 것", "본문");
+    Long doomed =
+        notificationHistoryService.list(target.getId()).stream()
+            .filter(n -> n.title().equals("지울 것"))
+            .findFirst()
+            .orElseThrow()
+            .id();
+
+    notificationHistoryService.delete(target.getId(), doomed);
+
+    assertThat(notificationHistoryService.list(target.getId()))
+        .extracting(NotificationResponse::title)
+        .containsExactly("남길 것");
+  }
+
+  /** 남의 알림 id 를 넣어도 지워지지 않는다. 있는지 없는지도 알려주지 않으려고 "없다"와 같은 404 로 답한다. */
+  @Test
+  void cannotDeleteSomeoneElsesNotification() {
+    Room room = room();
+    User owner = user("uid-noti-delete-owner");
+    User intruder = user("uid-noti-delete-intruder");
+    notificationHistoryService.record(owner, PushType.POKE, room, "주인 것", "본문");
+    Long ownersId = notificationHistoryService.list(owner.getId()).getFirst().id();
+
+    assertThatThrownBy(() -> notificationHistoryService.delete(intruder.getId(), ownersId))
+        .isInstanceOf(NotificationNotFoundException.class);
+
+    assertThat(notificationHistoryService.list(owner.getId())).hasSize(1);
+  }
+
+  @Test
+  void deletingMissingNotificationIsNotFound() {
+    User target = user("uid-noti-delete-missing");
+
+    assertThatThrownBy(() -> notificationHistoryService.delete(target.getId(), 987_654_321L))
+        .isInstanceOf(NotificationNotFoundException.class);
+  }
+
+  @Test
+  void deleteAllRemovesOnlyOwnNotifications() {
+    Room room = room();
+    User target = user("uid-noti-delete-all-a");
+    User other = user("uid-noti-delete-all-b");
+    notificationHistoryService.record(target, PushType.POKE, room, "1", "본문");
+    notificationHistoryService.record(target, PushType.ASSIGNED_TODO_ADDED, room, "2", "본문");
+    notificationHistoryService.record(other, PushType.POKE, room, "타인", "본문");
+
+    notificationHistoryService.deleteAll(target.getId());
+
+    assertThat(notificationHistoryService.list(target.getId())).isEmpty();
+    assertThat(notificationHistoryService.unreadCount(target.getId()).count()).isZero();
+    assertThat(notificationHistoryService.list(other.getId())).hasSize(1);
+  }
+
+  @Test
+  void deleteAllWithNothingToDeleteIsFine() {
+    User target = user("uid-noti-delete-all-empty");
+
+    notificationHistoryService.deleteAll(target.getId());
+
+    assertThat(notificationHistoryService.list(target.getId())).isEmpty();
   }
 
   /** 방이 삭제돼도 알림 기록 자체는 남고 roomId만 null이 된다(V24 마이그레이션 SET NULL). */

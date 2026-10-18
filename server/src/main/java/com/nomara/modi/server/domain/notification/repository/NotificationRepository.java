@@ -24,6 +24,16 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
           + "where n.user.id = :userId and n.readAt is null")
   int markAllRead(@Param("userId") String userId, @Param("now") Instant now);
 
+  /** 알림 한 건 삭제(#111) — 본인 것만. 지운 행 수를 돌려준다(0이면 없거나 남의 것). */
+  @Modifying
+  @Query("delete from Notification n where n.id = :id and n.user.id = :userId")
+  int deleteByIdAndUserId(@Param("id") Long id, @Param("userId") String userId);
+
+  /** 알림 전체 삭제(#111) — 본인 것 전부. 여러 행을 한 번에 지우는 것이 목적이라 벌크 DELETE. */
+  @Modifying
+  @Query("delete from Notification n where n.user.id = :userId")
+  int deleteAllByUserId(@Param("userId") String userId);
+
   /** 보존 90일(specs/0017) — 매일 배치가 지난 기록을 지운다. 호출부가 트랜잭션을 연다. */
   @Modifying
   long deleteByCreatedAtBefore(Instant before);
