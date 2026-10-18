@@ -83,7 +83,7 @@ uv run ruff format .   # 포맷
 |---|---|---|
 | 단위 | 자료 1건 독립 호출 | **방 전체 한꺼번에**(캡처한 운영 요청) |
 | 답하는 질문 | 이 자료가 어떤 후보를 낳나(귀속) | 사용자가 버튼을 누르면 무엇을 보나 |
-| 파이프라인 | LLM 호출만 | **운영 `suggest()` 그래프 전부** |
+| 파이프라인 | LLM 호출만 | **운영 `suggest()` 전부** |
 | 실행 | 1회 | **반복 → 평균 ± 표준편차** |
 
 ```bash
@@ -94,7 +94,6 @@ uv run python -m evals.run_room_eval --start-excluded captured         # 캡처 
 uv run python -m evals.run_suggest_eval              # 자료 15건 (호출 15회)
 uv run python -m evals.run_suggest_eval --limit 3    # 크레딧 아끼며 확인
 uv run python -m evals.run_suggest_eval --input body                  # #13 기준선 재현
-uv run python -m evals.calibrate_dedupe               # 의미 중복 임계값 캘리브레이션 (호출 1회)
 uv run python -m evals.freeze_snapshot --list                          # 크레딧 0 — 결과 동결
 uv run python -m evals.freeze_snapshot --all --date 2026-08-01
 ```

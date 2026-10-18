@@ -231,10 +231,13 @@ def suggest(request: SuggestionRequest, llm: BaseChatModel) -> SuggestionRespons
     started = time.perf_counter()
     selected = _select_archive(request)
     candidates = _generate(selected, llm)
+    # 자료는 "받은 것 / 프롬프트에 실린 것" 둘 다 남긴다 — 예산(3,000자)이 상시 걸려서 그 차이가
+    # 추천 근거에서 빠진 자료의 양이다(토큰 로그는 실린 쪽만 센다).
     log.info(
-        "투두 추천: %.2f초 (자료 %d건 · 후보 %d개)",
+        "투두 추천: %.2f초 (자료 %d/%d건 · 후보 %d개)",
         time.perf_counter() - started,
         len(selected.archive),
+        len(request.archive),
         len(candidates),
     )
     return SuggestionResponse(candidates=candidates)

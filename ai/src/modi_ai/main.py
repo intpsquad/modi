@@ -61,7 +61,7 @@ async def health() -> HealthResponse:
     남의 장애로 실패하게 된다.
 
     ⚠️ **`async` 여야 한다.** `def` 로 두면 starlette 가 `todo_suggestions` 와 **같은
-    스레드풀**(기본 40)로 보낸다. 추천 1회는 최악 300초(LLM 120x2 + 임베딩 10x2 x 2배치)라
+    스레드풀**(기본 40)로 보낸다. 추천 1회는 최악 240초(LLM 120x2 — 2026-10-18 임베딩 제거 후)라
     인플라이트가 풀을 채우면 헬스체크가 굶고, `deploy/docker-compose.app.yml` 의
     `timeout: 5s / retries: 6` 이 걸려 **멀쩡한 컨테이너가 unhealthy 로 뒤집힌다.**
     여기는 외부 의존이 없는 순수 함수라 이벤트 루프에서 직접 돌아도 안전하다.

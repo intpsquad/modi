@@ -79,6 +79,24 @@ class TestOneCall:
 
         assert len(llm.calls) == 1
 
+    def test_the_messages_are_the_system_prompt_and_the_payload(self):
+        """프롬프트는 그래프 시절과 **한 글자도 같다**.
+
+        시스템은 `SYSTEM_PROMPT`, 사람은 고른 자료로 만든 `build_payload` 다. 다르면 평가셋
+        기준선(#26)과의 비교가 깨진다(`ai/CLAUDE.md` 프롬프트 규칙).
+        """
+        from modi_ai.prompts import SYSTEM_PROMPT
+        from modi_ai.suggest import _select_archive, build_payload
+
+        request = _request()
+        llm = _Llm()
+
+        suggest(request, llm)
+
+        system, human = llm.calls[0]
+        assert system.content == SYSTEM_PROMPT
+        assert human.content == build_payload(_select_archive(request))
+
     def test_suggest_takes_no_embedder(self):
         """임베더를 받는 자리가 되살아나면 외부 호출이 다시 늘어난다는 신호다."""
         assert list(inspect.signature(suggest).parameters) == ["request", "llm"]
@@ -129,7 +147,11 @@ class TestArchiveSelection:
         assert llm.first_archive_id().startswith("4 ")
 
     def test_the_liked_item_is_first_when_ranking_is_on(self, monkeypatch):
-        """순위 모드는 **목표 임베딩 없이도** 돈다 — 유사도 축만 빠지고 좋아요가 순서를 정한다."""
+        """순위 모드는 **목표 임베딩 없이도** 돈다 — 유사도 축만 빠지고 좋아요가 순서를 정한다.
+
+        좋아요를 **가운데** 자료에 준다 — 입력 순서(0)·최신순(4)·순위(2)가 서로 갈려야 이 테스트가
+        "순위가 실제로 매겨졌다"를 잰다(맨 앞 자료에 주면 아무것도 안 해도 통과했다, #109 리뷰).
+        """
         from modi_ai import config
         from modi_ai import suggest as module
 
@@ -138,9 +160,9 @@ class TestArchiveSelection:
         )
         llm = _Llm()
 
-        suggest(_request(archive=self._archive(5, liked=0)), llm)
+        suggest(_request(archive=self._archive(5, liked=2)), llm)
 
-        assert llm.first_archive_id().startswith("0 ")
+        assert llm.first_archive_id().startswith("2 ")
 
     def test_items_over_budget_are_dropped_from_validation_too(self, monkeypatch):
         """잘려나간 자료의 id 를 근거로 댄 후보는 버린다 — 모델이 실제로 본 자료만 유효하다."""
@@ -196,7 +218,7 @@ class TestContract:
 
         messages = [r.getMessage() for r in caplog.records]
         assert any("todo-suggestions: archive=1 items" in m for m in messages)
-        assert any(m.startswith("투두 추천: ") for m in messages)
+        assert any(m.startswith("투두 추천: ") and "자료 1/1건" in m for m in messages)
 
     def test_a_surviving_candidate_comes_back_whole(self):
         response = suggest(_request(), _Llm(TodoCandidate(title="후보 하나", source_item_id=1)))

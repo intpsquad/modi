@@ -455,8 +455,9 @@ def build_parser() -> argparse.ArgumentParser:
         # ⚠️ **help 문구에 cp949 로 못 쓰는 글자를 넣지 말 것**(em dash, 이모지). Windows 콘솔
         # 기본 코드페이지가 cp949 라 `--help` 자체가 UnicodeEncodeError 로 죽는다. 이 파일의
         # 다른 help 문구가 전부 그것을 피하고 있다.
-        help=f"'이미 보여준 후보' 창 크기. 기본 {MAX_EXCLUDED}=운영값(서버 "
-        "TodoSuggestionExposureStore.MAX_EXCLUDED). #24 가 같은 방 데이터로 3회씩 재보니 후보 "
+        help=f"'이미 보여준 후보' 창 크기. 기본 {MAX_EXCLUDED}=제외를 켰을 때의 운영값(서버 "
+        "TodoSuggestionExposureStore.MAX_EXCLUDED). 단 운영은 2026-08-09 부터 제외를 끈다"
+        "(0 과 같다). #24 가 같은 방 데이터로 3회씩 재보니 후보 "
         "평균이 50:2.0 / 24:5.3 / 16:6.0 / 8:7.3 / 0:7.0 이었다. **8 이 최선이었는데 16 을 "
         "골랐고 그 근거가 남아 있지 않다.** 0 이면 제외를 아예 안 보낸다",
     )
@@ -507,7 +508,11 @@ def main() -> None:
         f"방 {len(fixtures)}개 × {args.rounds}라운드 × {args.repeats}반복 = 최대 {calls}회 호출 · "
         f"모델 {model} · 제외 시작 {args.start_excluded} · 오늘 {args.today}"
         f" · 제외 창 {args.exclusion_window}"
-        f"{' (운영값)' if args.exclusion_window == MAX_EXCLUDED else ' (운영과 다름!)'}"
+        + (
+            " (제외를 켰을 때의 운영값 - 지금 운영은 꺼서 0)"
+            if args.exclusion_window == MAX_EXCLUDED
+            else ""
+        )
     )
     # ⚠️ temperature 를 고정하지 않는다 — `run_suggest_eval` 은 0.0 으로 박지만 그건 프롬프트
     # 효과를 분리하려는 것이고, 여기서 재려는 것은 **사용자가 실제로 보는 것**이다.
