@@ -30,8 +30,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * 공유 등록 비동기 처리의 <b>갈림길 하나</b>를 잰다: URL 항목은 크롤링하고, 텍스트 항목은 크롤링하지 않는다(2026-08-05).
  *
- * <p>스프링을 띄우지 않는다 — 재는 것이 "어느 분기로 가는가"뿐이라 컨테이너가 필요 없다. 리포지토리만 목이고 요약·임베딩은 진짜 컴포넌트에 가짜 클라이언트를 꽂는다 (그
- * 둘의 폴백 규칙까지 같이 타게 하려는 것이다).
+ * <p>스프링을 띄우지 않는다 — 재는 것이 "어느 분기로 가는가"뿐이라 컨테이너가 필요 없다. 리포지토리만 목이고 요약은 진짜 컴포넌트에 가짜 클라이언트를 꽂는다 (그 둘의
+ * 폴백 규칙까지 같이 타게 하려는 것이다).
  *
  * <p>{@code folder}/{@code createdBy} 에 {@code null} 을 넣는 이유: {@code process()} 는 둘을 읽지 않는다. 여기서 진짜
  * 엔티티를 만들면 Postgres 컨테이너가 따라와야 하고, 그건 {@code ArchiveItemServiceTest} 가 이미 한다.
@@ -105,7 +105,7 @@ class ArchiveCrawlProcessorTest {
   @Test
   void 텍스트_항목은_등록_시점부터_DONE_이다() {
     // 🔴 2026-08-06. 본문이 이미 완성이라 "분석 중" 배지를 띄울 이유가 없다 — 다 적어 놓은
-    // 메모가 아직 처리 중인 것처럼 보였다(실사용 확인). 태깅·임베딩은 뒤에서 조용히 돈다.
+    // 메모가 아직 처리 중인 것처럼 보였다(실사용 확인). 태깅은 뒤에서 조용히 돈다.
     ArchiveItem item = ArchiveItem.textDone(null, ROOM, "제목", "본문", null);
 
     assertThat(item.getCrawlStatus()).isEqualTo(ArchiveItem.CrawlStatus.DONE);

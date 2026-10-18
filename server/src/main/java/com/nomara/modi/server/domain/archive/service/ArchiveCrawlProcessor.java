@@ -23,18 +23,19 @@ import org.springframework.transaction.annotation.Transactional;
  * S-25-D 외부 공유 등록 전용 — 등록 시점엔 {@code PENDING}으로만 저장되고, 이 컴포넌트가 별도 스레드(`AsyncConfig`)에서 크롤링+AI 태깅을
  * 마친 뒤 {@code DONE}/{@code FAILED}로 갱신한다.
  *
- * <p><b>URL 공유와 텍스트 공유가 둘 다 여기로 온다</b>(2026-08-05). 갈리는 것은 <b>크롤링 한 단계뿐</b>이고, 요약·임베딩·태깅은 같다 — 텍스트
- * 공유가 느렸던 원인도 크롤링이 아니라 그 셋(LLM 3회)이었다. 왜 텍스트까지 비동기로 옮겼는지는 {@code
+ * <p><b>URL 공유와 텍스트 공유가 둘 다 여기로 온다</b>(2026-08-05). 갈리는 것은 <b>크롤링 한 단계뿐</b>이고, 태깅은 같다(요약은 링크만) —
+ * 텍스트 공유가 느렸던 원인도 크롤링이 아니라 그 LLM 호출들(당시 태깅·요약·임베딩 3회)이었다. 왜 텍스트까지 비동기로 옮겼는지는 {@code
  * ArchiveItemService.createSharedItem} 참고.
  *
  * <p>{@code @Async}가 걸린 메서드는 반드시 **다른 빈을 통해** 호출해야 프록시가 적용된다(같은 클래스 안에서 자기 자신을 호출하면
  * self-invocation으로 조용히 무시되고 동기 실행됨) — {@code ArchiveItemService}가 이 컴포넌트를 주입받아 호출하는 구조로 그 문제를 피한다.
  *
- * <p><b>⚠️ 알고 있는 부채: 이 메서드는 {@code @Transactional} 안에서 외부 호출을 4회 돈다</b>(크롤링 1 + LLM 3). 최악 대기 약
- * 185초 동안 DB 커넥션 하나를 물고 있다. 에서 {@code TodoSuggestionService}가 맞은 것과 같은 형태이고, 거기서는 읽기·LLM·쓰기를 세 경계로
- * 쪼개 해소했다. 여기를 쪼개지 않은 이유는 이 메서드가 <b>부분 실패 시의 원자성에 기대고</b> 있기 때문이다 — {@code markCrawlFailed()}와 태그
- * 저장이 한 트랜잭션이라야 "본문은 저장됐는데 상태는 PENDING" 같은 중간 상태가 안 생긴다. 지금은 {@code archiveCrawlExecutor}가 max 4
- * 스레드라 Hikari 풀 10 중 최대 4만 점유돼 버티는 것뿐이다. 스레드 풀을 키우기 전에 {@code specs/OPEN.md}의 해당 항목을 먼저 볼 것.
+ * <p><b>⚠️ 알고 있는 부채: 이 메서드는 {@code @Transactional} 안에서 외부 호출을 3회 돈다</b>(크롤링 1 + LLM 2 — 태깅·요약.
+ * 2026-10-18 #129 이전에는 임베딩까지 4회·최악 약 185초였다). 최악 대기 수 분 동안 DB 커넥션 하나를 물고 있다. 에서 {@code
+ * TodoSuggestionService}가 맞은 것과 같은 형태이고, 거기서는 읽기·LLM·쓰기를 세 경계로 쪼개 해소했다. 여기를 쪼개지 않은 이유는 이 메서드가 <b>부분
+ * 실패 시의 원자성에 기대고</b> 있기 때문이다 — {@code markCrawlFailed()}와 태그 저장이 한 트랜잭션이라야 "본문은 저장됐는데 상태는 PENDING"
+ * 같은 중간 상태가 안 생긴다. 지금은 {@code archiveCrawlExecutor}가 max 4 스레드라 Hikari 풀 10 중 최대 4만 점유돼 버티는 것뿐이다.
+ * 스레드 풀을 키우기 전에 {@code specs/OPEN.md}의 해당 항목을 먼저 볼 것.
  */
 @Component
 public class ArchiveCrawlProcessor {

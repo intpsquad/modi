@@ -31,11 +31,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * 추천 페이로드가 <b>자료 선별 4축</b>을 실제 DB에서 제대로 길어 오는지.
+ * 추천 페이로드가 <b>자료 선별 축</b>(좋아요·핀·최신)을 실제 DB에서 제대로 길어 오는지.
  *
- * <p>가짜 리포지토리로는 의미가 없어 Testcontainers를 쓴다. 좋아요 수는 별도 테이블 집계이고, {@code embedding}은 {@code real[]} ↔
- * {@code float[]} 왕복이며, {@code createdAt}은 {@code @CreationTimestamp}가 채우는 값이라 <b>셋 다 진짜
- * Postgres에서만 증명된다.</b>
+ * <p>가짜 리포지토리로는 의미가 없어 Testcontainers를 쓴다. 좋아요 수는 별도 테이블 집계이고, {@code createdAt}은
+ * {@code @CreationTimestamp}가 채우는 값이라 <b>둘 다 진짜 Postgres에서만 증명된다.</b> (임베딩은 #129 로 싣지 않는다 — 옛 벡터가
+ * 남은 행이 그대로 실리는지만 본다.)
  */
 @Testcontainers
 @SpringBootTest

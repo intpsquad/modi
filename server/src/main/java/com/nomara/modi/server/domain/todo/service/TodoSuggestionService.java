@@ -62,7 +62,7 @@ public class TodoSuggestionService {
     long finishedAt = System.nanoTime();
 
     log.info(
-        "추천 구간(room={}): 페이로드 {}초 · AI 왕복 {}초 · 노출기록 {}초 · 합계 {}초" + " (자료 {}건 · 제외 {}건 · 후보 {}개)",
+        "추천 구간(room={}): 페이로드 {}초 · AI 왕복 {}초 · 노출기록 {}초 · 합계 {}초 (자료 {}건 · 제외 {}건 · 후보 {}개)",
         roomId,
         seconds(startedAt, loadedAt),
         seconds(loadedAt, suggestedAt),

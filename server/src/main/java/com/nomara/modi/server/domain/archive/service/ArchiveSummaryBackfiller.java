@@ -48,7 +48,7 @@ class ArchiveSummaryBackfiller implements ApplicationRunner {
         skipped++;
       }
     }
-    // 임베딩 백필과 같은 이유로 남은 건수를 함께 남긴다 — "다 됐다"와 "요약할 본문이 없어 영영
+    // 남은 건수를 함께 남긴다 — "다 됐다"와 "요약할 본문이 없어 영영
     // 안 채워진다"를 구분해야 다음에 또 켰을 때 같은 건수를 보고 놀라지 않는다.
     log.info("자료 요약 백필 완료 — 채움 {}건 · 건너뜀 {}건(본문 없음·호출 실패)", filled, skipped);
   }
