@@ -121,22 +121,3 @@ class TodoCandidate(BaseModel):
 
 class SuggestionResponse(BaseModel):
     candidates: list[TodoCandidate] = Field(default_factory=list)
-
-
-class CritiqueVerdict(BaseModel):
-    """검수 판정 1건. **API 로 나가지 않는다** — 그래프 내부 전용이다."""
-
-    index: int = Field(description="입력 후보 목록에 적힌 번호. 그대로 돌려준다")
-    ok: bool = Field(description="바로 실행할 수 있는 일이면 true")
-    reason: str | None = Field(
-        default=None,
-        description="반려 사유 한 문장. 다시 만들 때 모델에게 그대로 보여준다. 통과면 비운다",
-    )
-
-
-class CritiqueResponse(BaseModel):
-    """⚠️ `verdicts` 는 **입력 후보와 개수가 같아야 한다.** 어긋나면 `suggest._critique` 가
-    판정을 통째로 버리고 전부 통과시킨다 — 검수 층 고장이 추천 장애가 되면 안 된다.
-    """
-
-    verdicts: list[CritiqueVerdict] = Field(default_factory=list)

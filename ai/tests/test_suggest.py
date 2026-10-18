@@ -27,8 +27,8 @@ def _request(**overrides) -> SuggestionRequest:
 class TestCandidateCountRule:
     """규칙 5 의 **하한**을 못 박는다 (2026-08-09, 시연 요구 "한 번에 6~8개").
 
-    프롬프트는 문자열이라 조용히 되돌아간다 — `test_critique.py` 는 `SYSTEM_PROMPT` 를 상수와
-    비교할 뿐이라 상수 자체가 바뀌면 같이 따라간다. 요구사항 쪽을 직접 겨눈다.
+    프롬프트는 문자열이라 조용히 되돌아간다 — 상수와 비교하는 테스트는 상수 자체가 바뀌면 같이
+    따라간다. 요구사항 쪽을 직접 겨눈다.
     """
 
     def test_the_rule_asks_for_six_to_eight(self):
@@ -255,11 +255,11 @@ class TestEndpoint:
         assert res.status_code == 200
         assert "category" not in res.json()["candidates"][0]
 
-    def test_sends_system_and_human_messages_to_the_model(self, fake_llm, fake_embedder):
+    def test_sends_system_and_human_messages_to_the_model(self, fake_llm):
         """인젝션 방어의 전제 — 사용자 데이터는 절대 system 에 섞이지 않는다."""
         fake = fake_llm(parsed=SuggestionResponse())
 
-        suggest(_request(), fake, fake_embedder())
+        suggest(_request(), fake)
 
         system, human = fake.calls[0]
         assert "지시문" in system.content

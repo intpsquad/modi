@@ -6,7 +6,7 @@
 |--------------|---------------------|----------------------------|
 | 단위         | 자료 1건 독립 호출  | **방 전체 한꺼번에**       |
 | 답하는 질문  | 이 자료가 뭘 낳나   | 사용자가 버튼을 누르면 뭘 보나 |
-| 파이프라인   | LLM 호출만          | **운영 `suggest()` 그래프 전부** |
+| 파이프라인   | LLM 호출만          | **운영 `suggest()` 전부**  |
 | 실행         | 1회                 | **반복 → 평균 ± 표준편차** |
 
 ## 왜 방 단위여야 하는가
@@ -39,10 +39,8 @@ CI 에서 돌지 않는다(`pyproject.toml` 의 `testpaths` 밖) — 크레딧�
 import argparse
 import json
 import logging
-import os
 import statistics
 import time
-from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
@@ -51,7 +49,6 @@ from langchain_core.callbacks import get_usage_metadata_callback
 
 from evals.rooms import RoomFixture, available_slugs, load_rooms
 from modi_ai.config import get_settings
-from modi_ai.embeddings import get_embedder
 from modi_ai.schemas import SuggestionRequest, TodoCandidate
 from modi_ai.suggest import _normalize, get_llm, suggest
 from modi_ai.tracing import configure_tracing
@@ -161,6 +158,9 @@ class RoundResult:
     critique_failed_open: bool = False
     """검수가 판정을 못 맞춰 **후보를 통째로 통과**시켰는가.
 
+    🔴 **2026-10-18 부터 항상 False 다** — 검수를 걷어냈다(#109). 동결 스냅샷 형식
+    (`freeze_snapshot.build_room`)과 옛 측정과의 비교를 깨지 않으려고 필드만 남긴다.
+
     ⚠️ **이 필드가 없어서 #29 ④의 수치(부산 27~40%)에 커밋된 근거가 없다.** 콘솔 로그로만
     관측했고 스냅샷 어디에도 안 남았다 — 다른 사람이 검산할 수 없는 숫자로 별도 티켓의
     심각도를 정한 셈이다(2026-08-03 리뷰 P1-1). 다음 측정부터는 파일에 남는다.
@@ -171,40 +171,13 @@ class RoundResult:
         return len(self.candidates)
 
 
-@contextmanager
-def _watch_critique_fail_open():
-    """`_critique` 의 fail-open 을 **로그로** 잡는다 — 세 갈래가 전부 `log.error` 를 남긴다.
-
-    왜 로그인가: `suggest()` 는 후보만 돌려주고 검수가 걸렸는지는 안 알려준다. 그걸 알려면
-    운영 반환 계약을 바꿔야 하는데, 러너 하나 때문에 그걸 바꾸지 않는다(`run_round` 가
-    **운영 그래프를 그대로** 부르는 것이 이 러너의 전제다).
-
-    ⚠️ **로그 문구에 묶여 있다.** `_critique` 의 `log.error` 문구가 바뀌면 조용히 0을 센다 —
-    `tests/test_room_runner.py` 가 실제 fail-open 을 흘려 그 결합을 고정한다.
-    """
-    seen: list[bool] = []
-
-    class _Catch(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:
-            if record.levelno >= logging.ERROR and "전부 통과시킨다" in record.getMessage():
-                seen.append(True)
-
-    logger = logging.getLogger("modi_ai.suggest")
-    handler = _Catch()
-    logger.addHandler(handler)
-    try:
-        yield seen
-    finally:
-        logger.removeHandler(handler)
-
-
 def run_round(
-    request: SuggestionRequest, llm, embed, *, room: str, repeat: int, round_index: int
+    request: SuggestionRequest, llm, *, room: str, repeat: int, round_index: int
 ) -> RoundResult:
-    """추천 1회. **운영 `suggest()` 그래프를 그대로 부른다.**
+    """추천 1회. **운영 `suggest()` 를 그대로 부른다.**
 
-    앱이 보여주는 것은 필터·의미중복제거·카테고리매칭을 다 거친 결과다. LLM 출력만 보면
-    사용자가 본 것과 **다른 것**을 재게 된다.
+    앱이 보여주는 것은 자료 고르기·문자열 필터까지 거친 결과다. LLM 출력만 보면 사용자가 본
+    것과 **다른 것**을 재게 된다.
     """
     usage = UsageCollector()
     result = RoundResult(
@@ -216,10 +189,9 @@ def run_round(
 
     started = time.perf_counter()
     try:
-        with get_usage_metadata_callback() as collected, _watch_critique_fail_open() as bypassed:
-            response = suggest(request, llm, embed)
+        with get_usage_metadata_callback() as collected:
+            response = suggest(request, llm)
         usage.absorb(collected.usage_metadata)
-        result.critique_failed_open = bool(bypassed)
     except Exception as exc:  # noqa: BLE001 — 한 라운드가 죽어도 나머지를 계속 돌린다
         result.error = f"{type(exc).__name__}: {exc}"
         result.seconds = round(time.perf_counter() - started, 2)
@@ -246,7 +218,6 @@ def captured_date(fixture: RoomFixture) -> date:
 def run_repeat(
     fixture: RoomFixture,
     llm,
-    embed,
     *,
     repeat: int,
     rounds: int,
@@ -276,9 +247,7 @@ def run_repeat(
     results: list[RoundResult] = []
     for round_index in range(1, rounds + 1):
         request = base.model_copy(update={"excluded_todos": window.titles, "today": today_value})
-        result = run_round(
-            request, llm, embed, room=fixture.slug, repeat=repeat, round_index=round_index
-        )
+        result = run_round(request, llm, room=fixture.slug, repeat=repeat, round_index=round_index)
         results.append(result)
         if result.error:
             # 이 반복의 남은 라운드는 의미가 없다 — 제외 목록이 안 쌓여 다음 라운드가
@@ -500,21 +469,6 @@ def build_parser() -> argparse.ArgumentParser:
         "· captured=픽스처 캡처일을 쓴다. **실행 시점 날짜를 쓰지 않는다**: 픽스처가 과거 "
         "캡처라 날마다 결과가 달라지고 종료일을 지나면 음수가 된다",
     )
-    parser.add_argument(
-        "--critique",
-        type=int,
-        default=None,
-        help="후보 생성 최대 횟수. 0=검수 안 함 · 1=검수만 · 2=재생성 1회. "
-        "기본은 설정값. **A/B 두 짝이 구분되게 실행 이름과 export 에 남는다**",
-    )
-    parser.add_argument(
-        "--partial-retry",
-        type=int,
-        choices=(0, 1),
-        default=None,
-        help="검수가 후보를 일부만 반려해도 재생성하는가. 0=끔(-235 와 같음) · "
-        "1=켬. `--critique 2` 이상과 같이 줘야 실제로 돈다. 기본은 설정값",
-    )
     parser.add_argument("--label", default=None, help="export 파일에 남길 실행 이름")
     return parser
 
@@ -535,19 +489,6 @@ def main() -> None:
             f"--exclusion-window 는 0 이상이어야 한다(받은 값: {args.exclusion_window})"
         )
 
-    if args.critique is not None:
-        if args.critique < 0:
-            raise SystemExit(f"--critique 는 0 이상이어야 한다(받은 값: {args.critique})")
-        # `get_settings` 가 `lru_cache` 라 값을 바꾸려면 캐시를 비워야 한다. 환경변수로 넣는
-        # 이유는 **운영과 같은 경로**로 읽히게 하기 위해서다 — 여기서 객체를 만들어 주입하면
-        # 러너만 다른 길을 타게 된다.
-        os.environ["CRITIQUE_MAX_ATTEMPTS"] = str(args.critique)
-        get_settings.cache_clear()
-
-    if args.partial_retry is not None:
-        os.environ["REGENERATE_ON_PARTIAL_REJECT"] = str(bool(args.partial_retry))
-        get_settings.cache_clear()
-
     slugs = [s.strip() for s in args.rooms.split(",") if s.strip()] if args.rooms else None
     # 호출 **전에** 전부 읽는다 — 두 번째 방 픽스처가 없어 죽으면 첫 방의 크레딧이 날아간다.
     fixtures = load_rooms(slugs)
@@ -556,20 +497,18 @@ def main() -> None:
 
     settings = get_settings()
     model = settings.openai_model
-    critique = settings.critique_max_attempts
-    partial_retry = settings.regenerate_on_partial_reject
+    # 검수·부분 반려 재생성은 2026-10-18 에 걷어냈다(#109) — 운영은 늘 "검수 0 · 재생성 끔" 경로다.
+    # 축 자체는 이름·export 에 남긴다: 옛 측정(`_critique1` 등)과 같은 조건으로 비교되게 하고,
+    # `freeze_snapshot` 의 필수 조건 검사를 깨지 않으려는 것이다.
+    critique = 0
+    partial_retry = False
     calls = len(fixtures) * args.rounds * args.repeats
     print(
         f"방 {len(fixtures)}개 × {args.rounds}라운드 × {args.repeats}반복 = 최대 {calls}회 호출 · "
         f"모델 {model} · 제외 시작 {args.start_excluded} · 오늘 {args.today}"
         f" · 제외 창 {args.exclusion_window}"
-        f"{' (운영값)' if args.exclusion_window == MAX_EXCLUDED else ' (운영과 다름!)'} · "
-        f"검수 상한 {critique}{' (검수 안 함)' if not critique else ''} · "
-        f"부분 반려 재생성 {'켬' if partial_retry else '끔'}"
+        f"{' (운영값)' if args.exclusion_window == MAX_EXCLUDED else ' (운영과 다름!)'}"
     )
-    if partial_retry and critique < 2:
-        # 조용히 아무 일도 안 일어나는 조합이다 — 재생성할 시도가 남아 있지 않다.
-        print(f"⚠️ --partial-retry 1 인데 검수 상한이 {critique} 라 재생성이 **안 돈다**")
     # ⚠️ temperature 를 고정하지 않는다 — `run_suggest_eval` 은 0.0 으로 박지만 그건 프롬프트
     # 효과를 분리하려는 것이고, 여기서 재려는 것은 **사용자가 실제로 보는 것**이다.
     print("temperature: 운영 기본값(고정 안 함) — 잡음은 반복으로 처리한다\n")
@@ -594,7 +533,6 @@ def main() -> None:
         print(f"주의: export 의 기존 실행 '{name}' 을 덮어쓴다")
 
     llm = get_llm()
-    embed = get_embedder()
     rooms_payload: dict[str, dict] = {}
     try:
         for fixture in fixtures:
@@ -605,7 +543,6 @@ def main() -> None:
                     run_repeat(
                         fixture,
                         llm,
-                        embed,
                         repeat=repeat,
                         rounds=args.rounds,
                         start_excluded=args.start_excluded,

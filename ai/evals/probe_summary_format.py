@@ -7,7 +7,8 @@
 ⚠️ **Windows 기본 콘솔(cp949)에서는 죽는다** — 리포트에 이모지가 있어 `UnicodeEncodeError` 가
 난다. `PYTHONIOENCODING=utf-8`(또는 `PYTHONUTF8=1`)을 주거나 파일로 리다이렉트할 것.
 
-**실제 LLM 을 호출한다(크레딧 소모).** `probe_critique.py` 와 같은 성격의 일회성 측정 도구다.
+**실제 LLM 을 호출한다(크레딧 소모).** (지금은 지운) `probe_critique.py` 와 같은 성격의
+일회성 측정 도구다.
 
 ## 왜 이 파일이 필요한가
 
