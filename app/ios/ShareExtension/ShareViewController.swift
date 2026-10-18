@@ -20,6 +20,8 @@ final class ShareViewController: UIViewController {
     // #7980F4 / #6166C3 (2026-09-13 강조색 교체).
     static let primary = UIColor(red: 121.0 / 255.0, green: 128.0 / 255.0, blue: 244.0 / 255.0, alpha: 1)
     static let primaryActive = UIColor(red: 97.0 / 255.0, green: 102.0 / 255.0, blue: 195.0 / 255.0, alpha: 1)
+    // #E5E6FB — design.md `color.primary-disabled`(비활성 CTA 배경, 글자는 흰색 유지).
+    static let primaryDisabled = UIColor(red: 229.0 / 255.0, green: 230.0 / 255.0, blue: 251.0 / 255.0, alpha: 1)
     static let foreground = UIColor(red: 34.0 / 255.0, green: 34.0 / 255.0, blue: 34.0 / 255.0, alpha: 1)
     static let muted = UIColor(red: 106.0 / 255.0, green: 106.0 / 255.0, blue: 106.0 / 255.0, alpha: 1)
     static let border = UIColor(red: 221.0 / 255.0, green: 221.0 / 255.0, blue: 221.0 / 255.0, alpha: 1)
@@ -29,6 +31,15 @@ final class ShareViewController: UIViewController {
 
   /// 폴더 목록에 함께 노출하는 "새 폴더 만들기" 액션 라벨(QA).
   private static let newFolderActionTitle = "＋ 새 폴더 만들기"
+  /// 방 목록에 함께 노출하는 "방 만들기" 액션 라벨(이슈 #108).
+  private static let newRoomActionTitle = "＋ 방 만들기"
+
+  /// 새 방 입력값. 만들기가 실패해 폼을 다시 그릴 때 사용자가 쓴 값을 되살린다.
+  private struct NewRoomInput {
+    var name = ""
+    var goal = ""
+    var endDate: Date?
+  }
 
   /// 클로저를 들고 다니는 버튼 — 방/폴더 행마다 다른 캡처값을 selector 없이 붙이기 위해서다.
   private final class TapButton: UIButton {
@@ -50,6 +61,10 @@ final class ShareViewController: UIViewController {
   private var selectedRoom: ShareRoom?
   private var selectedFolder: ShareFolder?
   private var newFolderField: UITextField?
+  private var newRoomNameField: UITextField?
+  private var newRoomGoalField: UITextField?
+  private var newRoomEndDatePicker: UIDatePicker?
+  private var newRoomCreateButton: UIButton?
   private var started = false
   private var finishing = false
 
@@ -191,12 +206,10 @@ final class ShareViewController: UIViewController {
         switch result {
         case .success(let rooms):
           let activeRooms = rooms.filter { $0.status == nil || $0.status == "ACTIVE" }
-          guard !activeRooms.isEmpty else {
-            self.showFinishingMessage("진행 중인 방이 없어요")
-            return
-          }
-          if activeRooms.count == 1 {
-            self.fetchFolders(for: activeRooms[0])
+          // 진행 중인 방이 없어도 종료하지 않고 새 방을 만들게 한다. 방이 1개여도 자동으로 고르지 않고
+          // 목록을 보여준다 — "방 만들기"를 늘 보이게 하려고서다(이슈 #108, 폴더와 같은 규칙).
+          if activeRooms.isEmpty {
+            self.promptNewRoom()
           } else {
             self.presentRoomSelection(activeRooms)
           }
@@ -218,6 +231,11 @@ final class ShareViewController: UIViewController {
         }
       )
     }
+    contentStack.addArrangedSubview(
+      makeListRow(title: Self.newRoomActionTitle, textColor: UIConstants.primary) { [weak self] in
+        self?.promptNewRoom()
+      }
+    )
     addCancelRow()
   }
 
@@ -265,6 +283,136 @@ final class ShareViewController: UIViewController {
     addCancelRow()
   }
 
+  // MARK: - New room (이슈 #108)
+
+  /// 공유 흐름 안에서 새 방을 만든다. 이름·목표·종료일만 받고 시작일은 오늘이다 — 대표 이미지와
+  /// 목표 상세는 나중에 앱에서 고친다. 입력 규칙은 `ShareRoomDraft`(앱의 방 만들기 화면과 같다).
+  ///
+  /// 확장에서 본 앱의 방 만들기 화면을 여는 방식은 쓰지 않는다 — iOS 가 공유 확장이 본 앱을 여는 것을
+  /// 공식적으로 막아 두었다.
+  private func promptNewRoom(prefill: NewRoomInput = NewRoomInput(), errorMessage: String? = nil) {
+    clearContent()
+    if let errorMessage {
+      showInlineError(errorMessage)
+    } else {
+      showInstruction("새 방을 만들어 등록해보세요")
+    }
+
+    let nameField = makeTextField(placeholder: "방 이름", text: prefill.name)
+    newRoomNameField = nameField
+    contentStack.addArrangedSubview(nameField)
+
+    let goalField = makeTextField(placeholder: "방 목표", text: prefill.goal)
+    newRoomGoalField = goalField
+    contentStack.addArrangedSubview(goalField)
+
+    // 빈 칸은 오류가 아니라 기본 상태다 — 안내를 띄우지 않고 [만들기]를 끈다(design.md "빈 필수값").
+    for field in [nameField, goalField] {
+      field.addTarget(self, action: #selector(newRoomInputChanged), for: .editingChanged)
+    }
+
+    let calendar = ShareRoomDraft.deviceCalendar
+    let today = Date()
+    let range = ShareRoomDraft.selectableEndDates(today: today, calendar: calendar)
+    let picker = UIDatePicker()
+    picker.datePickerMode = .date
+    picker.preferredDatePickerStyle = .compact
+    picker.calendar = calendar
+    picker.timeZone = calendar.timeZone
+    picker.locale = Locale(identifier: "ko_KR")
+    picker.minimumDate = range.lowerBound
+    picker.maximumDate = range.upperBound
+    picker.date = prefill.endDate ?? ShareRoomDraft.defaultEndDate(today: today, calendar: calendar)
+    picker.tintColor = UIConstants.primary
+    newRoomEndDatePicker = picker
+
+    let dateLabel = UILabel()
+    dateLabel.text = "종료 날짜"
+    dateLabel.font = .preferredFont(forTextStyle: .body)
+    dateLabel.textColor = UIConstants.foreground
+    let dateRow = UIStackView(arrangedSubviews: [dateLabel, picker])
+    dateRow.axis = .horizontal
+    dateRow.alignment = .center
+    dateRow.heightAnchor.constraint(equalToConstant: 48).isActive = true
+    contentStack.addArrangedSubview(dateRow)
+
+    // 앱의 방 만들기 화면과 같은 안내(`create_room_screen.dart`).
+    let helper = UILabel()
+    helper.text = "기한이 지나면 방이 자동으로 종료 상태로 전환돼요"
+    helper.font = .preferredFont(forTextStyle: .footnote)
+    helper.textColor = UIConstants.muted
+    helper.numberOfLines = 0
+    contentStack.addArrangedSubview(helper)
+
+    let createButton = makePrimaryButton(title: "만들기") { [weak self] in
+      self?.createRoomTapped()
+    }
+    newRoomCreateButton = createButton
+    contentStack.addArrangedSubview(createButton)
+    addCancelRow()
+    updateNewRoomCreateButton()
+  }
+
+  @objc private func newRoomInputChanged() {
+    updateNewRoomCreateButton()
+  }
+
+  /// 이름·목표가 둘 다 채워져야 [만들기]가 켜진다. 앱의 방 만들기 화면과 같은 규칙이다.
+  private func updateNewRoomCreateButton() {
+    func filled(_ field: UITextField?) -> Bool {
+      !(field?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    let enabled = filled(newRoomNameField) && filled(newRoomGoalField)
+    newRoomCreateButton?.isEnabled = enabled
+    newRoomCreateButton?.backgroundColor = enabled ? UIConstants.primary : UIConstants.primaryDisabled
+  }
+
+  private func createRoomTapped() {
+    let input = NewRoomInput(
+      name: newRoomNameField?.text ?? "",
+      goal: newRoomGoalField?.text ?? "",
+      endDate: newRoomEndDatePicker?.date
+    )
+    let calendar = ShareRoomDraft.deviceCalendar
+    let today = Date()
+    let result = ShareRoomDraft.validate(
+      name: input.name,
+      goal: input.goal,
+      endDate: input.endDate ?? ShareRoomDraft.defaultEndDate(today: today, calendar: calendar),
+      today: today,
+      calendar: calendar
+    )
+    switch result {
+    case .success(let draft):
+      createRoom(draft, today: today, input: input)
+    case .failure(let error):
+      // 30자 초과·자정 넘김처럼 값이 틀린 경우다. 폼은 그대로 두고 안내만 바꾼다 — 쓴 값이 지워지지 않는다.
+      showInlineError(error.message)
+    }
+  }
+
+  private func createRoom(_ draft: ShareRoomDraft, today: Date, input: NewRoomInput) {
+    guard let token, let apiClient else { return }
+    showLoading("방을 만들고 있어요")
+    let body = draft.requestBody(today: today, calendar: ShareRoomDraft.deviceCalendar)
+    apiClient.createRoom(body: body, token: token) { [weak self] result in
+      DispatchQueue.main.async {
+        guard let self else { return }
+        switch result {
+        case .success(let room):
+          // 만든 방의 폴더 선택으로 바로 이어진다. 서버가 새 방에 "기본" 폴더를 만들어 둔다.
+          self.fetchFolders(for: room)
+        case .failure(let error):
+          if self.isAuthenticationFailure(error) {
+            self.showFinishingMessage("앱을 열어 로그인해주세요")
+            return
+          }
+          self.promptNewRoom(prefill: input, errorMessage: "방을 만들지 못했어요. 다시 시도해주세요")
+        }
+      }
+    }
+  }
+
   // MARK: - New folder
 
   /// 공유 흐름 안에서 새 아카이브 폴더 이름을 입력받는다(QA). 커스텀 폼(2026-08-09,
@@ -277,13 +425,7 @@ final class ShareViewController: UIViewController {
       showInstruction("새 폴더를 만들어 등록해보세요")
     }
 
-    let field = UITextField()
-    field.borderStyle = .roundedRect
-    field.font = .preferredFont(forTextStyle: .body)
-    field.placeholder = "폴더 이름"
-    field.autocapitalizationType = .none
-    field.clearButtonMode = .whileEditing
-    field.heightAnchor.constraint(equalToConstant: 48).isActive = true
+    let field = makeTextField(placeholder: "폴더 이름", text: "")
     newFolderField = field
     contentStack.addArrangedSubview(field)
 
@@ -377,6 +519,21 @@ final class ShareViewController: UIViewController {
 
   // MARK: - UI helpers
 
+  private func makeTextField(placeholder: String, text: String) -> UITextField {
+    let field = UITextField()
+    field.borderStyle = .roundedRect
+    field.font = .preferredFont(forTextStyle: .body)
+    field.placeholder = placeholder
+    field.text = text
+    field.autocapitalizationType = .none
+    field.clearButtonMode = .whileEditing
+    field.heightAnchor.constraint(equalToConstant: 48).isActive = true
+    // return 키로 키보드를 내린다. 작은 화면에서는 키보드가 [만들기]·[취소]를 가린다.
+    field.returnKeyType = .done
+    field.addTarget(field, action: #selector(UIResponder.resignFirstResponder), for: .editingDidEndOnExit)
+    return field
+  }
+
   /// 방·폴더 행처럼 여러 개를 나열하는 리스트 아이템 — surfaceSoft 배경 + 왼쪽 정렬(design.md 카드 톤).
   private func makeListRow(
     title: String,
@@ -399,11 +556,11 @@ final class ShareViewController: UIViewController {
   }
 
   /// 강조 CTA(만들기/다시 시도) — primary 채움 + 흰 글씨(design.md 버튼 톤, 기존 등록 버튼과 동일 스타일).
-  private func makePrimaryButton(title: String, onTap: @escaping () -> Void) -> UIView {
+  private func makePrimaryButton(title: String, onTap: @escaping () -> Void) -> UIButton {
     let button = TapButton(type: .system)
     button.setTitle(title, for: .normal)
     button.setTitleColor(.white, for: .normal)
-    button.setTitleColor(.white.withAlphaComponent(0.65), for: .disabled)
+    button.setTitleColor(.white, for: .disabled) // design.md: 비활성이어도 글자는 흰색 유지
     button.backgroundColor = UIConstants.primary
     button.layer.cornerRadius = 8
     button.titleLabel?.font = .preferredFont(forTextStyle: .headline)
@@ -431,6 +588,10 @@ final class ShareViewController: UIViewController {
     }
     activityIndicator.stopAnimating()
     newFolderField = nil
+    newRoomNameField = nil
+    newRoomGoalField = nil
+    newRoomEndDatePicker = nil
+    newRoomCreateButton = nil
   }
 
   private func showLoading(_ message: String) {
