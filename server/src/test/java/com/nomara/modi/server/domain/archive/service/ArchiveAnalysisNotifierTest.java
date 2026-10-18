@@ -20,11 +20,12 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.scheduling.annotation.Scheduled;
 
 /**
- * 모아둔 것을 <b>언제 · 어떤 문구로</b> 보내는지 잰다.
+ * 모아둔 것을 <b>언제 · 어떤 문구로</b> 보내는지 잰다. 2026-10-18(#110)부터 "언제"는 "다음 tick 에 바로"다.
  *
- * <p>스프링을 띄우지 않는다 — 버퍼는 목이고, 여기서 재는 것은 조용해졌는지 판정과 문구 조립이다.
+ * <p>스프링을 띄우지 않는다 — 버퍼는 목이고, 여기서 재는 것은 보낼지 판정과 문구 조립이다.
  */
 class ArchiveAnalysisNotifierTest {
 
@@ -43,33 +44,35 @@ class ArchiveAnalysisNotifierTest {
   // --------------------------------------------------------------- 언제 보내나
 
   @Test
-  void 아직_처리_중이면_보내지_않는다() {
-    // 🔴 묶어 보내는 것의 요점. 방금 한 건이 끝났다고 바로 보내면, 연달아 넣는 동안
-    // 알림이 건마다 날아간다 — 사용자가 5건 공유하면 5번 울린다.
-    givenPending(Instant.now().minus(Duration.ofSeconds(10)));
-
-    notifier.flushQuietBuffers();
-
-    verify(pushNotifier, never()).notify(any(), any(), any(), any(), any());
-    verify(buffer, never()).takeFor(any());
-  }
-
-  @Test
-  void 조용해지면_한_번_보낸다() {
-    givenPending(Instant.now().minus(Duration.ofMinutes(2)));
-    when(buffer.takeFor(UID)).thenReturn(new Buffered(3, 0, "무엇", null, 0));
+  void 방금_끝난_것도_기다리지_않고_다음_tick_에_보낸다() {
+    // 🔴 2026-10-18 사용자 확정(#110): 묶지 않고 바로. 예전에는 마지막 확정 뒤 1분 조용해야
+    // 보내서(30초 주기까지 더해) 분석이 끝나고 1~1.5분 뒤에야 알림이 왔다.
+    givenPending(Instant.now().minus(Duration.ofSeconds(1)));
+    when(buffer.takeFor(UID)).thenReturn(new Buffered(1, 0, "무엇", null, 0));
     when(userRepository.findById(UID)).thenReturn(Optional.of(user));
 
-    notifier.flushQuietBuffers();
+    notifier.flushPendingBuffers();
 
     verify(pushNotifier).notify(eq(user), eq(PushType.ARCHIVE_ANALYSIS_DONE), any(), any(), any());
+  }
+
+  /** 분석이 끝나고 알림이 가기까지의 최대 대기 = 이 주기다. 늘리면 #110 이 되살아난다. */
+  @Test
+  void 기본_확인_주기는_5초다() throws NoSuchMethodException {
+    Scheduled scheduled =
+        ArchiveAnalysisNotifier.class
+            .getMethod("flushPendingBuffers")
+            .getAnnotation(Scheduled.class);
+
+    assertThat(scheduled.fixedDelayString())
+        .isEqualTo("${modi.archive.analysis-notify-interval:5000}");
   }
 
   @Test
   void 대기자가_없으면_버퍼를_읽지도_않는다() {
     when(buffer.pendingUsers()).thenReturn(Set.of());
 
-    notifier.flushQuietBuffers();
+    notifier.flushPendingBuffers();
 
     verify(buffer, never()).lastConfirmedAt(any());
   }
@@ -80,7 +83,7 @@ class ArchiveAnalysisNotifierTest {
     when(buffer.pendingUsers()).thenReturn(Set.of(UID));
     when(buffer.lastConfirmedAt(UID)).thenReturn(0L);
 
-    notifier.flushQuietBuffers();
+    notifier.flushPendingBuffers();
 
     verify(buffer).clear(UID);
     verify(pushNotifier, never()).notify(any(), any(), any(), any(), any());
@@ -88,25 +91,25 @@ class ArchiveAnalysisNotifierTest {
 
   @Test
   void 탈퇴한_사람에게는_보내지_않는다() {
-    givenPending(Instant.now().minus(Duration.ofMinutes(2)));
+    givenPending(Instant.now().minus(Duration.ofSeconds(1)));
     when(buffer.takeFor(UID)).thenReturn(new Buffered(1, 0, "무엇", null, 0));
     when(userRepository.findById(UID)).thenReturn(Optional.empty());
 
-    notifier.flushQuietBuffers();
+    notifier.flushPendingBuffers();
 
     verify(pushNotifier, never()).notify(any(), any(), any(), any(), any());
   }
 
   @Test
   void 한_사람_발송이_실패해도_배치가_멈추지_않는다() {
-    givenPending(Instant.now().minus(Duration.ofMinutes(2)));
+    givenPending(Instant.now().minus(Duration.ofSeconds(1)));
     when(buffer.takeFor(UID)).thenReturn(new Buffered(1, 0, "무엇", null, 0));
     when(userRepository.findById(UID)).thenReturn(Optional.of(user));
     doThrow(new IllegalStateException("FCM 장애"))
         .when(pushNotifier)
         .notify(any(), any(), any(), any(), any());
 
-    notifier.flushQuietBuffers(); // 예외가 새어나오면 이 줄에서 실패한다
+    notifier.flushPendingBuffers(); // 예외가 새어나오면 이 줄에서 실패한다
   }
 
   // --------------------------------------------------------------- 어떤 문구로
@@ -166,11 +169,11 @@ class ArchiveAnalysisNotifierTest {
   @Test
   void 성공과_실패가_섞이면_제목에_둘_다_적는다() {
     ArgumentCaptor<String> title = ArgumentCaptor.forClass(String.class);
-    givenPending(Instant.now().minus(Duration.ofMinutes(2)));
+    givenPending(Instant.now().minus(Duration.ofSeconds(1)));
     when(buffer.takeFor(UID)).thenReturn(new Buffered(2, 1, "무엇", null, 0));
     when(userRepository.findById(UID)).thenReturn(Optional.of(user));
 
-    notifier.flushQuietBuffers();
+    notifier.flushPendingBuffers();
 
     verify(pushNotifier).notify(any(), any(), any(), title.capture(), any());
     assertThat(title.getValue()).contains("2건").contains("1건");

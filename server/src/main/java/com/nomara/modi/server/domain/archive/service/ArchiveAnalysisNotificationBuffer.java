@@ -13,8 +13,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /**
  * 자료 분석이 끝난 것을 <b>사람별로 모아 둔다</b> — 보내는 것은 {@code ArchiveAnalysisNotifier} 가 한다(2026-08-06).
  *
- * <p>🔴 <b>왜 바로 안 보내고 모으나.</b> 공유로 5건을 연달아 넣으면 알림도 5개가 온다. 사용자 확정(2026-08-06): <b>잠깐 모았다가 한 번</b>.
- * 마지막 확정 뒤 잠시 조용하면 그때 한 번만 보낸다.
+ * <p>🔴 <b>왜 바로 안 보내고 거쳐 가나.</b> 처음(2026-08-06)에는 "잠깐 모았다가 한 번"을 위해서였다. 2026-10-18(#110)에 묶기는
+ * 없앴지만(5초마다 바로 보낸다 — {@code ArchiveAnalysisNotifier}) 이 버퍼는 그대로 쓴다: 처리기 스레드가 FCM 호출을 기다리지 않게 하고, 한
+ * tick 의 발송 상한({@code MAX_PER_TICK})으로 몰림을 막는다.
  *
  * <p><b>왜 Redis 인가</b> — 이 상태는 잃어도 되는 것이다(알림 하나 못 보내는 것뿐). DB 테이블을 만들면 마이그레이션·정리 배치가 따라온다. 쿨다운과 같은
  * 판단이다.
@@ -34,8 +35,8 @@ public class ArchiveAnalysisNotificationBuffer {
   /**
    * 버퍼 수명.
    *
-   * <p>스위퍼가 정상이면 1~2분 안에 비워진다. TTL 은 <b>스위퍼가 죽었을 때</b>를 위한 것이다 — 서버가 몇 시간 뒤에 살아나 "6시간 전에 끝난 자료"를
-   * 알리는 편보다 조용히 사라지는 편이 낫다.
+   * <p>스위퍼가 정상이면 5초 안에 비워진다. TTL 은 <b>스위퍼가 죽었을 때</b>를 위한 것이다 — 서버가 몇 시간 뒤에 살아나 "6시간 전에 끝난 자료"를 알리는
+   * 편보다 조용히 사라지는 편이 낫다.
    */
   private static final Duration TTL = Duration.ofHours(1);
 
