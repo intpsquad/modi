@@ -9,8 +9,6 @@
 
 import hashlib
 import json
-import logging
-import pathlib
 from datetime import date
 
 import pytest
@@ -137,7 +135,7 @@ class TestRunRepeat:
 
         counter = {"n": 0}
 
-        def fake_suggest(request, llm, embed):  # noqa: ARG001
+        def fake_suggest(request, llm):  # noqa: ARG001
             seen.append(list(request.excluded_todos))
             counter["n"] += 1
             return SuggestionResponse(candidates=candidates(f"후보 {counter['n']}"))
@@ -148,7 +146,7 @@ class TestRunRepeat:
         """요청 **객체**를 그대로 모은다 — `today` 처럼 목록이 아닌 필드를 보려면 필요하다."""
         from modi_ai.schemas import SuggestionResponse
 
-        def fake_suggest(request, llm, embed):  # noqa: ARG001
+        def fake_suggest(request, llm):  # noqa: ARG001
             seen.append(request)
             return SuggestionResponse(candidates=candidates(f"후보 {len(seen)}"))
 
@@ -163,8 +161,8 @@ class TestRunRepeat:
         seen: list[list[str]] = []
         self._patch_suggest(monkeypatch, seen)
 
-        run_repeat(fixture_room, None, None, repeat=1, rounds=3, start_excluded="fresh")
-        run_repeat(fixture_room, None, None, repeat=2, rounds=3, start_excluded="fresh")
+        run_repeat(fixture_room, None, repeat=1, rounds=3, start_excluded="fresh")
+        run_repeat(fixture_room, None, repeat=2, rounds=3, start_excluded="fresh")
 
         assert [len(s) for s in seen] == [0, 1, 2, 0, 1, 2]
 
@@ -172,7 +170,7 @@ class TestRunRepeat:
         seen: list[list[str]] = []
         self._patch_suggest(monkeypatch, seen)
 
-        run_repeat(fixture_room, None, None, repeat=1, rounds=2, start_excluded="captured")
+        run_repeat(fixture_room, None, repeat=1, rounds=2, start_excluded="captured")
 
         assert [len(s) for s in seen] == [16, 16]
         assert seen[0] == list(fixture_room.request.excluded_todos)
@@ -184,7 +182,7 @@ class TestRunRepeat:
         before = list(fixture_room.request.excluded_todos)
         self._patch_suggest(monkeypatch, [])
 
-        run_repeat(fixture_room, None, None, repeat=1, rounds=3, start_excluded="fresh")
+        run_repeat(fixture_room, None, repeat=1, rounds=3, start_excluded="fresh")
 
         assert fixture_room.request.excluded_todos == before
 
@@ -200,7 +198,6 @@ class TestRunRepeat:
         run_repeat(
             fixture_room,
             None,
-            None,
             repeat=1,
             rounds=4,
             start_excluded="captured",
@@ -215,7 +212,7 @@ class TestRunRepeat:
         seen: list[list[str]] = []
         self._patch_suggest(monkeypatch, seen)
 
-        run_repeat(fixture_room, None, None, repeat=1, rounds=2, start_excluded="captured")
+        run_repeat(fixture_room, None, repeat=1, rounds=2, start_excluded="captured")
 
         assert [len(s) for s in seen] == [MAX_EXCLUDED, MAX_EXCLUDED]
 
@@ -224,7 +221,7 @@ class TestRunRepeat:
         seen: list[SuggestionRequest] = []
         self._patch_suggest_capturing_request(monkeypatch, seen)
 
-        run_repeat(fixture_room, None, None, repeat=1, rounds=1, start_excluded="fresh")
+        run_repeat(fixture_room, None, repeat=1, rounds=1, start_excluded="fresh")
 
         assert seen[0].today is None
 
@@ -237,9 +234,7 @@ class TestRunRepeat:
         seen: list[SuggestionRequest] = []
         self._patch_suggest_capturing_request(monkeypatch, seen)
 
-        run_repeat(
-            fixture_room, None, None, repeat=1, rounds=2, start_excluded="fresh", today="captured"
-        )
+        run_repeat(fixture_room, None, repeat=1, rounds=2, start_excluded="fresh", today="captured")
 
         assert [r.today for r in seen] == [date(2026, 8, 3), date(2026, 8, 3)]
         assert captured_date(fixture_room) == date(2026, 8, 3)
@@ -247,12 +242,12 @@ class TestRunRepeat:
     def test_a_failing_round_stops_that_repeat(self, fixture_room, monkeypatch):
         """실패하면 남은 라운드를 건너뛴다 — 제외가 안 쌓여 같은 조건의 재실행이 되어버린다."""
 
-        def boom(request, llm, embed):  # noqa: ARG001
+        def boom(request, llm):  # noqa: ARG001
             raise RuntimeError("업스트림 죽음")
 
         monkeypatch.setattr("evals.run_room_eval.suggest", boom)
 
-        results = run_repeat(fixture_room, None, None, repeat=1, rounds=3, start_excluded="fresh")
+        results = run_repeat(fixture_room, None, repeat=1, rounds=3, start_excluded="fresh")
 
         assert len(results) == 1
         assert "RuntimeError: 업스트림 죽음" in results[0].error
@@ -354,52 +349,28 @@ class TestConditionsAreRecorded:
 
 
 class TestCritiqueFailOpenCounter:
-    """검수가 우회된 라운드를 세는 계수기.
+    """검수가 우회된 라운드를 세던 계수기.
 
-    ⚠️ **이 계수기는 `_critique` 의 로그 문구에 묶여 있다** — 문구가 바뀌면 조용히 0을 센다.
-    그 결합을 여기서 고정한다. 계수기가 없어서 #29 ④ 의 수치에 커밋된 근거가 없었고,
-    그것으로 별도 티켓의 심각도가 정해졌다(2026-08-03 리뷰 P1-1).
+    🔴 **2026-10-18 에 검수를 걷어내 이 값은 항상 False 다**(#109). 필드는 동결 스냅샷 형식과
+    옛 측정 비교를 위해 남겼고, 요약이 여전히 그 필드를 센다는 것만 지킨다. 로그 문구로 우회를
+    잡던 감시기와 그 결합을 고정하던 테스트는 감시할 대상이 사라져 지웠다.
     """
 
-    def _run(self, monkeypatch, emit: bool) -> RoundResult:
+    def test_a_round_is_never_marked_as_bypassed(self, monkeypatch):
         from modi_ai.schemas import SuggestionResponse
 
-        def fake_suggest(request, llm, embed):  # noqa: ARG001
-            if emit:
-                # `_critique` 의 세 갈래가 실제로 내는 것과 **같은 로거·같은 문구**다.
-                logging.getLogger("modi_ai.suggest").error(
-                    "검수 판정 개수가 안 맞는다(후보 %d개, 판정 %d개) — 전부 통과시킨다", 8, 7
-                )
+        def fake_suggest(request, llm):  # noqa: ARG001
             return SuggestionResponse(candidates=candidates("후보"))
 
         monkeypatch.setattr("evals.run_room_eval.suggest", fake_suggest)
         request = load_room("busan_travel").request
-        return run_round(request, None, None, room="r", repeat=1, round_index=1)
 
-    def test_it_catches_a_bypassed_round(self, monkeypatch):
-        assert self._run(monkeypatch, emit=True).critique_failed_open is True
+        result = run_round(request, None, room="r", repeat=1, round_index=1)
 
-    def test_a_normal_round_is_not_counted(self, monkeypatch):
-        assert self._run(monkeypatch, emit=False).critique_failed_open is False
-
-    def test_every_fail_open_branch_still_logs_the_watched_phrase(self):
-        """위 두 테스트는 **내가 쓴 문구끼리** 맞춘 것이라, `_critique` 가 다른 말을 하게
-        바뀌면 둘 다 통과하면서 계수기만 조용히 죽는다. 소스에서 직접 센다.
-
-        fail-open 은 셋(예외 · 개수 불일치 · 번호 불일치)이고 전부 같은 문구를 남겨야 한다.
-        """
-        import modi_ai.suggest
-
-        source = pathlib.Path(modi_ai.suggest.__file__).read_text(encoding="utf-8")
-        logging_lines = [
-            line
-            for line in source.splitlines()
-            if "전부 통과시킨다" in line and not line.lstrip().startswith("#")
-        ]
-
-        assert len(logging_lines) == 3, f"fail-open 로그가 셋이 아니다: {logging_lines}"
+        assert result.critique_failed_open is False
 
     def test_the_summary_counts_them(self):
+        """옛 export 를 다시 요약할 때를 위해 — 그 시절 라운드에는 True 가 있다."""
         results = [
             RoundResult(room="r", repeat=1, round_index=1, excluded_before=0),
             RoundResult(room="r", repeat=1, round_index=2, excluded_before=0),

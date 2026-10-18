@@ -126,9 +126,8 @@ class TodoSuggestionExposureStore {
   /**
    * 중복 판정용 — <b>글자가 같은 것만</b> 잡는다.
    *
-   * <p>의미가 같고 표현만 다른 것은 AI 서버가 임베딩 코사인으로 한 번 더 거른다({@code ai/src/modi_ai/suggest.py} 의 {@code
-   * drop_semantic_duplicates}). <b>RAG 2단계와는 다른 작업이다</b> — 그쪽은 "어느 자료를 프롬프트에 넣을까"이고 이쪽은 "어느 후보를
-   * 버릴까"다 ({@code ai/docs/DECISIONS.md} 의 (A)/(B) 분리).
+   * <p>의미가 같고 표현만 다른 것은 거르지 않는다 — AI 서버가 임베딩 코사인으로 한 번 더 거르던 층({@code drop_semantic_duplicates})은
+   * 2026-10-18 에 걷어냈다(#109, {@code ai/docs/DECISIONS.md}).
    */
   static String normalize(String title) {
     return WHITESPACE.matcher(title).replaceAll("").toLowerCase(Locale.ROOT);

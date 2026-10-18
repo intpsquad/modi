@@ -64,7 +64,8 @@ public class ArchiveItem {
 
   /**
    * 본문(또는 요약)의 임베딩 벡터. 추천 자료 선별의 입력이며, <b>부터 실제로 읽힌다</b> — {@code TodoSuggestionPayloadLoader}가 추천
-   * 요청에 그대로 실어 보내고 AI 서버가 방 목표와의 코사인으로 순위를 매긴다.
+   * 요청에 그대로 실어 보낸다. ⚠️ 2026-10-18 부터 AI 서버는 이 벡터를 읽지 않는다(#109 — 목표 유사도 순위를 걷어냈다, {@code
+   * specs/OPEN.md} 후속 항목).
    *
    * <p>{@code null}이 정상인 경우가 넷 있다 — {@code V7__add_embedding_to_archive_items.sql} 참고.
    *

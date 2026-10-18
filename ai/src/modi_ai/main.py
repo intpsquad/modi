@@ -17,7 +17,6 @@ from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel
 
 from modi_ai import __version__
-from modi_ai.embeddings import Embedder, get_embedder
 from modi_ai.schemas import SuggestionRequest, SuggestionResponse
 from modi_ai.security import verify_internal_key
 from modi_ai.suggest import get_llm, suggest
@@ -62,7 +61,7 @@ async def health() -> HealthResponse:
     남의 장애로 실패하게 된다.
 
     ⚠️ **`async` 여야 한다.** `def` 로 두면 starlette 가 `todo_suggestions` 와 **같은
-    스레드풀**(기본 40)로 보낸다. 추천 1회는 최악 300초(LLM 120x2 + 임베딩 10x2 x 2배치)라
+    스레드풀**(기본 40)로 보낸다. 추천 1회는 최악 240초(LLM 120x2 — 2026-10-18 임베딩 제거 후)라
     인플라이트가 풀을 채우면 헬스체크가 굶고, `deploy/docker-compose.app.yml` 의
     `timeout: 5s / retries: 6` 이 걸려 **멀쩡한 컨테이너가 unhealthy 로 뒤집힌다.**
     여기는 외부 의존이 없는 순수 함수라 이벤트 루프에서 직접 돌아도 안전하다.
@@ -79,13 +78,9 @@ async def health() -> HealthResponse:
 def todo_suggestions(
     request: SuggestionRequest,
     llm: Annotated[BaseChatModel, Depends(get_llm)],
-    embed: Annotated[Embedder, Depends(get_embedder)],
 ) -> SuggestionResponse:
-    """S-16-B 투두 후보 생성. 앱이 아니라 Spring 만 호출한다.
+    """S-16-B 투두 후보 생성. 앱이 아니라 Spring 만 호출한다. **외부 호출은 LLM 1회뿐이다**(#109).
 
-     채택된 후보의 담당자는 미지정으로 남는다(`full_spec.md` S-16-B) — 이 서버는 관여하지 않는다.
-
-     `embed` 는 이미 노출한 후보와 **의미가** 겹치는 것을 걸러내는 데만 쓴다
-    . 자료 임베딩(RAG 2단계)은 이 서버가 만들지 않는다.
+    채택된 후보의 담당자는 미지정으로 남는다(`full_spec.md` S-16-B) — 이 서버는 관여하지 않는다.
     """
-    return suggest(request, llm, embed)
+    return suggest(request, llm)

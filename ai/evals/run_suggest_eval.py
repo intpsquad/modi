@@ -306,8 +306,6 @@ def main() -> None:
     )
 
     llm = get_llm().bind(temperature=EVAL_TEMPERATURE)
-    # 임베딩을 쓰는 층이 이 러너에는 없다(카테고리 매칭이 걷혔다).
-    embedder = None
     results: list[CaseResult] = []
     try:
         for case, content in zip(cases, contents, strict=True):
@@ -318,7 +316,6 @@ def main() -> None:
                     system_prompt,
                     content=content,
                     schema=schema,
-                    embed=embedder,
                 )
             )
     except KeyboardInterrupt:

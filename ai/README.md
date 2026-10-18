@@ -15,95 +15,33 @@
 
 ## 추천 파이프라인
 
-`src/modi_ai/suggest.py`의 `SUGGEST_GRAPH`(LangGraph). **아래 그림은 손으로 그린 것이 아니라
-`SUGGEST_GRAPH.get_graph().draw_mermaid()` 출력을 한 글자도 안 고치고 붙인 것이다** — 코드를
-고쳤으면 다시 뽑아 통째로 갈아 끼운다(손질하면 다음 사람이 같은 손질을 반복하게 된다).
-노드·엣지 모양은 `tests/test_suggest_graph.py::TestGraphShape`가 따로 못 박는다.
+`src/modi_ai/suggest.py` 의 `suggest()` — **LLM 1회 호출의 직선 함수**다(2026-10-18, #109).
 
-```mermaid
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	select(select)
-	generate(generate)
-	critique(critique)
-	batch(batch)
-	dedupe(dedupe)
-	__end__([<p>__end__</p>]):::last
-	__start__ --> select;
-	batch --> dedupe;
-	critique -.-> __end__;
-	critique -.-> batch;
-	critique -.-> generate;
-	generate -.-> __end__;
-	generate -.-> batch;
-	generate -.-> critique;
-	select --> generate;
-	dedupe --> __end__;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+```
+자료 고르기(최신순 + 글자 예산, 네트워크 없음) → LLM 1회(구조화 출력) → 문자열 필터 → 후보
 ```
 
-| 노드 | 하는 일 | 외부 호출 |
+| 단계 | 하는 일 | 외부 호출 |
 |---|---|---|
-| `select` | 자료를 네 축(좋아요·핀·유사도·최근성)으로 줄 세우고 예산 초과분을 버린다 | 임베딩 1회(방 목표) |
-| `generate` | 후보 생성 + 문자열 필터 | **LLM 1회** |
-| `critique` | 바로 실행할 수 없는 후보를 반려한다 | **LLM 1회**(제목만) |
-| `batch` | `dedupe` 가 쓸 임베딩을 묶는다(지연 호출) | 없음 |
-| `dedupe` | 이미 노출한 후보와 **의미가** 겹치는 것을 버린다 | 임베딩 1회(배치) |
+| `_select_archive` | 자료를 최신순으로 세우고 글자 예산(3,000자) 초과분을 버린다. 순위 모드(`ARCHIVE_SELECT_BY_RECENCY=false`)는 핀·좋아요·최근성으로 줄 세운다(목표 유사도 축은 없다) | 없음 |
+| `_generate` | 프롬프트 조립 → 구조화 출력 1회 → 파싱 실패면 502 → `filter_candidates`(빈 제목·50자 초과·없는 자료 id·기존 투두와 글자가 같은 것·묶음 안 글자 중복을 버린다) | **LLM 1회** |
 
-점선이 조건부 엣지다.
-- `generate` 뒤 — 후보가 하나도 없으면 남은 노드를 건너뛴다.
-- `critique` 뒤 — 통과분이 있으면 진행, 하나도 없으면 **빈 목록으로 끝낸다**(2026-08-03
-  사용자 확정 — 나쁜 후보를 보여주느니 안 보여준다).
+- **같은 묶음 안의 "비슷한" 후보는 거르지 않는다** — 글자가 같은 것만 거른다. 그 대가를 알고 받았다
+  (`tests/test_suggest_pipeline.py::TestOneCall::test_similar_candidates_both_come_back`).
+- **"이미 제안했던 후보"(`excluded_todos`)는 Spring 이 기본으로 빈 목록을 보낸다**(2026-08-09,
+  `TODO_SUGGESTION_EXCLUDE_RECENT=false`). 보내면 프롬프트에 "다시 제안하지 마라" 절이 붙고 문자열 필터가
+  같은 글자를 거른다.
+- ⚠️ **최악치는 여전히 Spring 예산을 넘는다.** `get_llm()` 이 `timeout=120, max_retries=1` 이라 LLM 단독
+  최악이 240초이고 Spring 의 read timeout 은 60초다(`AiServerConfig`). 실측 평균은 수 초라 지금 문제가
+  되지는 않는다.
 
-⚠️ **`critique → generate`(되돌아가기)는 운영에서 안 탄다.** 껐다 — 그것도 **두 번**.
+### 걷어낸 것 (2026-10-18, #109 — 사용자 확정)
 
-1. `critique_max_attempts`가 2 이상일 때만 발동하는데 기본값이 **1**이다. 0/1/2를 나란히
-   재고 정했다([`docs/EXPERIMENTS.md` #28](docs/EXPERIMENTS.md)).
-2. 그 엣지가 "전부 반려"에만 걸려 사실상 안 타길래, **부분 반려에도 타게** 만들어 다시 쟀다
-   (`regenerate_on_partial_reject`). 후보는 회복됐지만 **지연 상한 10초를 37%·40% 깨서
-   기각**했다([#29](docs/EXPERIMENTS.md)). 기본값 **False**.
-
-코드를 둘 다 남기는 이유는 설정 하나로 다시 재볼 수 있어야 하기 때문이다.
-
-✅ **그 fail-open 은 고쳤다** — 원인은 후보 번호를 `0` 부터 매긴 것이었다.
-검수만 떼어 60회를 재보니 `0` 이면 30회 중 **10회(33%)**가 판정을 하나 빠뜨렸고 `1` 이면
-**30/30** 이 맞았다([#30](docs/EXPERIMENTS.md), `evals/probe_critique.py`). 고친 것은
-`suggest.CRITIQUE_INDEX_BASE = 1` 한 줄이고 **프롬프트·스키마 설명은 안 건드렸다.**
-방 평가 2회에서 fail-open **0/30 · 0/30**.
-
-⚠️ **"검수가 살아나서 품질이 좋아졌다"고 쓰지 말 것** — 방마다 기준선보다 나쁜 실행이 하나씩
-있어 실측은 "구분되지 않는다"까지다. 그리고 **왜 0-based 일 때만 이러는지는 모른다** —
-증상을 없앤 것이지 기전을 안 것이 아니다. 모델을 바꾸면 재발할 수 있고, 알아채는 수단은 러너
-계수기(`RoundResult.critique_failed_open`)뿐이다.
-
-⚠️ **그래서 LangGraph 는 이 티켓 뒤에도 기능 이득이 없다.** 검수 노드도 `critique → END`
-분기도 상태 전달도 전부 직선 코드로 된다. 그래프여야만 하는 것은 되돌아가는 루프(안 씀)와
-Studio 시각화(개발 도구)뿐이다 — 품질을 올린 것은 **검수라는 아이디어**이지 그래프가 아니다
-([`docs/EXPERIMENTS.md` #28 ④-1](docs/EXPERIMENTS.md)).
-
-폴백 둘(임베딩 장애)과 검수 실패는 엣지가 아니라 `try/except`인데, **성공·실패가 같은
-다음 노드로 가기 때문**이다.
-
-> **⚠️ 임베딩 왕복이 2회다.** 목표 벡터는 LLM **전에** 필요하고 후보 제목 배치는 LLM **후에**만
-> 만들 수 있어 합칠 수 없다.
->
-> **⚠️ 최악치로는 이미 Spring 예산을 넘는다.** `get_llm()` 이 `timeout=120, max_retries=1` 이라
-> LLM 단독 최악이 **240초**이고, 여기에 목표 임베딩 20초 + 배치 임베딩 40초를 더해 **합계 300초**다.
-> Spring 의 read timeout 은 **60초**다(`AiServerConfig`). 게이트웨이가 죽지 않고 **느리기만 하면**
-> 폴백이 발동하지 않아 사용자는 후보 대신 "AI 추천 서버에 연결하지 못했어요"를 본다.
-> 실측 평균은 3.6~5.6초라 지금 문제가 되지는 않지만, **"60초 안에 들어온다"고 말할 수 있는 상태가
-> 아니다.** 자세한 것과 처방은 `suggest.py` 의 `_select_archive` docstring 에 있다.
->
-> *(2026-08-03 정정: 원래 "최악 40초 + LLM 8~11초 = 60초 안, 여유 9초"라고 적혀 있었다 —
-> LLM **타임아웃** 자리에 **실측치**를 넣은 오류였다. 에서 코드 주석만 고치고
-> 이 문서를 빠뜨렸다.)*
+이 자리에는 LangGraph 그래프(`select → generate → critique → batch → dedupe`)가 있었다. 시연용으로
+"기존 추천을 거르는 그래프가 아니라 1회 LLM 호출로" 되돌리면서 함께 지웠다 — 그래프, 검수(critique)와
+재생성 루프(2026-08-14 부터 꺼져 있었다), 임베딩으로 비슷한 후보를 거르던 층, 방 목표 임베딩 순위,
+LangGraph Studio. 왜 넣었고 왜 지웠는지·잰 것은 [`docs/DECISIONS.md`](docs/DECISIONS.md) 와
+[`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md) #17·#26~#30 에 남아 있고, 코드는 git 기록에 있다.
 
 ## 사전 준비
 
@@ -135,25 +73,6 @@ uv run ruff check .    # 린트
 uv run ruff format .   # 포맷
 ```
 
-## LangGraph Studio — 그래프를 눈으로 보기 (개발 전용)
-
-```bash
-PYTHONUTF8=1 uv run --group studio langgraph dev
-```
-
-브라우저에서 <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> · 그래프 이름
-`todo-suggestions`. 노드가 하나씩 흐르는 것과 어떤 후보가 왜 반려됐는지가 보인다.
-
-- ⚠️ **`PYTHONUTF8=1`이 없으면 안 뜬다.** cp949 윈도우에서 세 군데가 각각
-  `UnicodeDecodeError`로 죽는다 — `langgraph.json` · `.env` · **`langgraph_api`가 자기
-  패키지에 번들한 `openapi.json`**(라이브러리 쪽 문제라 우리가 못 고친다).
-- ⚠️ **실제 LLM을 호출한다(크레딧).** `LANGSMITH_TRACING`이 켜져 있으면 자료 본문이
-  LangSmith로 올라간다 — 운영에서는 둘 다 금지다(`ai/CLAUDE.md`).
-- Studio가 보는 그래프는 운영 `SUGGEST_GRAPH`가 아니라 **`prepare` 노드를 앞에 붙인 사본**이다
-  (`llm`/`embed`를 JSON으로 못 넣기 때문). 나머지 배선은 같은 함수를 재사용하고, 그 동일성은
-  `tests/test_studio_graph.py`가 지킨다.
-- 의존성이 34개 늘어 `dev`가 아니라 **별도 `studio` 그룹**이다. CI와 운영 이미지에는 안 들어간다.
-
 ## 평가 하네스 (`evals/`)
 
 **실제 LLM을 호출해 크레딧을 쓴다** — CI에서 돌지 않는다(`pyproject.toml`의 `testpaths` 밖).
@@ -164,7 +83,7 @@ PYTHONUTF8=1 uv run --group studio langgraph dev
 |---|---|---|
 | 단위 | 자료 1건 독립 호출 | **방 전체 한꺼번에**(캡처한 운영 요청) |
 | 답하는 질문 | 이 자료가 어떤 후보를 낳나(귀속) | 사용자가 버튼을 누르면 무엇을 보나 |
-| 파이프라인 | LLM 호출만 | **운영 `suggest()` 그래프 전부** |
+| 파이프라인 | LLM 호출만 | **운영 `suggest()` 전부** |
 | 실행 | 1회 | **반복 → 평균 ± 표준편차** |
 
 ```bash
@@ -175,7 +94,6 @@ uv run python -m evals.run_room_eval --start-excluded captured         # 캡처 
 uv run python -m evals.run_suggest_eval              # 자료 15건 (호출 15회)
 uv run python -m evals.run_suggest_eval --limit 3    # 크레딧 아끼며 확인
 uv run python -m evals.run_suggest_eval --input body                  # #13 기준선 재현
-uv run python -m evals.calibrate_dedupe               # 의미 중복 임계값 캘리브레이션 (호출 1회)
 uv run python -m evals.freeze_snapshot --list                          # 크레딧 0 — 결과 동결
 uv run python -m evals.freeze_snapshot --all --date 2026-08-01
 ```
@@ -274,11 +192,9 @@ ai/
 │   ├── tracing.py        LangSmith 배선 (.env 값을 os.environ으로)
 │   ├── prompts.py        프롬프트 원본 — git이 유일한 진실
 │   ├── schemas.py        요청·응답 모델
-│   ├── suggest.py        후보 생성 LangGraph — select→generate→critique→batch→dedupe (위 그림).
-│   │                     순수 함수(build_payload·filter_candidates·drop_semantic_duplicates·
-│   │                     drop_semantic_duplicates)는 노드 밖에 있어 크레딧 0으로 테스트된다
+│   ├── suggest.py        후보 생성 — 자료 고르기 → LLM 1회 → 문자열 필터 (위 표).
+│   │                     순수 함수(build_payload·filter_candidates)는 크레딧 0으로 테스트된다
 │   ├── ranking.py        자료 순위 — 가중 순위 정규화. LLM도 네트워크도 없는 순수 계산
-│   ├── embeddings.py     임베딩 클라이언트 — 후보 의미 중복 판정 + 자료 순위 + 방 목표
 │   ├── security.py       X-Internal-Key 검증
 │   └── main.py           FastAPI 앱 + /v1/health + /v1/todo-suggestions
 ├── evals/                평가 하네스 — **런타임 아님**, 크레딧을 쓴다
@@ -286,7 +202,6 @@ ai/
 │   ├── summarize_fixtures.py  픽스처 요약 동결 (Spring 프롬프트 복제 — 드리프트는 테스트가 잡는다)
 │   ├── freeze_snapshot.py     러너 결과 → 커밋되는 동결 스냅샷 (크레딧 0)
 │   ├── run_suggest_eval.py
-│   ├── calibrate_dedupe.py         의미 중복 임계값 근거 (실측 후보 24개 픽스처 포함)
 │   └── data/             자료 15개 + 스냅샷 (정답 라벨 없음)
 └── tests/                크레딧 0 · 결정론적
 ```
@@ -304,13 +219,8 @@ ai/
   근거(크레딧 등급)가 사라졌다 — 태깅 워크로드 실측은 [#34](docs/EXPERIMENTS.md).
   ⚠️ 위 **$0.0009 는 게이트웨이 시절 LangSmith 추정치**다. 직접 과금에서는 숨은 추론 토큰까지 출력 토큰으로
   청구되므로 추론 모델을 쓸 때의 비용 비교가 그 시절과 다르다.
-- 임베딩은 `text-embedding-3-small`(1536차원). **이 서버는 아무것도 저장하지 않는다** — 요청 시점에 만들어
-  쓰고 버린다. 쓰는 곳은 둘이다: 후보 의미 중복 판정과 **방 목표 ↔ 자료 유사도**
- .
-  자료 임베딩은 **Spring이 등록 시점에 만들어 `archive_items.embedding`(`real[]`, `V7`)에 저장하고**
-  추천 요청에 벡터째로 실어 보낸다(자료 18건에 약 390KB — 내부망 1회라 수용).
-  ~~pgvector~~ 대신 `real[]`로 확정 — 선별을 이 서버가 메모리에서 하므로 Postgres는 벡터로 검색하지
-  않는다(`docs/DECISIONS.md`).
-  ⚠️ 양쪽 모델이 **같아야 한다** — 여기 `OPENAI_EMBEDDING_MODEL`, Spring `ARCHIVE_EMBEDDING_MODEL`.
-  다른 모델로 만든 벡터끼리는 코사인 유사도가 의미를 갖지 않는다.
+- **이 서버는 임베딩을 부르지 않는다**(2026-10-18, #109). 예전에는 후보 의미 중복 판정과 방 목표 ↔ 자료
+  유사도에 `text-embedding-3-small` 을 썼다. 자료 임베딩은 여전히 **Spring 이 등록 시점에 만들어
+  `archive_items.embedding`(`real[]`, `V7`)에 저장하고** 추천 요청에 실어 보내지만, 이 서버는 그 벡터를 쓰지
+  않는다(요청 스키마에는 계약 유지를 위해 남겼다).
 - LangSmith 추적은 **개발 환경에서만** 켠다. 운영에서 켜면 사용자 자료 본문이 외부로 나간다.

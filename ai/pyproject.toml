@@ -11,9 +11,8 @@ dependencies = [
     # `langchain` 풀 패키지는 쓰지 않는다 — 필요한 것만 명시적으로 넣는다(docs/DECISIONS.md).
     "langchain-core>=0.3",
     "langchain-openai>=0.3",
-    # 추천 파이프라인 그래프. **기능 이득은 0이고 팀 역량 판단이다** —
-    # 근거·한계는 docs/DECISIONS.md "LangGraph 도입" 항목.
-    "langgraph>=1.2",
+    # (2026-10-18: `langgraph` 를 뺐다 — 추천이 LLM 1회 호출의 직선 함수가 됐다, #109.
+    #  도입 경위와 걷어낸 이유는 docs/DECISIONS.md "LangGraph" 항목.)
 ]
 
 [dependency-groups]
@@ -21,12 +20,6 @@ dev = [
     "pytest>=8.3",
     "httpx>=0.28",
     "ruff>=0.9",
-]
-# LangGraph Studio. **`dev` 와 분리한 이유는 무게다** — 패키지가 34개
-# 늘어난다(grpcio-tools·opentelemetry 일습). CI 는 `dev` 만 설치하면 되고, Studio 를 볼
-# 사람만 `uv sync --group studio` 한다. 운영 이미지는 `--no-dev` 라 어느 쪽도 안 들어간다.
-studio = [
-    "langgraph-cli[inmem]>=0.4",
 ]
 
 [build-system]
