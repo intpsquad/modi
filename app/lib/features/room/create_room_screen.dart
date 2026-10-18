@@ -12,6 +12,9 @@ import 'room_form_fields.dart';
 /// S-10 방 만들기 — 토스 스타일 미니멀 폼(specs/0004-방-생성-참여.md).
 /// 필수: 이름(1~30자)·목표. **시작일은 자동으로 오늘**, 종료일은 기본 오늘+4주(변경 가능).
 /// 대표 이미지는 선택. 테두리 없는 소프트필 입력 + 하단 고정 CTA(리디자인).
+///
+/// ⚠️ iOS 공유하기에도 같은 규칙의 방 만들기 폼이 있다(`app/ios/Shared/ShareRoomDraft.swift`, #108).
+/// 이름 길이·종료일 기본값·날짜 선택 범위를 바꾸면 그쪽도 함께 바꾼다.
 class CreateRoomScreen extends StatefulWidget {
   CreateRoomScreen({
     super.key,

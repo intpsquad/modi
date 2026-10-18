@@ -63,6 +63,31 @@ final class ShareAPIClient {
     }
   }
 
+  /// 공유 시트 안에서 새 방을 만든다(이슈 #108). 본문은 `ShareRoomDraft.requestBody`.
+  /// 서버 응답(RoomResponse)에서 ShareRoom(id/name/status)만 디코딩한다.
+  func createRoom(
+    body: [String: String],
+    token: String,
+    completion: @escaping (Result<ShareRoom, Error>) -> Void
+  ) {
+    guard let data = try? JSONSerialization.data(withJSONObject: body) else {
+      completion(.failure(ShareAPIError.invalidResponse))
+      return
+    }
+    request(path: "/rooms", method: "POST", token: token, body: data) { result in
+      switch result {
+      case .success(let data):
+        do {
+          completion(.success(try JSONDecoder().decode(ShareRoom.self, from: data)))
+        } catch {
+          completion(.failure(error))
+        }
+      case .failure(let error):
+        completion(.failure(error))
+      }
+    }
+  }
+
   /// 공유 시트 안에서 새 아카이브 폴더를 만든다(QA).
   /// 서버 응답(id/name/itemCount/thumbnail)에서 ShareFolder(id/name)만 디코딩한다.
   func createFolder(
