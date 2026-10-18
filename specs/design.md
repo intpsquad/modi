@@ -221,7 +221,7 @@ v3까지는 Apple HIG를 재조정한 파란색(#4F7CFF) / 회색 캔버스(#F5F
 | Secondary(disabled) | 테두리 `color.border-strong`, 텍스트 `color.muted-soft` |
 | **Tertiary(텍스트)** | 배경·테두리 없음, `color.foreground` 텍스트에 밑줄. "더보기"류 |
 | **Danger** | `color.accent-danger` 텍스트 또는 배경. **확인 모달 필수 동반** — 예외: 투두 좌측 스와이프 삭제는 모달 없이 낙관적 삭제(사용자 확정, `specs/0006-투두-탭.md`), **알림 내역 한 건 스와이프 삭제도 같다**(2026-10-17 사용자 확정 #111, `specs/0017-알림-내역.md`). 카테고리·자료 삭제와 **알림 전체 삭제**는 모달 유지 |
-| **스와이프 액션 버튼** | 리스트 행을 좌측 스와이프해 드러나는 50×28 버튼(`radius.small`, 타이포 `caption`+600), 버튼 사이 4px. 히트박스는 행 높이 전체. Danger는 `color.accent-danger`+`on-primary`, 중립은 `color.surface-strong`+텍스트. **아이콘 변형**(2026-10-17 #111): 같은 박스에 글자 대신 16px 아이콘(색은 글자와 같음) — 알림 내역의 휴지통(`delete_outline`). 글자 라벨은 스크린리더 이름으로 남긴다. 구현체 `app/lib/design/swipe_action_row.dart`(투두·알림 공용) |
+| **스와이프 액션 버튼** | 리스트 행을 좌측 스와이프해 드러나는 50×28 버튼(`radius.small`, 타이포 `caption`+600), 버튼 사이 4px. 히트박스는 높이 44(투두 행 높이와 같다 — 알림 카드처럼 행이 더 높으면 세로 가운데 44). Danger는 `color.accent-danger`+`on-primary`, 중립은 `color.surface-strong`+텍스트. **아이콘 변형**(2026-10-17 #111): 같은 박스에 글자 대신 16px 아이콘(색은 글자와 같음) — 알림 내역의 휴지통(`delete_outline`). 글자 라벨은 스크린리더 이름으로 남긴다. 구현체 `app/lib/design/swipe_action_row.dart`(투두·알림 공용) |
 | **Pill CTA** | `color.primary` 배경, `radius.pill`, 패딩 10×20, 타이포 `button` 14px. 카드 안의 보조 CTA(콕찌르기 등) |
 | **원형 아이콘 버튼** | `color.surface-strong` 배경, `radius.pill`, 32~40px. 뒤로가기·좋아요 하트 등 |
 | **AI 액션 버튼**(`AiSparkleButton`, 2026-08-05) | **60px 흰 원** + 중앙 아이콘 28px(`icon_ai_sparkle`, 디자이너 PNG라 tint 없음) + `elevation.float`. **라벨 없음** — 대신 `semanticLabel`로 스크린리더 이름을 준다. 아이콘·크기를 바꿔 다른 AI 액션에도 쓴다. 첫 사용처: 투두 탭 'AI로 생성하기'(S-16-B) |

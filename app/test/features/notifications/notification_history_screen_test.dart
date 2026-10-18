@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/features/notifications/notification_history_screen.dart';
 import 'package:app/features/notifications/notifications_api.dart';
 import 'package:app/features/room/room_session.dart';
@@ -109,6 +111,7 @@ void main() {
 
   // --- 삭제(#111) ---
 
+  // 서버처럼 최신순 — id 가 작을수록 최근이다.
   NotificationHistoryItem item(int id, String title) => NotificationHistoryItem(
     id: id,
     type: 'POKE',
@@ -116,7 +119,7 @@ void main() {
     body: '본문 $id',
     roomId: null,
     read: true,
-    createdAt: DateTime.now(),
+    createdAt: DateTime.now().subtract(Duration(minutes: id)),
   );
 
   Future<_FakeNotificationsApi> pumpWith(
@@ -241,6 +244,93 @@ void main() {
     double y(String text) => tester.getTopLeft(find.text(text)).dy;
     expect(y('첫 알림') < y('둘째 알림') && y('둘째 알림') < y('셋째 알림'), isTrue);
   });
+
+  // 서버 응답이 늦게 오는 동안 다른 일이 겹치는 경우(#111 리뷰).
+  NotificationHistoryItem at(int id, String title, int minutesAgo) =>
+      NotificationHistoryItem(
+        id: id,
+        type: 'POKE',
+        title: title,
+        body: '본문 $id',
+        roomId: null,
+        read: true,
+        createdAt: DateTime.now().subtract(Duration(minutes: minutesAgo)),
+      );
+
+  Future<_FakeNotificationsApi> pumpHeld(
+    WidgetTester tester,
+    List<NotificationHistoryItem> items,
+  ) async {
+    final api = _FakeNotificationsApi(items: items, holdDeletes: true);
+    await tester.pumpWidget(
+      host(
+        NotificationHistoryScreen(
+          api: api,
+          tokenLoader: () async => 'token',
+          roomSession: RoomSession(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return api;
+  }
+
+  testWidgets('연달아 지운 두 건이 모두 실패하면 원래 순서대로 되살린다', (tester) async {
+    final api = await pumpHeld(tester, [
+      at(1, 'A 알림', 1),
+      at(2, 'B 알림', 2),
+      at(3, 'C 알림', 3),
+    ]);
+
+    await swipeLeft(tester, find.text('A 알림'), 500);
+    await swipeLeft(tester, find.text('B 알림'), 500);
+    api.failHeldDelete(1);
+    api.failHeldDelete(2);
+    await tester.pumpAndSettle();
+
+    double y(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(y('A 알림') < y('B 알림') && y('B 알림') < y('C 알림'), isTrue);
+  });
+
+  testWidgets('지우는 중에 새로고침한 뒤 실패해도 같은 알림이 두 번 생기지 않는다', (tester) async {
+    final api = await pumpHeld(tester, [at(1, 'A 알림', 1), at(2, 'B 알림', 2)]);
+
+    await swipeLeft(tester, find.text('A 알림'), 500);
+    // 새로고침 — 서버는 아직 A 를 지우지 않았으니 A 가 다시 온다.
+    await tester.fling(find.text('B 알림'), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+    api.failHeldDelete(1);
+    await tester.pumpAndSettle();
+
+    expect(find.text('A 알림'), findsOneWidget);
+  });
+
+  testWidgets('지우는 중에 전체 삭제가 끝났으면 실패한 한 건을 되살리지 않는다', (tester) async {
+    final api = await pumpHeld(tester, [at(1, 'A 알림', 1), at(2, 'B 알림', 2)]);
+
+    await swipeLeft(tester, find.text('A 알림'), 500);
+    await tester.tap(find.byKey(const Key('notification-delete-all')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notification-delete-all-confirm')));
+    await tester.pumpAndSettle();
+    api.failHeldDelete(1);
+    await tester.pumpAndSettle();
+
+    expect(find.text('A 알림'), findsNothing);
+    expect(find.text('아직 받은 알림이 없어요'), findsOneWidget);
+  });
+
+  testWidgets('다른 행을 누르면 열려 있던 삭제 버튼이 닫힌다', (tester) async {
+    await pumpWith(tester, [item(1, '첫 알림'), item(2, '둘째 알림')]);
+
+    await swipeLeft(tester, find.text('첫 알림'), 80);
+    expect(find.byKey(const ValueKey('notification-delete-1')), findsOneWidget);
+
+    await tester.tap(find.text('둘째 알림'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('notification-delete-1')), findsNothing);
+  });
 }
 
 class _FakeNotificationsApi extends NotificationsApi {
@@ -248,11 +338,19 @@ class _FakeNotificationsApi extends NotificationsApi {
     required this.items,
     this.shouldFailFirst = false,
     this.failDelete = false,
+    this.holdDeletes = false,
   });
 
   final List<NotificationHistoryItem> items;
   final bool shouldFailFirst;
   final bool failDelete;
+
+  /// 참이면 한 건 삭제가 [failHeldDelete] 를 부를 때까지 끝나지 않는다(응답이 늦는 서버).
+  final bool holdDeletes;
+  final Map<int, Completer<void>> _heldDeletes = {};
+
+  void failHeldDelete(int id) =>
+      _heldDeletes.remove(id)!.completeError(StateError('알림 삭제 실패'));
   int _fetchCallCount = 0;
   int markAllReadCallCount = 0;
   int deleteAllCallCount = 0;
@@ -260,6 +358,11 @@ class _FakeNotificationsApi extends NotificationsApi {
 
   @override
   Future<void> deleteNotification(String idToken, int id) async {
+    if (holdDeletes) {
+      final completer = Completer<void>();
+      _heldDeletes[id] = completer;
+      return completer.future;
+    }
     if (failDelete) throw StateError('알림 삭제 실패');
     deletedIds.add(id);
   }

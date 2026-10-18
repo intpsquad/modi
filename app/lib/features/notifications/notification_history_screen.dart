@@ -45,6 +45,10 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
   /// 상태를 들고 있어서, 같은 키로 되살리면 그 상태가 그대로 재사용돼 보이지 않는다.
   final Map<int, int> _restoredGeneration = {};
 
+  /// 전체 삭제가 성공할 때마다 오른다. 한 건 삭제가 실패해 되살리려는 순간 이 값이 바뀌어 있으면,
+  /// 그 사이 전체 삭제로 서버에서도 이미 지워진 것이라 되살리지 않는다.
+  int _clearedAllCount = 0;
+
   static const _deleteFailedMessage = '삭제에 실패했어요. 다시 시도해 주세요';
 
   @override
@@ -68,6 +72,8 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
   }
 
   Future<void> _onTap(NotificationHistoryItem item) async {
+    // 다른 동작이 시작되면 열린 삭제 버튼을 닫는다(design.md §8 — 열린 패널은 하나만, 투두와 같다).
+    _slidableGroup.closeAll();
     final roomId = item.roomId;
     if (roomId != null &&
         !widget.roomSession.rooms.any((room) => room.id == roomId)) {
@@ -88,20 +94,40 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
     if (items == null) return;
     final index = items.indexWhere((e) => e.id == item.id);
     if (index < 0) return;
+    final clearedAllBefore = _clearedAllCount;
     setState(() => _items = [...items]..removeAt(index));
     try {
       final token = await widget.tokenLoader();
       await widget.api.deleteNotification(token, item.id);
     } catch (_) {
       if (!mounted) return;
+      _showDeleteFailed();
+      // 응답을 기다리는 사이 목록이 바뀌었을 수 있다 — 새로고침이 그 알림을 이미 다시 가져왔거나,
+      // 전체 삭제가 서버에서 지웠다. 그때는 되살리지 않는다(같은 알림이 두 줄이 되거나 지운 것이 돌아온다).
+      final current = _items;
+      if (current == null ||
+          _clearedAllCount != clearedAllBefore ||
+          current.any((e) => e.id == item.id)) {
+        return;
+      }
       setState(() {
-        final current = [...?_items];
-        current.insert(index.clamp(0, current.length), item);
-        _items = current;
+        _items = _insertNewestFirst(current, item);
         _restoredGeneration[item.id] = (_restoredGeneration[item.id] ?? 0) + 1;
       });
-      _showDeleteFailed();
     }
+  }
+
+  /// 목록은 서버처럼 최신순이다. 지운 때의 위치(index)는 그 사이 다른 삭제로 어긋나므로 시각으로 자리를 찾는다.
+  static List<NotificationHistoryItem> _insertNewestFirst(
+    List<NotificationHistoryItem> items,
+    NotificationHistoryItem item,
+  ) {
+    final position = items.indexWhere(
+      (e) =>
+          e.createdAt.isBefore(item.createdAt) ||
+          (e.createdAt == item.createdAt && e.id < item.id),
+    );
+    return [...items]..insert(position < 0 ? items.length : position, item);
   }
 
   /// 전체 삭제 — 되돌릴 수 없어 확인 모달을 거친다(CLAUDE.md 파괴적 액션 규칙).
@@ -122,6 +148,7 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
     try {
       final token = await widget.tokenLoader();
       await widget.api.deleteAll(token);
+      _clearedAllCount++;
     } catch (_) {
       if (!mounted) return;
       setState(() => _items = previous);

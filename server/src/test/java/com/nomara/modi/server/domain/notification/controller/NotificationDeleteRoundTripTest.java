@@ -87,6 +87,33 @@ class NotificationDeleteRoundTripTest {
     assertThat(notificationRepository.existsById(othersId)).isTrue();
   }
 
+  /** 남의 알림과 없는 알림의 응답이 글자까지 같아야 남의 알림이 있는지 알 수 없다(id 는 순번이라 추측하기 쉽다). */
+  @Test
+  void someoneElsesNotificationLooksExactlyLikeAMissingOne() throws Exception {
+    Long othersId = recordFor(other, "남의 알림");
+
+    String othersBody =
+        mockMvc
+            .perform(
+                delete("/me/notifications/{id}", othersId)
+                    .requestAttr(FirebaseAuthFilter.ATTR_UID, owner.getId()))
+            .andExpect(status().isNotFound())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String missingBody =
+        mockMvc
+            .perform(
+                delete("/me/notifications/{id}", 987_654_321L)
+                    .requestAttr(FirebaseAuthFilter.ATTR_UID, owner.getId()))
+            .andExpect(status().isNotFound())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(othersBody).isEqualTo(missingBody);
+  }
+
   @Test
   void deletingAllReturnsNoContentAndLeavesOthersAlone() throws Exception {
     recordFor(owner, "1");
