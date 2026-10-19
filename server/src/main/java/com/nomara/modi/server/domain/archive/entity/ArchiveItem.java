@@ -62,21 +62,10 @@ public class ArchiveItem {
   @Column(length = 500)
   private String summary;
 
-  /**
-   * 본문(또는 요약)의 임베딩 벡터. 추천 자료 선별의 입력이며, <b>부터 실제로 읽힌다</b> — {@code TodoSuggestionPayloadLoader}가 추천
-   * 요청에 그대로 실어 보낸다. ⚠️ 2026-10-18 부터 AI 서버는 이 벡터를 읽지 않는다(#109 — 목표 유사도 순위를 걷어냈다, {@code
-   * specs/OPEN.md} 후속 항목).
-   *
-   * <p>{@code null}이 정상인 경우가 넷 있다 — {@code V7__add_embedding_to_archive_items.sql} 참고.
-   *
-   * <p>{@code float[]} ↔ Postgres {@code real[]}는 Hibernate 6의 기본 배열 매핑이다. 이 매핑이 실제로 맞는지 증명하는 것은
-   * {@code SchemaValidationTest}뿐이다(Testcontainers + Flyway + {@code ddl-auto=validate}).
-   *
-   * <p><b>{@code columnDefinition = "real[]"}을 붙이지 않는다.</b> 붙였다가 H2를 쓰는 테스트 13개가 깨졌다 — 그 값은 방언과
-   * 무관하게 DDL에 그대로 나가는데 H2의 배열 문법은 {@code REAL ARRAY}라서 {@code archive_items} 생성 자체가 실패한다. 방언이 알아서
-   * 고르게 두면 Postgres에서도 {@code real[]}로 맞는다(위 테스트가 증명).
-   */
-  private float[] embedding;
+  // (2026-10-18: `embedding`(float[] ↔ real[]) 매핑을 지웠다 — #129. AI 서버가 #109 부터 벡터를 읽지 않아 만들지도
+  // 보내지도 않는다. DB 칼럼(V7)은 남아 있다: 옛 벡터는 그대로이고 새 자료는 NULL 이다. Hibernate `validate` 는 매핑하지
+  // 않은 칼럼을 문제 삼지 않는다. ⚠️ 되살릴 때는 이 필드를 되돌리고 **전부 다시 만든다**(먼저 칼럼을 NULL 로 비우고 백필) —
+  // NULL 만 채우는 백필로는 그사이 링크가 바뀌었거나 요약이 생긴 옛 행의 낡은 벡터가 그대로 남는다.)
 
   private String source;
 
@@ -172,8 +161,8 @@ public class ArchiveItem {
    * 것이 없다. 그런데도 {@code PENDING} 으로 두면 앱이 "분석 중" 배지를 그려서, 다 적어 놓은 메모가 아직 처리 중인 것처럼 보인다(2026-08-06
    * 실사용 확인).
    *
-   * <p><b>태깅·임베딩은 여전히 뒤에서 돈다.</b> 다만 그건 <b>파생 데이터</b>라 없다고 자료가 미완성인 것이 아니다 — 태그는 몇 초 뒤 조용히 붙는다.
-   * {@code crawl_status} 가 답하는 질문은 "본문을 가져왔나"이고, 텍스트는 처음부터 답이 "그렇다"이다.
+   * <p><b>태깅은 여전히 뒤에서 돈다.</b> 다만 그건 <b>파생 데이터</b>라 없다고 자료가 미완성인 것이 아니다 — 태그는 몇 초 뒤 조용히 붙는다. {@code
+   * crawl_status} 가 답하는 질문은 "본문을 가져왔나"이고, 텍스트는 처음부터 답이 "그렇다"이다.
    *
    * <p>⚠️ 예전 이름({@code pendingText})과 주석은 <b>요약까지 자동으로 돌던 시절</b>의 것이다. 2026-08-06 에 텍스트 자동 요약을 껐고
    * (S-25-B 「AI 요약 만들기」로 옮겼다), 남은 둘로는 사용자를 기다리게 할 이유가 없어졌다.
@@ -233,8 +222,8 @@ public class ArchiveItem {
   }
 
   /**
-   * 링크를 바꾼다(자료 편집, 2026-08-06). 새 URL로 다시 분석해야 하므로 {@code PENDING}으로 되돌리고 옛 크롤링 결과·요약·임베딩을 지운다 — 새
-   * 링크의 첫 시도이므로 재시도 횟수도 0으로 되돌린다.
+   * 링크를 바꾼다(자료 편집, 2026-08-06). 새 URL로 다시 분석해야 하므로 {@code PENDING}으로 되돌리고 옛 크롤링 결과·요약을 지운다 — 새 링크의
+   * 첫 시도이므로 재시도 횟수도 0으로 되돌린다.
    *
    * <p>제목은 새 URL로 프리필한다 — {@link #markCrawlDone}의 {@link #titleIsStillThePrefilledUrl()} 판정을 그대로 태워
    * 재크롤링 결과로 교체되게 하기 위해서다(등록 때와 같은 규칙).
@@ -248,7 +237,6 @@ public class ArchiveItem {
     this.source = null;
     this.thumbnail = null;
     this.summary = null;
-    this.embedding = null;
     this.crawlStatus = CrawlStatus.PENDING;
     this.crawlRetries = 0;
     this.nextCrawlAt = null;
@@ -353,20 +341,6 @@ public class ArchiveItem {
    */
   public void applySummary(String summary) {
     this.summary = (summary == null || summary.isBlank()) ? null : summary;
-  }
-
-  /**
-   * 임베딩을 반영한다. {@link #applySummary}와 같은 규칙 — <b>크롤링 상태·본문·요약을 건드리지 않는다.</b> 임베딩 실패는 자료 등록의 실패가
-   * 아니다.
-   *
-   * <p>빈 배열을 {@code null}로 눌러 <b>"임베딩 없음"을 한 가지 방식으로만</b> 표현한다. 길이 0짜리 배열이 그대로 저장되면 읽는 쪽이 "벡터가 있다"고
-   * 보고 0차원끼리 코사인을 계산하다 0으로 나누게 된다.
-   *
-   * <p><b>넘긴 배열도 {@link #getEmbedding()}이 돌려주는 배열도 변형하지 말 것.</b> 방어 복사를 하지 않는다(6KB짜리 배열을 등록마다 두 번
-   * 복사할 이유가 없다) — 트랜잭션 안에서 원소를 바꾸면 Hibernate 더티체킹이 조용히 UPDATE를 날린다.
-   */
-  public void applyEmbedding(float[] embedding) {
-    this.embedding = (embedding == null || embedding.length == 0) ? null : embedding;
   }
 
   public enum CrawlStatus {

@@ -138,8 +138,8 @@ class TodoSuggestionPayloadLoader {
   /**
    * 방의 자료를 전부 싣는다. <b>개수 상한을 여기서 두지 않는다</b> — 프롬프트에 무엇을 넣을지는 AI 서버가 정한다(가중 순위 정규화). 서버는 재료만 모은다.
    *
-   * <p>⚠️ 상한이 없다는 것이 이제 두 배로 비싸다 — 벡터가 실리면서 <b>자료 1건이 약 21.7KB</b>가 됐다(18건에 390KB 실측). AI 서버의 예산은
-   * <b>프롬프트만</b> 자르지 전송량은 안 자른다. 자료 200건이면 요청이 약 4.3MB다.
+   * <p>AI 서버의 예산은 <b>프롬프트만</b> 자르지 전송량은 안 자른다. 예전에는 벡터가 실려 자료 1건이 약 21.7KB 였는데(#129 이전) 이제는
+   * 제목·요약·태그뿐이라 자료가 많아도 전송량이 문제 되지 않는다.
    */
   private List<AiSuggestPayload.ArchiveInfo> loadArchive(Long roomId) {
     List<ArchiveItem> items =
@@ -172,7 +172,6 @@ class TodoSuggestionPayloadLoader {
                     item.getTitle(),
                     pickContent(item),
                     tagsByItemId.getOrDefault(item.getId(), List.of()),
-                    item.getEmbedding(),
                     item.isPinned(),
                     likesByItemId.getOrDefault(item.getId(), 0L),
                     item.getCreatedAt()))

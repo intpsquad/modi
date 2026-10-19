@@ -123,59 +123,6 @@ class ArchiveItemTest {
     }
   }
 
-  /** 임베딩. 요약과 같은 "없음은 null 하나로만" 규칙을 따르되, 빈 값의 모양이 빈 배열이다. */
-  @Nested
-  class Embedding {
-
-    @Test
-    void embeddingIsNullUntilItIsApplied() {
-      assertThat(pendingWithTitle(URL).getEmbedding()).isNull();
-    }
-
-    @Test
-    void applyEmbeddingStoresTheVector() {
-      ArchiveItem item = pendingWithTitle(URL);
-
-      item.applyEmbedding(new float[] {0.1f, -0.2f, 0.3f});
-
-      assertThat(item.getEmbedding()).containsExactly(0.1f, -0.2f, 0.3f);
-    }
-
-    @Test
-    void emptyVectorIsStoredAsNull() {
-      // 길이 0짜리 배열이 남으면 읽는 쪽이 "벡터가 있다"고 보고 0으로 나누게 된다.
-      ArchiveItem item = pendingWithTitle(URL);
-      item.applyEmbedding(new float[] {0.1f});
-
-      item.applyEmbedding(new float[] {});
-
-      assertThat(item.getEmbedding()).isNull();
-    }
-
-    @Test
-    void nullVectorIsAccepted() {
-      // 임베딩 호출이 실패하면 호출부가 null을 넘긴다(요약·태깅 실패 폴백과 같은 방향).
-      ArchiveItem item = pendingWithTitle(URL);
-
-      item.applyEmbedding(null);
-
-      assertThat(item.getEmbedding()).isNull();
-    }
-
-    @Test
-    void applyEmbeddingDoesNotTouchCrawlStatusBodyOrSummary() {
-      ArchiveItem item = pendingWithTitle(URL);
-      item.markCrawlDone("글 제목", "본문 텍스트", "m.blog.naver.com", null);
-      item.applySummary("요약");
-
-      item.applyEmbedding(null);
-
-      assertThat(item.getCrawlStatus()).isEqualTo(ArchiveItem.CrawlStatus.DONE);
-      assertThat(item.getBodyText()).isEqualTo("본문 텍스트");
-      assertThat(item.getSummary()).isEqualTo("요약");
-    }
-  }
-
   /** 사용자 메모(2026-08-06 도입). AI 요약과 같은 "없음은 null 하나로만" 정규화 규칙을 따른다. */
   @Nested
   class Memo {
@@ -224,7 +171,6 @@ class ArchiveItemTest {
       ArchiveItem item = pendingWithTitle(URL);
       item.markCrawlDone("글 제목", "본문 텍스트", "m.blog.naver.com", "https://img/1.png");
       item.applySummary("요약");
-      item.applyEmbedding(new float[] {0.1f});
       item.scheduleCrawlRetry(java.time.Instant.now());
 
       String newUrl = "https://example.com/new";
@@ -236,7 +182,6 @@ class ArchiveItemTest {
       assertThat(item.getSource()).isNull();
       assertThat(item.getThumbnail()).isNull();
       assertThat(item.getSummary()).isNull();
-      assertThat(item.getEmbedding()).isNull();
       assertThat(item.getCrawlStatus()).isEqualTo(ArchiveItem.CrawlStatus.PENDING);
       assertThat(item.getCrawlRetries()).isZero();
       assertThat(item.getNextCrawlAt()).isNull();

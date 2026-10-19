@@ -44,9 +44,9 @@ class ArchiveItemInput(BaseModel):
     embedding: list[float] | None = Field(
         default=None,
         description=(
-            "Spring 이 자료 등록 시점에 만들어 둔 벡터(`archive_items.embedding`). "
-            "**None 이 정상인 경우가 넷 있다**(`V7__add_embedding_to_archive_items.sql`) — "
-            "그 자료는 유사도 축에서만 빠지고 나머지 세 축으로 후보에 남는다."
+            "예전에 Spring 이 보내던 자료 벡터. **2026-10-18(#129)부터 Spring 이 만들지도 싣지도 "
+            "않는다** — 계약 유지를 위해 선택값으로 남겼고, 이 서버도 읽지 않는다(#109). "
+            "없으면 그 자료는 유사도 축에서만 빠진다."
         ),
     )
     pinned: bool = False

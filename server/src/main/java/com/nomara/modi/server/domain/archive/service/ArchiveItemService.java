@@ -158,7 +158,7 @@ public class ArchiveItemService {
   }
 
   /**
-   * 자료 등록(S-25-C). <b>{@code PENDING} 으로 저장하고 즉시 응답한다</b> — 크롤링·요약·임베딩·태깅은 {@link
+   * 자료 등록(S-25-C). <b>{@code PENDING} 으로 저장하고 즉시 응답한다</b> — 크롤링·요약·태깅은 {@link
    * ArchiveCrawlProcessor} 가 백그라운드에서 한다(2026-08-06).
    *
    * <p>🔴 <b>왜 비동기로 바꿨나.</b> 예전에는 이 메서드가 HTTP 응답 전에 외부 호출을 4회 돌았다 — 크롤링 1 + LLM 3. 문서화된 최악 대기가 약
@@ -206,7 +206,7 @@ public class ArchiveItemService {
 
     User createdBy = userRepository.findById(uid).orElseThrow();
     if (imageUrl != null) {
-      // 폴더 직접 업로드 이미지(V28) — 크롤링·AI 태깅/요약/임베딩 대상이 아니라 곧바로 DONE이고
+      // 폴더 직접 업로드 이미지(V28) — 크롤링·AI 태깅/요약 대상이 아니라 곧바로 DONE이고
       // dispatchCrawl을 타지 않는다(투두 첨부 이미지와 같은 원칙, todo-image-archive-handoff.md).
       String imageTitle = blankToNull(request.title());
       ArchiveItem imageItem =
@@ -406,9 +406,9 @@ public class ArchiveItemService {
    * <p><b>요약이 이미 있으면 거절한다.</b> 다시 만들 이유가 없고, 그 규칙이 <b>남용 방지도 겸한다</b> — 한 번 성공하면 그 자료로는 더 못 부르므로 별도
    * 레이트 리밋을 두지 않았다. 실패하면 다시 누를 수 있는데, 그건 사용자 인내심이 상한이다.
    *
-   * <p>⚠️ <b>{@code @Transactional} 안에서 외부 호출을 2회 돈다</b>(요약 + 임베딩, 약 1.3~4초). 사용자가 버튼을 누르고 기다리는 동기
-   * 경로다 — 등록 경로를 비동기로 옮긴 것과 방향이 반대로 보이지만, 여기는 <b>명시적으로 요청한 작업이고 화면에 스피너가 있다</b>는 점이 다르다. 더 길어지면 이
-   * 판단을 다시 볼 것.
+   * <p>⚠️ <b>{@code @Transactional} 안에서 외부 호출을 돈다</b>(요약 1회, 약 1.3~3초 — 2026-10-18 까지는 임베딩까지 2회였다,
+   * #129). 사용자가 버튼을 누르고 기다리는 동기 경로다 — 등록 경로를 비동기로 옮긴 것과 방향이 반대로 보이지만, 여기는 <b>명시적으로 요청한 작업이고 화면에
+   * 스피너가 있다</b>는 점이 다르다. 더 길어지면 이 판단을 다시 볼 것.
    */
   @Transactional
   public ArchiveItemDetailResponse summarizeItem(String uid, Long roomId, Long itemId) {

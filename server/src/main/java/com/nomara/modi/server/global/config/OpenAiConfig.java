@@ -1,18 +1,13 @@
 package com.nomara.modi.server.global.config;
 
-import com.nomara.modi.server.domain.archive.client.AiEmbeddingClient;
 import com.nomara.modi.server.domain.archive.client.AiSummaryClient;
 import com.nomara.modi.server.domain.archive.client.AiTaggingClient;
-import com.nomara.modi.server.domain.archive.client.OpenAiEmbeddingClient;
 import com.nomara.modi.server.domain.archive.client.OpenAiSummaryClient;
 import com.nomara.modi.server.domain.archive.client.OpenAiTaggingClient;
 import java.time.Duration;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.OpenAiEmbeddingModel;
-import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -46,7 +41,7 @@ import org.springframework.web.client.RestClient;
  * 값이 안 들어와도 부팅은 성공하고 AI 기능만 조용히 꺼진다(위 {@code @ConditionalOnProperty} 설명이 그 이유다). 로그에 아무 흔적이 남지 않으므로
  * 발견이 늦는다. 2026-08-13에 옛 게이트웨이 이름을 딴 변수명에서 이 이름으로 개명할 때 실제로 그렇게 했다.
  *
- * <p><b>임베딩도 여기서 만든다</b> — 같은 게이트웨이·같은 타임아웃 규칙을 쓰고 경로와 모델만 다르다({@code text-embedding-3-small}).
+ * <p><b>임베딩은 만들지 않는다</b>(2026-10-18, #129). 자료 임베딩 클라이언트가 여기 있었는데, #109 로 AI 서버가 벡터를 읽지 않게 되어 걷어냈다.
  *
  * <p>{@code ChatClient}를 빈으로 노출하지 않는 이유는 모델 프로퍼티가 둘이라 타입만으로는 구분되지 않기 때문이다 — 지금은 두 값이 같지만 한 기능만 모델을
  * 바꿔 재보는 일이 다시 생기므로 합치지 않는다. 주입 지점에서 어느 쪽인지 헷갈리는 대신 여기서 각각 만들어 넣는다.
@@ -78,34 +73,6 @@ public class OpenAiConfig {
         chatClient(apiKey, baseUrl, completionsPath, summaryModel, readTimeoutSeconds));
   }
 
-  /**
-   * 자료 임베딩. 태깅·요약과 <b>같은 게이트웨이·같은 타임아웃</b>을 쓰되 부르는 경로만 다르다({@code /v1/embeddings}).
-   *
-   * <p>게이트웨이가 이 경로를 받아 준다는 것은 실제 호출로 확인했다(2026-08-01: HTTP 200, {@code text-embedding-3-small},
-   * 1536차원, {@code ai/docs/EXPERIMENTS.md} #19). 실제 코드 경로로는 건당 약 1.4초다(백필 12건 평균).
-   *
-   * <p>{@code dimensions}를 지정하지 않는다 — 모델 기본값(1536)을 그대로 받는다. 축소는 정확도를 깎는 최적화인데 아직 저장 용량이 문제가 된 적이
-   * 없다(자료 1건 = 6KB).
-   */
-  @Bean
-  @ConditionalOnProperty(name = "spring.ai.openai.api-key")
-  public AiEmbeddingClient aiEmbeddingClient(
-      @Value("${spring.ai.openai.api-key}") String apiKey,
-      @Value("${spring.ai.openai.base-url}") String baseUrl,
-      // 기본값을 주는 이유: 이 프로퍼티가 빠진 채 키만 있으면 부팅이 깨진다. completions-path 는
-      // 기본값 없이 두었지만(선례) 위험이 "운영 부팅 실패"라 여기서는 싼 쪽을 택했다.
-      @Value("${spring.ai.openai.embedding.embeddings-path:embeddings}") String embeddingsPath,
-      @Value("${modi.archive.embedding-model}") String embeddingModel,
-      @Value("${modi.archive.ai-read-timeout-seconds:60}") long readTimeoutSeconds) {
-    OpenAiApi openAiApi =
-        openAiApi(apiKey, baseUrl, readTimeoutSeconds).embeddingsPath(embeddingsPath).build();
-    return new OpenAiEmbeddingClient(
-        new OpenAiEmbeddingModel(
-            openAiApi,
-            MetadataMode.EMBED,
-            OpenAiEmbeddingOptions.builder().model(embeddingModel).build()));
-  }
-
   private static ChatClient chatClient(
       String apiKey,
       String baseUrl,
@@ -128,10 +95,10 @@ public class OpenAiConfig {
    *
    * <p>{@code AiServerConfig}가 FastAPI 호출에 connect 5s / read 60s를 명시하는 것과 같은 기준을 따른다("외부 호출엔 타임아웃을
    * 건다"). 값도 그쪽과 맞췄다 — 요약은 실측 1.3~2.8초(픽스처 3건, {@code ai/docs/EXPERIMENTS.md} #14)지만 실사용 본문은 자료당 약
-   * 6.8k tok(#11)이라 여유를 둔다. 타임아웃이 걸리면 예외가 되어 호출부의 폴백(태그·요약·임베딩 없이 등록 진행)을 그대로 탄다.
+   * 6.8k tok(#11)이라 여유를 둔다. 타임아웃이 걸리면 예외가 되어 호출부의 폴백(태그·요약 없이 등록 진행)을 그대로 탄다.
    *
-   * <p><b>경로를 붙이지 않은 빌더를 돌려준다</b> — 채팅은 {@code completionsPath}, 임베딩은 {@code embeddingsPath}로 갈리기
-   * 때문이다. 타임아웃 규칙 자체는 둘이 공유해야 하므로 여기 한 곳에만 둔다.
+   * <p><b>경로를 붙이지 않은 빌더를 돌려준다</b> — 호출부가 {@code completionsPath} 를 붙인다(예전에는 임베딩이 {@code
+   * embeddingsPath} 를 붙였다). 타임아웃 규칙은 여기 한 곳에만 둔다.
    */
   private static OpenAiApi.Builder openAiApi(
       String apiKey, String baseUrl, long readTimeoutSeconds) {

@@ -103,23 +103,8 @@ public interface ArchiveItemRepository extends JpaRepository<ArchiveItem, Long> 
   List<FolderThumbnail> findThumbnailCandidatesForRoom(@Param("roomId") Long roomId);
 
   /**
-   * 임베딩이 아직 없는 항목의 id (백필용).
-   *
-   * <p>엔티티가 아니라 <b>id만</b> 가져온다 — 백필은 자료 전체를 훑는데, 본문(최대 20,000자)까지 한꺼번에 메모리에 올릴 이유가 없다. 실제 처리는 id로
-   * 한 건씩 다시 읽어 각자의 트랜잭션에서 한다.
-   *
-   * <p>{@code crawl_status = 'PENDING'}은 제외한다 — 임베딩할 본문이 아직 없어서 불러 봐야 {@code null}이 되고, 크롤링이 끝나면
-   * {@code ArchiveCrawlProcessor}가 알아서 붙인다.
-   */
-  @Query(
-      "select i.id from ArchiveItem i "
-          + "where i.embedding is null and i.crawlStatus <> com.nomara.modi.server.domain.archive"
-          + ".entity.ArchiveItem$CrawlStatus.PENDING order by i.id")
-  List<Long> findIdsWithoutEmbedding();
-
-  /**
-   * 요약이 아직 없는 항목의 id (백필용). 위 {@link #findIdsWithoutEmbedding()}과 같은 이유로 id만 가져오고 {@code PENDING}을
-   * 제외한다.
+   * 요약이 아직 없는 항목의 id (백필용). id만 가져온다 — 본문(최대 20,000자)까지 한꺼번에 메모리에 올릴 이유가 없고, 실제 처리는 id로 한 건씩 다시 읽어
+   * 각자의 트랜잭션에서 한다. {@code PENDING}은 제외한다(요약할 본문이 아직 없다).
    *
    * <p><b>왜 필요한가.</b> 요약이 없으면 추천 프롬프트에 <b>본문 전체</b>가 실린다({@code
    * TodoSuggestionPayloadLoader.pickContent}는 요약·본문 중 짧은 쪽을 고른다). 실측(부산 여행 방): 요약 있는 4건이 529자인데 요약

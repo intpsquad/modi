@@ -619,7 +619,7 @@ class ArchiveItemDetail {
   final String? summary;
   // S-25-D 외부 공유(URL) 등록은 크롤링 전이라 bodyText가 아직 없을 수 있다(crawlStatus == 'PENDING').
   // ⚠️ 역은 성립하지 않는다 — 'PENDING'이라고 본문이 없는 것은 아니다. 2026-08-05부터 텍스트 공유도
-  // PENDING으로 들어오는데(태깅·요약·임베딩이 남아서) 그쪽은 본문이 처음부터 채워져 있다.
+  // PENDING으로 들어오는데(태깅이 남아서) 그쪽은 본문이 처음부터 채워져 있다.
   final String? bodyText;
   final bool pinned;
   final List<String> tags;

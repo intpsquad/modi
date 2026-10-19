@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.nomara.modi.server.domain.activity.dto.ActivityResponse;
 import com.nomara.modi.server.domain.activity.service.ActivityService;
-import com.nomara.modi.server.domain.archive.client.AiEmbeddingClient;
 import com.nomara.modi.server.domain.archive.dto.ArchiveFolderItemsResponse;
 import com.nomara.modi.server.domain.archive.dto.ArchiveItemDetailResponse;
 import com.nomara.modi.server.domain.archive.dto.ArchiveItemResponse;
@@ -48,6 +47,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -77,11 +77,11 @@ class ArchiveItemServiceTest {
   }
 
   /**
-   * 🔴 <b>크롤링·AI 를 같은 스레드에서 끝낸다</b>(2026-08-06). 인앱 등록(S-25-C)이 비동기로 바뀌면서, 등록 직후 요약·임베딩·태그를 단언하는 이
-   * 클래스의 테스트들이 <b>경합</b>하게 됐다 — 가짜 AI 가 빨라서 대개 통과하지만 그건 운이고, CI 가 느린 날 빨개진다.
+   * 🔴 <b>크롤링·AI 를 같은 스레드에서 끝낸다</b>(2026-08-06). 인앱 등록(S-25-C)이 비동기로 바뀌면서, 등록 직후 요약·태그를 단언하는 이 클래스의
+   * 테스트들이 <b>경합</b>하게 됐다 — 가짜 AI 가 빨라서 대개 통과하지만 그건 운이고, CI 가 느린 날 빨개진다.
    *
-   * <p>여기서 재는 것은 "어느 스레드에서 도는가"가 아니라 <b>저장된 결과</b>다(특히 {@code float[]} ↔ {@code real[]} 왕복). 동기로 돌려
-   * 결정적으로 만든다. 비동기 자체의 동작은 {@code ArchiveCrawlRetryFlowTest} 가 따로 본다.
+   * <p>여기서 재는 것은 "어느 스레드에서 도는가"가 아니라 <b>저장된 결과</b>다. 동기로 돌려 결정적으로 만든다. 비동기 자체의 동작은 {@code
+   * ArchiveCrawlRetryFlowTest} 가 따로 본다.
    */
   @TestConfiguration
   static class SyncExecutorConfig {
@@ -92,39 +92,8 @@ class ArchiveItemServiceTest {
     }
   }
 
-  /**
-   * 임베딩 클라이언트만 가짜로 채운다. 태깅·요약은 <b>일부러 비워 둔 채로</b> 둔다 — 이 클래스의 다른 테스트들이 "AI가 없어도 등록은 된다"를 그 부재로 검증하고
-   * 있기 때문이다.
-   *
-   * <p>임베딩만 채우는 이유는 <b>{@code float[]} ↔ {@code real[]} 왕복이 여기서만 증명되기</b> 때문이다. {@code
-   * SchemaValidationTest}는 컬럼 타입이 맞는지만 보고 값을 쓰고 읽지는 않는다.
-   *
-   * <p>{@code EMBED_FAILS} 문구가 든 텍스트에 예외를 던져 "임베딩이 실패해도 자료는 남는다"까지 같은 컨텍스트에서 검증한다.
-   */
-  @TestConfiguration
-  static class FakeEmbeddingClientConfig {
-
-    static final String FAIL_MARKER = "EMBED_FAILS";
-
-    @Bean
-    AiEmbeddingClient aiEmbeddingClient() {
-      return text -> {
-        if (text.contains(FAIL_MARKER)) {
-          throw new IllegalStateException("gateway down");
-        }
-        float[] vector = new float[EMBEDDING_DIMENSIONS];
-        for (int i = 0; i < vector.length; i++) {
-          vector[i] = i / 1000f;
-        }
-        return vector;
-      };
-    }
-  }
-
-  /** {@code text-embedding-3-small}의 실제 차원(2026-08-01 게이트웨이 실측). 왕복 검증을 실물과 같은 크기로 한다. */
-  private static final int EMBEDDING_DIMENSIONS = 1536;
-
   @Autowired private TestRestTemplate restTemplate;
+  @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ArchiveItemService archiveItemService;
   @Autowired private RoomRepository roomRepository;
   @Autowired private RoomMemberRepository roomMemberRepository;
@@ -814,11 +783,11 @@ class ArchiveItemServiceTest {
   }
 
   @Test
-  void creatingItemStoresTheEmbeddingVector() {
-    // real[] 컬럼에 값이 실제로 쓰이고 float[] 로 되읽히는지 — 이 왕복을 증명하는 테스트는 이것뿐이다
-    // (SchemaValidationTest 는 컬럼 타입만 본다). 요약이 없으므로 본문이 임베딩 입력이 된다.
+  void creatingItemDoesNotWriteAnEmbedding() {
+    // 🔴 자료 임베딩을 만들지 않는다(#129) — AI 서버가 #109 부터 읽지 않아 OpenAI 비용만 나갔다. 칼럼(V7)은 남겼으므로
+    // 엔티티가 아니라 DB 를 직접 본다: 새 자료의 embedding 은 NULL 이어야 한다.
     Room room = room();
-    User member = user("uid-embed-store");
+    User member = user("uid-no-embed");
     roomMemberRepository.save(new RoomMember(room, member));
     ArchiveFolder folder = archiveFolderRepository.save(new ArchiveFolder(room, "폴더"));
 
@@ -829,33 +798,12 @@ class ArchiveItemServiceTest {
             folder.getId(),
             new CreateArchiveItemRequest(null, "강릉 여행 코스를 정리한 글이다", null, null, null));
 
-    float[] stored = archiveItemRepository.findById(created.id()).orElseThrow().getEmbedding();
-    assertThat(stored).hasSize(EMBEDDING_DIMENSIONS);
-    assertThat(stored[1]).isEqualTo(0.001f);
-    assertThat(stored[EMBEDDING_DIMENSIONS - 1]).isEqualTo(1.535f);
-  }
-
-  @Test
-  void itemAndBodySurviveWhenTheEmbeddingCallFails() {
-    // 임베딩은 파생 데이터다 — 실패하면 NULL 로 남을 뿐 사용자의 자료를 잃으면 안 된다.
-    // (그 자료는 나중에 유사도 축에서만 빠지고 최근성·핀 축으로 후보에 남는다 — ai/docs/DECISIONS.md)
-    Room room = room();
-    User member = user("uid-embed-fail");
-    roomMemberRepository.save(new RoomMember(room, member));
-    ArchiveFolder folder = archiveFolderRepository.save(new ArchiveFolder(room, "폴더"));
-
-    ArchiveItemDetailResponse created =
-        archiveItemService.createItem(
-            member.getId(),
-            room.getId(),
-            folder.getId(),
-            new CreateArchiveItemRequest(
-                null, FakeEmbeddingClientConfig.FAIL_MARKER + " 가 포함된 본문", null, null, null));
-
-    ArchiveItem stored = archiveItemRepository.findById(created.id()).orElseThrow();
-    assertThat(stored.getEmbedding()).isNull();
-    assertThat(stored.getBodyText()).contains(FakeEmbeddingClientConfig.FAIL_MARKER);
-    assertThat(stored.getCrawlStatus()).isEqualTo(ArchiveItem.CrawlStatus.DONE);
+    Object embedding =
+        jdbcTemplate.queryForObject(
+            "select embedding from archive_items where id = ?", Object.class, created.id());
+    assertThat(embedding).isNull();
+    assertThat(archiveItemRepository.findById(created.id()).orElseThrow().getCrawlStatus())
+        .isEqualTo(ArchiveItem.CrawlStatus.DONE);
   }
 
   @Test
@@ -941,7 +889,6 @@ class ArchiveItemServiceTest {
     assertThat(created.crawlStatus()).isEqualTo("DONE");
     ArchiveItem stored = archiveItemRepository.findById(created.id()).orElseThrow();
     assertThat(stored.getSummary()).isNull();
-    assertThat(stored.getEmbedding()).isNull();
   }
 
   @Test
@@ -1132,7 +1079,7 @@ class ArchiveItemServiceTest {
 
     // 🔴 2026-08-06 개정: 텍스트는 **등록 즉시 DONE** 이다. 본문이 이 시점에 이미 완성이라
     // "분석 중" 배지를 띄울 이유가 없다 — 다 적어 놓은 메모가 처리 중인 것처럼 보였다(실사용 확인).
-    // 태깅·임베딩은 여전히 비동기로 뒤에서 돈다(5초 타임아웃 사고를 되돌리지 않는다). 바뀐 것은 상태뿐.
+    // 태깅은 여전히 비동기로 뒤에서 돈다(5초 타임아웃 사고를 되돌리지 않는다). 바뀐 것은 상태뿐.
     assertThat(created.crawlStatus()).isEqualTo("DONE");
     assertThat(created.title()).isEqualTo("공유된 텍스트 제목");
     assertThat(created.bodyText()).isEqualTo("공유된 텍스트 본문");

@@ -30,8 +30,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * 공유 등록 비동기 처리의 <b>갈림길 하나</b>를 잰다: URL 항목은 크롤링하고, 텍스트 항목은 크롤링하지 않는다(2026-08-05).
  *
- * <p>스프링을 띄우지 않는다 — 재는 것이 "어느 분기로 가는가"뿐이라 컨테이너가 필요 없다. 리포지토리만 목이고 요약·임베딩은 진짜 컴포넌트에 가짜 클라이언트를 꽂는다 (그
- * 둘의 폴백 규칙까지 같이 타게 하려는 것이다).
+ * <p>스프링을 띄우지 않는다 — 재는 것이 "어느 분기로 가는가"뿐이라 컨테이너가 필요 없다. 리포지토리만 목이고 요약은 진짜 컴포넌트에 가짜 클라이언트를 꽂는다 (그 둘의
+ * 폴백 규칙까지 같이 타게 하려는 것이다).
  *
  * <p>{@code folder}/{@code createdBy} 에 {@code null} 을 넣는 이유: {@code process()} 는 둘을 읽지 않는다. 여기서 진짜
  * 엔티티를 만들면 Postgres 컨테이너가 따라와야 하고, 그건 {@code ArchiveItemServiceTest} 가 이미 한다.
@@ -77,7 +77,6 @@ class ArchiveCrawlProcessorTest {
           urlCrawler,
           Optional.of(bodyText -> List.of("태그:" + bodyText)),
           new ArchiveSummarizer(Optional.of(bodyText -> "요약:" + bodyText)),
-          new ArchiveEmbedder(Optional.of(text -> new float[] {1f, 2f, 3f})),
           notificationBuffer);
 
   ArchiveCrawlProcessorTest() {
@@ -106,7 +105,7 @@ class ArchiveCrawlProcessorTest {
   @Test
   void 텍스트_항목은_등록_시점부터_DONE_이다() {
     // 🔴 2026-08-06. 본문이 이미 완성이라 "분석 중" 배지를 띄울 이유가 없다 — 다 적어 놓은
-    // 메모가 아직 처리 중인 것처럼 보였다(실사용 확인). 태깅·임베딩은 뒤에서 조용히 돈다.
+    // 메모가 아직 처리 중인 것처럼 보였다(실사용 확인). 태깅은 뒤에서 조용히 돈다.
     ArchiveItem item = ArchiveItem.textDone(null, ROOM, "제목", "본문", null);
 
     assertThat(item.getCrawlStatus()).isEqualTo(ArchiveItem.CrawlStatus.DONE);
@@ -125,15 +124,13 @@ class ArchiveCrawlProcessorTest {
   }
 
   @Test
-  void 텍스트_항목도_임베딩_태깅은_돈다() {
-    // 요약만 뺐다. 이 둘 때문에 텍스트도 여전히 PENDING 으로 들어온다.
+  void 텍스트_항목도_태깅은_돈다() {
+    // 요약만 뺐다. 태깅 때문에 텍스트도 여전히 이 처리기를 탄다. (2026-10-18 까지는 임베딩도 돌았다 — #129 로 뺐다.)
     ArchiveItem item = ArchiveItem.textDone(null, ROOM, "제목", "본문", null);
     given(item);
 
     processor.process(1L);
 
-    // 요약이 없으므로 **본문으로** 임베딩된다(ArchiveEmbedder 의 폴백).
-    assertThat(item.getEmbedding()).containsExactly(1f, 2f, 3f);
     assertThat(savedTags).containsExactly("태그:본문");
   }
 
@@ -185,19 +182,17 @@ class ArchiveCrawlProcessorTest {
   @Test
   void 캐시_적중이면_AI_도_다시_부르지_않는다() {
     // 같은 URL 이면 본문이 같다 — 같은 본문에 LLM 을 다시 부를 이유가 없다.
-    // 크롤링 1회뿐 아니라 LLM 호출 3회(요약·임베딩·태깅)도 함께 아낀다.
+    // 크롤링 1회뿐 아니라 LLM 호출(요약·태깅)도 함께 아낀다.
     ArchiveItem item = pendingUrl(1L, "https://example.com/a");
     given(item);
     ArchiveItem cached = done(2L, "https://example.com/a", "제목", "본문");
     cached.applySummary("캐시된 요약");
-    cached.applyEmbedding(new float[] {9f, 9f});
     givenCached(cached);
 
     processor.process(1L);
 
     // 진짜 요약기를 탔다면 "요약:본문" 이 됐을 것이다.
     assertThat(item.getSummary()).isEqualTo("캐시된 요약");
-    assertThat(item.getEmbedding()).containsExactly(9f, 9f);
     assertThat(savedTags).doesNotContain("태그:본문");
   }
 

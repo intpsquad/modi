@@ -46,16 +46,14 @@ public record AiSuggestPayload(
    * <p>{@code null}일 수 있다 — 크롤링 전(PENDING)·실패(FAILED)라 요약도 본문도 없는 항목이다. 그래도 제목·태그가 근거가 되므로 걸러내지
    * 않는다.
    *
-   * <p><b>뒤의 네 필드는 AI 서버가 자료 순위를 매기는 축이다</b>. 가중치는 좋아요 3.0 &gt; 핀 2.5 &gt; 유사도 2.0 &gt; 최근성 1.0이고,
-   * 융합은 <b>가중 순위 정규화</b>다 — 등수를 축마다 [0,1]로 편 뒤 가중합한다. (원래 확정이던 가중 RRF는 2026-08-02에 실측으로 기각됐다:
-   * 좋아요·핀이 사실상 2단계 축이라 17단계인 유사도·최근성을 이기지 못해 가중치 순서가 뒤집혔다 — {@code ai/docs/EXPERIMENTS.md} #22.)
+   * <p><b>뒤의 세 필드는 AI 서버가 자료 순위를 매기는 축이다</b>(순위 모드일 때. 기본은 최신순). 가중치는 좋아요 3.0 &gt; 핀 2.5 &gt; 유사도
+   * 2.0 &gt; 최근성 1.0이고, 융합은 <b>가중 순위 정규화</b>다 — 등수를 축마다 [0,1]로 편 뒤 가중합한다. (원래 확정이던 가중 RRF는
+   * 2026-08-02에 실측으로 기각됐다: 좋아요·핀이 사실상 2단계 축이라 17단계인 유사도·최근성을 이기지 못해 가중치 순서가 뒤집혔다 — {@code
+   * ai/docs/EXPERIMENTS.md} #22.)
    *
-   * <p><b>순위 계산은 AI 서버가 한다</b> — 여기서는 재료만 싣는다. 벡터를 그대로 보내는 이유는 방 목표 벡터가 AI 서버 쪽에 있었기 때문이다(대가: 자료
-   * 18건에 약 390KB). ⚠️ 2026-10-18 부터 AI 서버는 목표 임베딩을 만들지 않아(#109) <b>유사도 축이 늘 비고 이 벡터는 읽히지 않는다</b> —
-   * 기본 선별은 최신순이다. 계속 보낼지는 {@code specs/OPEN.md} 후속 항목.
-   *
-   * <p>{@code embedding}은 {@code null}일 수 있다. 정상인 경우가 넷이고({@code
-   * V7__add_embedding_to_archive_items.sql}) 그때 그 자료는 <b>유사도 축에서만 빠지고</b> 나머지 세 축으로 후보에 남는다.
+   * <p><b>순위 계산은 AI 서버가 한다</b> — 여기서는 재료만 싣는다. <b>임베딩 벡터는 싣지 않는다</b>(2026-10-18, #129). 예전에는 유사도
+   * 축용으로 실었는데(자료 18건에 약 390KB) AI 서버가 #109 부터 읽지 않아 뺐다 — 그래서 유사도 축은 늘 비어 있다. AI 서버 스키마에서 {@code
+   * embedding} 은 선택값이라 빠져도 그대로 받는다.
    */
   @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
   public record ArchiveInfo(
@@ -63,7 +61,6 @@ public record AiSuggestPayload(
       String title,
       String content,
       List<String> tags,
-      float[] embedding,
       boolean pinned,
       long likeCount,
       /**

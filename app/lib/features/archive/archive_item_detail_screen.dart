@@ -78,7 +78,7 @@ class _ArchiveItemDetailScreenState extends State<ArchiveItemDetailScreen> {
   String? _errorText;
   String? _actionErrorText;
 
-  /// 「AI 요약 만들기」 진행 중. 서버가 요약+임베딩을 도느라 몇 초 걸리므로 버튼을 잠근다.
+  /// 「AI 요약 만들기」 진행 중. 서버가 요약을 만드느라 몇 초 걸리므로 버튼을 잠근다.
   bool _summarizing = false;
   int? _roomId;
   ArchiveItemDetail? _detail;

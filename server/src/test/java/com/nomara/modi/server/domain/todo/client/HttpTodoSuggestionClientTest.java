@@ -2,6 +2,8 @@ package com.nomara.modi.server.domain.todo.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
@@ -52,7 +54,6 @@ class HttpTodoSuggestionClientTest {
                 "오픽 공부법",
                 "본문",
                 List.of("오픽"),
-                new float[] {0.1f, -0.2f},
                 true,
                 3L,
                 Instant.parse("2026-07-30T04:05:06Z"))));
@@ -79,7 +80,8 @@ class HttpTodoSuggestionClientTest {
   }
 
   /**
-   * 자료 선별 4축. AI 서버가 프롬프트에 실을 자료의 순위를 매기려면 이 넷이 필요하다 — 없으면 등록 역순 그대로 들어간다.
+   * 자료 선별 축(좋아요·핀·최신). AI 서버가 순위 모드에서 프롬프트에 실을 자료를 고를 때 쓴다 — 없으면 등록 역순 그대로 들어간다. (유사도 축용 임베딩은 #129
+   * 로 싣지 않는다.)
    *
    * <p><b>{@code created_at}이 문자열인지가 이 테스트의 핵심이다.</b> {@code Instant}에 {@link
    * com.fasterxml.jackson.annotation.JsonFormat}을 안 붙이면 Jackson 기본값(WRITE_DATES_AS_TIMESTAMPS)에 걸려
@@ -93,8 +95,6 @@ class HttpTodoSuggestionClientTest {
         .andExpect(jsonPath("$.archive[0].like_count").value(3))
         .andExpect(jsonPath("$.archive[0].pinned").value(true))
         .andExpect(jsonPath("$.archive[0].created_at").value("2026-07-30T04:05:06Z"))
-        .andExpect(jsonPath("$.archive[0].embedding[0]").value(0.1))
-        .andExpect(jsonPath("$.archive[0].embedding[1]").value(-0.2))
         .andRespond(withSuccess("{\"candidates\":[]}", MediaType.APPLICATION_JSON));
 
     f.client().suggest(payload());
@@ -102,13 +102,31 @@ class HttpTodoSuggestionClientTest {
     f.server().verify();
   }
 
-  /** 임베딩은 {@code null}이 정상인 경우가 넷 있다(V7 마이그레이션 주석). 그때도 나머지 축은 그대로 나가야 한다. */
+  /**
+   * 🔴 추천 요청에 <b>임베딩 벡터를 싣지 않는다</b>(#129). AI 서버는 #109 부터 벡터를 읽지 않는데 자료당 약 21KB 를 실어 보내고 있었다.
+   *
+   * <p>{@code jsonPath(...).doesNotExist()} 로는 못 잰다 — 값이 {@code null} 이어도 통과한다. 본문 글자로 본다.
+   */
   @Test
-  void serializesArchiveWithoutEmbedding() {
+  void doesNotSendEmbeddingVectors() {
     Fixture f = fixture("");
     f.server()
         .expect(requestTo(BASE_URL + "/v1/todo-suggestions"))
-        .andExpect(jsonPath("$.archive[0].embedding").doesNotExist())
+        .andExpect(content().string(not(containsString("embedding"))))
+        .andRespond(withSuccess("{\"candidates\":[]}", MediaType.APPLICATION_JSON));
+
+    f.client().suggest(payload());
+
+    f.server().verify();
+  }
+
+  /** 크롤링 전이라 본문이 없는 자료도 나머지 축은 그대로 나가야 한다. */
+  @Test
+  void serializesArchiveWithoutContent() {
+    Fixture f = fixture("");
+    f.server()
+        .expect(requestTo(BASE_URL + "/v1/todo-suggestions"))
+        .andExpect(jsonPath("$.archive[0].title").value("크롤링 전"))
         .andExpect(jsonPath("$.archive[0].like_count").value(0))
         .andRespond(withSuccess("{\"candidates\":[]}", MediaType.APPLICATION_JSON));
 
@@ -122,7 +140,7 @@ class HttpTodoSuggestionClientTest {
                 List.of(),
                 List.of(
                     new AiSuggestPayload.ArchiveInfo(
-                        7L, "크롤링 전", null, List.of(), null, false, 0L, Instant.EPOCH))));
+                        7L, "크롤링 전", null, List.of(), false, 0L, Instant.EPOCH))));
 
     f.server().verify();
   }

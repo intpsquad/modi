@@ -58,6 +58,8 @@ spring:
     # 자체가 생성되지 않고, ArchiveItemService는 태그 없이 등록을 계속 진행한다(specs/OPEN.md 확정).
     model:
       chat: none
+      # 🔴 지우지 말 것 — 지우면 OpenAI 스타터가 임베딩 모델을 자동 구성한다. 이 서버는 2026-10-18 부터
+      # 임베딩을 만들지 않는다(#129).
       embedding: none
       image: none
       moderation: none
@@ -83,10 +85,6 @@ spring:
           # 원래 gpt-5-nano였고 그 근거는 게이트웨이 크레딧 등급이었다 — 게이트웨이가 사라지면서 근거도 사라졌다.
           model: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:gpt-5.4-nano}
         completions-path: chat/completions
-      embedding:
-        # 자료 임베딩. 모델은 modi.archive.embedding-model 에 있다 — 요약 모델과 같은
-        # 자리에 두는 편이 "아카이브 파생 데이터를 뭐로 만드는가"를 한눈에 보기 좋아서다.
-        embeddings-path: embeddings
 
 feedback:
   # 인앱 문의하기(#70) 알림을 받을 팀 주소.
@@ -158,25 +156,10 @@ modi:
     # 출력으로 과금되므로 위 표의 completion 차이가 곧 비용 차이다.
     # 비용이 예상보다 늘면 여기를 의심할 것: ARCHIVE_SUMMARY_MODEL 로 재빌드 없이 바꿀 수 있다.
     summary-model: ${ARCHIVE_SUMMARY_MODEL:gpt-5.4-nano}
-    # 자료 임베딩 모델. 추천 자료 선별(RAG 2단계)이 읽을 벡터를 만든다.
-    #
-    # text-embedding-3-small 인 이유: 원래 AI 서버가 후보 의미 중복 제거·방 목표 유사도에 쓰던 모델과
-    # 같은 모델이어야 했다(다른 모델의 벡터끼리는 코사인이 의미를 갖지 않는다).
-    # ⚠️ 2026-10-18 부터 AI 서버는 임베딩을 쓰지 않는다(#109) — 이 벡터는 만들어 실어 보내지만 읽히지
-    # 않는다. 계속 만들지는 specs/OPEN.md 후속 항목이다.
-    #
-    # ⚠️ 이 값을 바꾸면 차원이 달라질 수 있고, 이미 저장된 벡터는 백필하지 않는 한 옛 모델 것으로
-    # 남는다(V7 주석 참고 — real[] 에는 차원 제약이 없다).
-    embedding-model: ${ARCHIVE_EMBEDDING_MODEL:text-embedding-3-small}
-    # 기존 자료(V7 이전 등록분)에 임베딩을 채운다. **기본 꺼짐** — 자료 1건당 LLM 호출 1회라
-    # 크레딧을 쓰고, 한 번만 필요한 작업이라 부팅마다 돌 이유가 없다.
-    # 켜는 법: ARCHIVE_BACKFILL_EMBEDDINGS=true 로 한 번 기동한 뒤 다시 끈다.
-    # 중간에 멈춰도 남은 것부터 이어서 하면 되므로 여러 번 켜도 안전하다(NULL 인 것만 채운다).
-    backfill-embeddings: ${ARCHIVE_BACKFILL_EMBEDDINGS:false}
-    # 기존 자료(요약 기능 이전 등록분)에 요약을 채우고 **그 요약으로 벡터를 다시 만든다.**
-    # **기본 꺼짐** — 자료 1건당 LLM 호출 2회(요약+임베딩)라 위와 같은 이유로 켜서 쓴다.
-    # ⚠️ 위 backfill-embeddings 로는 이 문제를 못 고친다 — 그쪽은 벡터가 NULL 인 것만 찾는데,
-    # 요약 없이 등록된 자료는 이미 '본문으로 만든' 벡터를 갖고 있어 건너뛴다.
+    # (2026-10-18: embedding-model·backfill-embeddings 를 지웠다 — 자료 임베딩을 만들지 않는다, #129.
+    #  AI 서버가 #109 부터 벡터를 읽지 않아 OpenAI 비용만 나갔다. archive_items.embedding 칼럼은 남아 있다.)
+    # 기존 자료(요약 기능 이전 등록분)에 요약을 채운다.
+    # **기본 꺼짐** — 자료 1건당 LLM 호출 1회라 돈이 나가고, 한 번만 필요한 작업이라 부팅마다 돌 이유가 없다.
     # 켜는 법: ARCHIVE_BACKFILL_SUMMARIES=true 로 한 번 기동한 뒤 다시 끈다.
     backfill-summaries: ${ARCHIVE_BACKFILL_SUMMARIES:false}
     # LLM 호출(태깅·요약 공통) read 타임아웃. connect 는 5초 고정.

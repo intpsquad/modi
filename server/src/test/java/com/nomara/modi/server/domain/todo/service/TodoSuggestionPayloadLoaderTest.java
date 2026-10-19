@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -30,11 +31,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * 추천 페이로드가 <b>자료 선별 4축</b>을 실제 DB에서 제대로 길어 오는지.
+ * 추천 페이로드가 <b>자료 선별 축</b>(좋아요·핀·최신)을 실제 DB에서 제대로 길어 오는지.
  *
- * <p>가짜 리포지토리로는 의미가 없어 Testcontainers를 쓴다. 좋아요 수는 별도 테이블 집계이고, {@code embedding}은 {@code real[]} ↔
- * {@code float[]} 왕복이며, {@code createdAt}은 {@code @CreationTimestamp}가 채우는 값이라 <b>셋 다 진짜
- * Postgres에서만 증명된다.</b>
+ * <p>가짜 리포지토리로는 의미가 없어 Testcontainers를 쓴다. 좋아요 수는 별도 테이블 집계이고, {@code createdAt}은
+ * {@code @CreationTimestamp}가 채우는 값이라 <b>둘 다 진짜 Postgres에서만 증명된다.</b> (임베딩은 #129 로 싣지 않는다 — 옛 벡터가
+ * 남은 행이 그대로 실리는지만 본다.)
  */
 @Testcontainers
 @SpringBootTest
@@ -55,6 +56,7 @@ class TodoSuggestionPayloadLoaderTest {
   }
 
   @Autowired private TodoSuggestionPayloadLoader loader;
+  @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private RoomRepository roomRepository;
   @Autowired private RoomMemberRepository roomMemberRepository;
   @Autowired private UserRepository userRepository;
@@ -148,29 +150,20 @@ class TodoSuggestionPayloadLoaderTest {
     assertThat(find(payload, plain.getTitle()).pinned()).isFalse();
   }
 
+  /**
+   * 🔴 임베딩을 만들지도 싣지도 않는다(#129). 칼럼(V7)은 남겨서 <b>옛 자료에는 벡터가 그대로 있다</b> — 그런 행도 아무 일 없이 실려야 한다. 엔티티가 그
+   * 칼럼을 매핑하지 않으므로 SQL 로 직접 채워 넣는다.
+   */
   @Test
-  void carriesEmbeddingRoundTrippedThroughPostgres() {
+  void loadsOldItemsThatStillHaveAVectorInTheColumn() {
     Fixture f = fixture();
-    ArchiveItem embedded = item(f, "벡터 있음");
-    embedded.applyEmbedding(new float[] {0.5f, -0.25f, 0.125f});
-    archiveItemRepository.save(embedded);
+    ArchiveItem old = item(f, "옛 벡터 있음");
+    jdbcTemplate.update(
+        "update archive_items set embedding = '{0.5,-0.25,0.125}' where id = ?", old.getId());
 
     AiSuggestPayload payload = loader.load(f.member().getId(), f.room().getId());
 
-    assertThat(find(payload, embedded.getTitle()).embedding())
-        .containsExactly(0.5f, -0.25f, 0.125f);
-  }
-
-  /** 임베딩 {@code null}은 정상인 경우가 넷 있다(V7 주석). 그 자료도 페이로드에 남아야 유사도 외 세 축으로 후보가 된다. */
-  @Test
-  void keepsItemsWithoutEmbedding() {
-    Fixture f = fixture();
-    ArchiveItem bare = item(f, "벡터 없음");
-
-    AiSuggestPayload payload = loader.load(f.member().getId(), f.room().getId());
-
-    AiSuggestPayload.ArchiveInfo info = find(payload, bare.getTitle());
-    assertThat(info.embedding()).isNull();
+    AiSuggestPayload.ArchiveInfo info = find(payload, old.getTitle());
     assertThat(info.createdAt()).isNotNull();
   }
 

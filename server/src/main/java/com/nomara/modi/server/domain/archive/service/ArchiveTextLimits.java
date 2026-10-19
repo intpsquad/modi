@@ -46,22 +46,6 @@ final class ArchiveTextLimits {
    */
   static final int MAX_COMMENT_BODY = 500;
 
-  /**
-   * 임베딩 API에 넣는 텍스트의 상한. <b>모델 상한에서 역산한 값이다.</b>
-   *
-   * <p>{@code text-embedding-3-small}의 입력 상한은 8,191 토큰이고, 넘으면 400이 돌아와 임베딩이 통째로 {@code null}이 된다 —
-   * 잘라서라도 벡터를 남기는 편이 낫다.
-   *
-   * <p>실측(2026-08-01, 실제 아카이브 본문 2건 × 1,000·4,000·8,000자, {@code ai/docs/EXPERIMENTS.md} #19): 한국어
-   * 본문의 토큰/문자 비가 <b>0.910~0.988</b>이었다(8,000자 → 최대 7,860 토큰). 관측 최대 0.988에 여유를 얹어 1.3 tok/char로 잡으면
-   * 8,191 ÷ 1.3 ≈ 6,300자 → <b>6,000자</b>로 내렸다. 측정하지 않은 종류의 텍스트(기호·이모지가 많은 본문)가 1문자당 토큰을 더 먹어도 견디게
-   * 하려는 여유다.
-   *
-   * <p>대부분의 자료는 여기 걸리지 않는다 — 임베딩 입력은 <b>요약 우선</b>이고 요약은 500자가 상한이다({@link ArchiveEmbedder}). 이 상한이
-   * 실제로 쓰이는 것은 요약이 없는 자료(V5 이전 등록분·요약 실패)뿐이다.
-   */
-  static final int MAX_EMBEDDING_INPUT = 6_000;
-
   private ArchiveTextLimits() {}
 
   /**

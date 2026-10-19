@@ -23,18 +23,19 @@ import org.springframework.transaction.annotation.Transactional;
  * S-25-D 외부 공유 등록 전용 — 등록 시점엔 {@code PENDING}으로만 저장되고, 이 컴포넌트가 별도 스레드(`AsyncConfig`)에서 크롤링+AI 태깅을
  * 마친 뒤 {@code DONE}/{@code FAILED}로 갱신한다.
  *
- * <p><b>URL 공유와 텍스트 공유가 둘 다 여기로 온다</b>(2026-08-05). 갈리는 것은 <b>크롤링 한 단계뿐</b>이고, 요약·임베딩·태깅은 같다 — 텍스트
- * 공유가 느렸던 원인도 크롤링이 아니라 그 셋(LLM 3회)이었다. 왜 텍스트까지 비동기로 옮겼는지는 {@code
+ * <p><b>URL 공유와 텍스트 공유가 둘 다 여기로 온다</b>(2026-08-05). 갈리는 것은 <b>크롤링 한 단계뿐</b>이고, 태깅은 같다(요약은 링크만) —
+ * 텍스트 공유가 느렸던 원인도 크롤링이 아니라 그 LLM 호출들(당시 태깅·요약·임베딩 3회)이었다. 왜 텍스트까지 비동기로 옮겼는지는 {@code
  * ArchiveItemService.createSharedItem} 참고.
  *
  * <p>{@code @Async}가 걸린 메서드는 반드시 **다른 빈을 통해** 호출해야 프록시가 적용된다(같은 클래스 안에서 자기 자신을 호출하면
  * self-invocation으로 조용히 무시되고 동기 실행됨) — {@code ArchiveItemService}가 이 컴포넌트를 주입받아 호출하는 구조로 그 문제를 피한다.
  *
- * <p><b>⚠️ 알고 있는 부채: 이 메서드는 {@code @Transactional} 안에서 외부 호출을 4회 돈다</b>(크롤링 1 + LLM 3). 최악 대기 약
- * 185초 동안 DB 커넥션 하나를 물고 있다. 에서 {@code TodoSuggestionService}가 맞은 것과 같은 형태이고, 거기서는 읽기·LLM·쓰기를 세 경계로
- * 쪼개 해소했다. 여기를 쪼개지 않은 이유는 이 메서드가 <b>부분 실패 시의 원자성에 기대고</b> 있기 때문이다 — {@code markCrawlFailed()}와 태그
- * 저장이 한 트랜잭션이라야 "본문은 저장됐는데 상태는 PENDING" 같은 중간 상태가 안 생긴다. 지금은 {@code archiveCrawlExecutor}가 max 4
- * 스레드라 Hikari 풀 10 중 최대 4만 점유돼 버티는 것뿐이다. 스레드 풀을 키우기 전에 {@code specs/OPEN.md}의 해당 항목을 먼저 볼 것.
+ * <p><b>⚠️ 알고 있는 부채: 이 메서드는 {@code @Transactional} 안에서 외부 호출을 3회 돈다</b>(크롤링 1 + LLM 2 — 태깅·요약.
+ * 2026-10-18 #129 이전에는 임베딩까지 4회·최악 약 185초였다). 최악 대기 수 분 동안 DB 커넥션 하나를 물고 있다. 에서 {@code
+ * TodoSuggestionService}가 맞은 것과 같은 형태이고, 거기서는 읽기·LLM·쓰기를 세 경계로 쪼개 해소했다. 여기를 쪼개지 않은 이유는 이 메서드가 <b>부분
+ * 실패 시의 원자성에 기대고</b> 있기 때문이다 — {@code markCrawlFailed()}와 태그 저장이 한 트랜잭션이라야 "본문은 저장됐는데 상태는 PENDING"
+ * 같은 중간 상태가 안 생긴다. 지금은 {@code archiveCrawlExecutor}가 max 4 스레드라 Hikari 풀 10 중 최대 4만 점유돼 버티는 것뿐이다.
+ * 스레드 풀을 키우기 전에 {@code specs/OPEN.md}의 해당 항목을 먼저 볼 것.
  */
 @Component
 public class ArchiveCrawlProcessor {
@@ -82,7 +83,6 @@ public class ArchiveCrawlProcessor {
   private final UrlCrawler urlCrawler;
   private final Optional<AiTaggingClient> aiTaggingClient;
   private final ArchiveSummarizer archiveSummarizer;
-  private final ArchiveEmbedder archiveEmbedder;
   private final ArchiveAnalysisNotificationBuffer notificationBuffer;
 
   public ArchiveCrawlProcessor(
@@ -91,14 +91,12 @@ public class ArchiveCrawlProcessor {
       UrlCrawler urlCrawler,
       Optional<AiTaggingClient> aiTaggingClient,
       ArchiveSummarizer archiveSummarizer,
-      ArchiveEmbedder archiveEmbedder,
       ArchiveAnalysisNotificationBuffer notificationBuffer) {
     this.archiveItemRepository = archiveItemRepository;
     this.archiveItemTagRepository = archiveItemTagRepository;
     this.urlCrawler = urlCrawler;
     this.aiTaggingClient = aiTaggingClient;
     this.archiveSummarizer = archiveSummarizer;
-    this.archiveEmbedder = archiveEmbedder;
     this.notificationBuffer = notificationBuffer;
   }
 
@@ -114,13 +112,13 @@ public class ArchiveCrawlProcessor {
       String bodyText;
       if (item.getUrl() == null) {
         // 텍스트 등록 — 크롤링할 URL이 없다. 본문은 등록 시점에 이미 저장돼 있고 상태도 이미
-        // DONE 이다(ArchiveItem.textDone, 2026-08-06). 여기서는 아래 임베딩·태깅만 얹는다.
+        // DONE 이다(ArchiveItem.textDone, 2026-08-06). 여기서는 아래 태깅만 얹는다.
         //
         // 🔴 크롤러를 부르지 않는다. 부르면 null URL로 SiteUrlCrawler 판별부터 터진다.
         bodyText = item.getBodyText();
         item.markDoneWithoutCrawl();
       } else if (reuseRecentCrawl(item)) {
-        // 캐시 적중 — 크롤링도 AI 3회도 건너뛰었다. 아래 요약·임베딩·태깅을 다시 하지 않는다.
+        // 캐시 적중 — 크롤링도 AI 호출도 건너뛰었다. 아래 요약·태깅을 다시 하지 않는다.
         // 사용자에게는 똑같이 "분석이 끝난" 것이므로 알림은 여기서도 센다.
         notifyDone(item);
         return;
@@ -137,7 +135,7 @@ public class ArchiveCrawlProcessor {
             ArchiveTextLimits.nullIfTooLong(crawled.thumbnail(), ArchiveTextLimits.MAX_THUMBNAIL));
       }
       // 이 경로는 이미 백그라운드라 호출이 하나 늘어도 사용자를 붙잡지 않는다. 실패해도 위에서 정한
-      // DONE 상태를 되돌리지 않는다 — 요약·임베딩은 크롤링 성공의 조건이 아니다.
+      // DONE 상태를 되돌리지 않는다 — 요약은 크롤링 성공의 조건이 아니다.
       //
       // 🔴 **텍스트로 등록한 것은 요약하지 않는다**(2026-08-06 사용자 확정). 사용자가 직접 적은
       // 짧은 메모는 본문이 곧 요약이라, 요약해 봐야 얻는 것이 거의 없으면서 LLM 호출만 쓴다.
@@ -146,13 +144,8 @@ public class ArchiveCrawlProcessor {
       if (item.getUrl() != null) {
         item.applySummary(archiveSummarizer.summarize(bodyText));
       }
-      // 임베딩은 요약 뒤에 — 요약이 임베딩의 입력이다(ArchiveEmbedder). 방금 붙인 값을 엔티티에서
-      // 다시 읽어 넘겨 applySummary 의 "빈 문자열 → null" 정규화를 그대로 탄다.
-      //
-      // ⚠️ 텍스트 항목은 요약이 없으므로 **본문으로** 임베딩된다. 한 방 안에 "요약 기반"과 "본문
-      // 기반" 벡터가 섞이는데(ArchiveSummaryFiller 주석 참고), 짧은 메모는 본문이 곧 요약이라
-      // 두 축의 차이가 작다고 봤다. 나중에 버튼으로 요약을 만들면 그때 벡터도 함께 갱신된다.
-      item.applyEmbedding(archiveEmbedder.embed(item.getSummary(), bodyText));
+      // (2026-10-18: 여기서 요약으로 임베딩을 만들던 호출을 걷어냈다 — AI 서버가 #109 부터 벡터를 읽지
+      // 않아 OpenAI 비용만 나갔다, #129. DB 칼럼은 남아 있지만 새 자료는 비어 있다.)
       for (String tag : suggestTagsSafely(bodyText)) {
         archiveItemTagRepository.save(new ArchiveItemTag(item, tag));
       }
@@ -284,8 +277,8 @@ public class ArchiveCrawlProcessor {
    * <p>같은 인기 게시물이 여러 방에 공유되는 경우가 이 캐시의 최대 효과 지점이라, 방을 가리면 효과의 대부분을 버리게 된다. ⚠️ 나중에 <b>비공개 자료</b> 개념이
    * 생기면 이 판단을 다시 봐야 한다.
    *
-   * <p><b>요약·임베딩·태그까지 베낀다.</b> 같은 URL 이면 본문이 같고, 같은 본문에 대해 LLM 을 다시 부를 이유가 없다 — 크롤링 1회뿐 아니라 LLM 호출
-   * 3회도 함께 아낀다.
+   * <p><b>요약·태그까지 베낀다.</b> 같은 URL 이면 본문이 같고, 같은 본문에 대해 LLM 을 다시 부를 이유가 없다 — 크롤링 1회뿐 아니라 LLM 호출도 함께
+   * 아낀다. (2026-10-18 까지는 임베딩도 베꼈다 — #129 로 임베딩을 만들지 않는다.)
    *
    * <p>⚠️ <b>24시간 상한</b>(test.md 권고). 그 안에 게시물이 수정되면 옛 제목이 보일 수 있다 — 하루가 지나면 다시 긁는다.
    *
@@ -313,7 +306,6 @@ public class ArchiveCrawlProcessor {
     item.markCrawlDone(
         cached.getTitle(), cached.getBodyText(), cached.getSource(), cached.getThumbnail());
     item.applySummary(cached.getSummary());
-    item.applyEmbedding(cached.getEmbedding());
     for (ArchiveItemTag tag : archiveItemTagRepository.findByItemId(cached.getId())) {
       archiveItemTagRepository.save(new ArchiveItemTag(item, tag.getId().getTag()));
     }
